@@ -1,0 +1,105 @@
+[package]
+name = "ticket-viewer-dioxus"
+version = "0.1.0"
+edition = "2021"
+
+[[bin]]
+name = "ticket-viewer-dioxus"
+path = "src/main.rs"
+
+[dependencies]
+# Dioxus platform
+dioxus = { version = "0.7", default-features = false, features = ["minimal", "router"] }
+dioxus-web = { version = "0.7", default-features = false, features = ["document", "mounted"] }
+
+# Shared viewer-api platform shell (WebGPU canvas + overlay layout)
+viewer-api-dioxus = { git = "https://github.com/mankinskin/viewer-api", branch = "main" }
+
+# HTTP client for the browser fetch API
+gloo-net = { version = "0.6", features = ["http"] }
+
+# Safe DOM event listener management (auto-removes on drop, no Closure::forget)
+gloo-events = "0.2"
+
+# Async timer primitives (TimeoutFuture for fetch debouncing)
+gloo-timers = { version = "0.3", features = ["futures"] }
+
+# Async support
+wasm-bindgen-futures = "0.4"
+wasm-bindgen = "0.2"
+js-sys = "0.3"
+futures-util = "0.3"
+
+# Web platform APIs for canvas drawing, SSE, and WebGPU 3-D graph
+web-sys = { version = "0.3", features = [
+    "Window",
+    "Storage",
+    "Document",
+    "Element",
+    "HtmlElement",
+    "HtmlCanvasElement",
+    "CanvasRenderingContext2d",
+    "EventTarget",
+    "EventSource",
+    "MessageEvent",
+    "MouseEvent",
+    "WheelEvent",
+    "DomRect",
+    "KeyboardEvent",
+    "console",
+    # Performance timer (camera animation time)
+    "Performance",
+    # Navigator.gpu — WebGPU entry-point
+    "Navigator",
+    "Gpu",
+    # WebGPU core device types
+    "GpuAdapter",
+    "GpuDevice",
+    "GpuQueue",
+    # WebGPU canvas
+    "GpuCanvasContext",
+    "GpuCanvasConfiguration",
+    "GpuTextureFormat",
+    # WebGPU resources
+    "GpuBuffer",
+    "GpuBufferDescriptor",
+    "GpuTexture",
+    "GpuTextureView",
+    "GpuTextureDescriptor",
+    # WebGPU shaders
+    "GpuShaderModule",
+    "GpuShaderModuleDescriptor",
+    # WebGPU pipeline layout & bind groups
+    "GpuPipelineLayout",
+    "GpuPipelineLayoutDescriptor",
+    "GpuBindGroupLayout",
+    "GpuBindGroupLayoutDescriptor",
+    "GpuBindGroup",
+    "GpuBindGroupDescriptor",
+    # WebGPU render pipeline
+    "GpuRenderPipeline",
+    "GpuRenderPipelineDescriptor",
+    # WebGPU command encoding & render pass
+    "GpuCommandEncoder",
+    "GpuCommandEncoderDescriptor",
+    "GpuCommandBuffer",
+    "GpuRenderPassEncoder",
+    "GpuRenderPassDescriptor",
+    # scrollIntoView({block: 'nearest'})
+    "ScrollIntoViewOptions",
+    "ScrollLogicalPosition",
+] }
+
+# Serialization — matches the ticket-http REST responses
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+
+# URL encoding for building query strings
+percent-encoding = "2"
+
+# Logging in WASM
+tracing = "0.1"
+tracing-wasm = "0.2"
+
+[features]
+profile-browser = ["viewer-api-dioxus/profile-browser"]

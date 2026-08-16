@@ -1,0 +1,9 @@
+[workspace]
+resolver = "2"
+members = [
+  "crates/ticket",
+  "crates/ticket-api",
+  "crates/ticket-vscode-core",
+  "ticket-viewer",
+  "ticket-viewer/frontend/dioxus",
+]

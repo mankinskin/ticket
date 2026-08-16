@@ -1,0 +1,31 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Ticket Viewer</title>
+    <link data-trunk rel="rust" data-bin="ticket-viewer-dioxus"/>
+    <!-- Shared modular CSS from viewer-api (single source of truth). -->
+    <link data-trunk rel="css" href="../../../../viewer-api/viewer-api/frontend/dioxus/public/css/variables.css"/>
+    <link data-trunk rel="css" href="../../../../viewer-api/viewer-api/frontend/dioxus/public/css/base.css"/>
+    <link data-trunk rel="css" href="../../../../viewer-api/viewer-api/frontend/dioxus/public/css/layout.css"/>
+    <link data-trunk rel="css" href="../../../../viewer-api/viewer-api/frontend/dioxus/public/css/tree.css"/>
+    <link data-trunk rel="css" href="../../../../viewer-api/viewer-api/frontend/dioxus/public/css/file-tree.css"/>
+    <link data-trunk rel="css" href="../../../../viewer-api/viewer-api/frontend/dioxus/public/css/tabs.css"/>
+    <link data-trunk rel="css" href="../../../../viewer-api/viewer-api/frontend/dioxus/public/css/buttons.css"/>
+    <link data-trunk rel="css" href="../../../../viewer-api/viewer-api/frontend/dioxus/public/css/chip.css"/>
+    <link data-trunk rel="css" href="../../../../viewer-api/viewer-api/frontend/dioxus/public/css/code-viewer.css"/>
+    <link data-trunk rel="css" href="../../../../viewer-api/viewer-api/frontend/dioxus/public/css/spinner.css"/>
+    <link data-trunk rel="css" href="../../../../viewer-api/viewer-api/frontend/dioxus/public/css/markdown.css"/>
+    <link data-trunk rel="css" href="../../../../viewer-api/viewer-api/frontend/dioxus/public/css/syntect.css"/>
+    <link data-trunk rel="css" href="../../../../viewer-api/viewer-api/frontend/dioxus/public/css/spec-card.css"/>
+    <link data-trunk rel="css" href="../../../../viewer-api/viewer-api/frontend/dioxus/public/css/state-badge.css"/>
+    <link data-trunk rel="css" href="../../../../viewer-api/viewer-api/frontend/dioxus/public/css/glass-panel.css"/>
+    <link data-trunk rel="css" href="../../../../viewer-api/viewer-api/frontend/dioxus/public/css/modal.css"/>
+    <link data-trunk rel="css" href="../../../../viewer-api/viewer-api/frontend/dioxus/public/css/theme-settings.css"/>
+
+    <!-- Per-viewer overrides (loaded last to win the cascade). -->
+    <link data-trunk rel="css" href="public/ticket-viewer-overrides.css"/>
+</head>
+<body><div id="main"></div></body>
+</html>

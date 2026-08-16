@@ -1,0 +1,212 @@
+/* ticket-viewer-overrides.css — per-viewer tweaks loaded after the shared
+   modular CSS bundle.  Add only rules that should NOT apply to other
+   viewers; anything reusable belongs upstream in
+   tools/viewer/viewer-api/frontend/dioxus/public/css/. */
+
+/* ── Ticket content overlay panel (split view) ─────────────────────────────
+   The overlay panel that floats over the dep-graph in split view must keep
+   all its visual styling in a CSS class. Putting these declarations in the
+   inline `style="…"` attribute alongside the dynamic `width:` interpolation
+   causes Dioxus's per-property style diff to intermittently drop the
+   `border:` and `background:` declarations during resize, producing visible
+   opacity flicker. Only `width` is interpolated inline now.                  */
+.ticket-content-overlay-panel {
+  max-width: calc(100% - 24px);
+  min-width: 320px;
+  height: 100%;
+  position: relative;
+  pointer-events: auto;
+  display: flex;
+  flex-direction: column;
+  border: 1px solid var(--border-subtle);
+  border-radius: 16px;
+  overflow: hidden;
+  background: transparent;
+  box-shadow: 0 14px 34px rgba(0, 0, 0, 0.36);
+  isolation: isolate;
+}
+
+.ticket-content-shell {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  font-family: sans-serif;
+  color: #e0e0e8;
+  overflow: hidden;
+  background: transparent;
+  backdrop-filter: blur(var(--panel-blur)) saturate(var(--panel-saturate));
+  -webkit-backdrop-filter: blur(var(--panel-blur)) saturate(var(--panel-saturate));
+}
+
+/* ── Priority-panel collapse strips ─────────────────────────────────────────
+   The 32px collapsed strips for TicketDetail (right edge) and DepGraph (left
+   edge) use inline styles from routes.rs; the hover/transition rules live here
+   to keep the Rust source free of presentation-only CSS.                     */
+
+/* The collapsed strip divs share a common hover interaction: brighten the
+   label colour and show a subtle background highlight.  We target them by
+   their unique border-direction (left vs right) within the flex row.        */
+
+/* Right edge — collapsed TicketDetail strip */
+.content div[style*="border-left: 1px solid var(--border-color)"][style*="writing-mode"] {
+  transition: background 0.15s ease;
+}
+.content div[style*="border-left: 1px solid var(--border-color)"][style*="writing-mode"]:hover {
+  background: color-mix(in srgb, var(--accent-blue) 15%, var(--panel-bg-strong)) !important;
+}
+.content div[style*="border-left: 1px solid var(--border-color)"][style*="writing-mode"]:hover > div {
+  color: var(--accent-blue) !important;
+}
+
+/* Left edge — collapsed DepGraph strip */
+.content div[style*="border-right: 1px solid var(--border-color)"][style*="writing-mode"] {
+  transition: background 0.15s ease;
+}
+.content div[style*="border-right: 1px solid var(--border-color)"][style*="writing-mode"]:hover {
+  background: color-mix(in srgb, var(--accent-blue) 15%, var(--panel-bg-strong)) !important;
+}
+.content div[style*="border-right: 1px solid var(--border-color)"][style*="writing-mode"]:hover > div {
+  color: var(--accent-blue) !important;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   Graph node card effects — hover (Task 5) and selected-ember (Task 7)
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+/* ── Ember border pulse — applied to .node-card-selected ───────────────── */
+@keyframes ember-border-pulse {
+  0%, 100% {
+    box-shadow:
+      0 0  6px 2px rgba(255, 90, 20, 0.65),
+      0 0 18px 5px rgba(255, 45, 5, 0.35),
+      0 0 32px 8px rgba(255, 20, 0, 0.18);
+  }
+  40% {
+    box-shadow:
+      0 0 10px 4px rgba(255, 130, 40, 0.80),
+      0 0 26px 8px rgba(255, 70, 10, 0.50),
+      0 0 44px 12px rgba(255, 30, 0, 0.28);
+  }
+  60% {
+    box-shadow:
+      0 0  8px 3px rgba(255, 100, 25, 0.70),
+      0 0 22px 6px rgba(255, 55, 5, 0.40),
+      0 0 38px 10px rgba(255, 25, 0, 0.22);
+  }
+}
+
+/* Ash particles — two pseudo-elements animate independent ash flake paths */
+@keyframes ash-float-a {
+  0%   { opacity: 0;   transform: translate(0px,    0px) scale(0.6);  }
+  15%  { opacity: 0.8; transform: translate(-6px,  -8px) scale(0.9);  }
+  50%  { opacity: 0.5; transform: translate(-14px, -22px) scale(1.1); }
+  80%  { opacity: 0.2; transform: translate(-8px,  -38px) scale(0.7); }
+  100% { opacity: 0;   transform: translate(-2px,  -52px) scale(0.4); }
+}
+@keyframes ash-float-b {
+  0%   { opacity: 0;   transform: translate(0px,    0px) scale(0.5);  }
+  20%  { opacity: 0.7; transform: translate(8px,   -10px) scale(0.85); }
+  55%  { opacity: 0.4; transform: translate(18px,  -26px) scale(1.0);  }
+  85%  { opacity: 0.15; transform: translate(10px, -42px) scale(0.6); }
+  100% { opacity: 0;   transform: translate(4px,   -56px) scale(0.3); }
+}
+@keyframes ash-float-c {
+  0%   { opacity: 0;   transform: translate(-2px,  0px)  scale(0.4); }
+  25%  { opacity: 0.6; transform: translate(4px,  -12px) scale(0.8); }
+  60%  { opacity: 0.3; transform: translate(-4px, -30px) scale(1.0); }
+  90%  { opacity: 0.1; transform: translate(2px,  -44px) scale(0.5); }
+  100% { opacity: 0;   transform: translate(-1px, -58px) scale(0.2); }
+}
+
+.node-card-selected {
+  animation: ember-border-pulse 2.2s ease-in-out infinite;
+  border-color: rgba(255, 110, 35, 0.75) !important;
+  transition: border-color 0.3s ease;
+  position: relative;
+  overflow: visible !important;
+  /* Always above all other nodes regardless of depth-based z-index. */
+  z-index: 100000 !important;
+}
+
+/* Ash flake A — bottom-left edge */
+.node-card-selected::before {
+  content: "";
+  position: absolute;
+  bottom: -2px;
+  left: 20%;
+  width: 4px;
+  height: 4px;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(255,180,80,0.9) 0%, rgba(255,80,10,0.4) 60%, transparent 100%);
+  pointer-events: none;
+  animation: ash-float-a 2.0s ease-out infinite;
+  animation-delay: 0.2s;
+}
+
+/* Ash flake B — bottom-right edge */
+.node-card-selected::after {
+  content: "";
+  position: absolute;
+  bottom: -2px;
+  right: 25%;
+  width: 3px;
+  height: 3px;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(255,200,100,0.9) 0%, rgba(255,100,20,0.4) 60%, transparent 100%);
+  pointer-events: none;
+  animation: ash-float-b 2.4s ease-out infinite;
+  animation-delay: 0.7s;
+}
+
+/* ── Node card hover — beam/sparkle glow ───────────────────────────────── */
+@keyframes hover-beam-sweep {
+  0%   { box-shadow: 0 0  4px 1px rgba(100,180,255,0.25), 0 0 12px 3px rgba(80,140,255,0.12); }
+  35%  { box-shadow: 0 0  8px 3px rgba(120,200,255,0.45), 0 0 20px 6px rgba(80,160,255,0.22); }
+  65%  { box-shadow: 0 0  6px 2px rgba(140,210,255,0.35), 0 0 16px 5px rgba(90,170,255,0.18); }
+  100% { box-shadow: 0 0  4px 1px rgba(100,180,255,0.25), 0 0 12px 3px rgba(80,140,255,0.12); }
+}
+
+/* Sparkle dot floating upward on hover */
+@keyframes sparkle-hover {
+  0%   { opacity: 0;   transform: translate(0,     0px) scale(0.5); }
+  20%  { opacity: 1;   transform: translate(5px,  -8px) scale(1.0); }
+  70%  { opacity: 0.4; transform: translate(-3px, -24px) scale(0.7); }
+  100% { opacity: 0;   transform: translate(2px,  -38px) scale(0.3); }
+}
+
+[data-node-idx]:hover:not(.node-card-selected) {
+  animation: hover-beam-sweep 1.4s ease-in-out infinite;
+  border-color: rgba(100, 180, 255, 0.55) !important;
+  transition: border-color 0.2s ease;
+  overflow: visible !important;
+  z-index: 2;
+}
+
+[data-node-idx]:hover:not(.node-card-selected)::before {
+  content: "";
+  position: absolute;
+  top: -2px;
+  left: 40%;
+  width: 3px;
+  height: 3px;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(180,220,255,0.9) 0%, rgba(100,180,255,0.4) 70%, transparent 100%);
+  pointer-events: none;
+  animation: sparkle-hover 1.2s ease-out infinite;
+  animation-delay: 0.1s;
+}
+
+[data-node-idx]:hover:not(.node-card-selected)::after {
+  content: "";
+  position: absolute;
+  top: -2px;
+  right: 35%;
+  width: 2px;
+  height: 2px;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(200,230,255,0.95) 0%, rgba(120,190,255,0.5) 70%, transparent 100%);
+  pointer-events: none;
+  animation: sparkle-hover 1.6s ease-out infinite;
+  animation-delay: 0.55s;
+}
+
