@@ -1,0 +1,34 @@
+{
+  "browser": "Microsoft Edge 151.0.4129.72",
+  "headed": true,
+  "viewport": {
+    "innerWidth": 1920,
+    "innerHeight": 1080,
+    "screenWidth": 1920,
+    "screenHeight": 1080,
+    "devicePixelRatio": 1
+  },
+  "panelBox": {
+    "x": 610.2656860351562,
+    "y": 83.6829605102539,
+    "width": 701.4169311523438,
+    "height": 904.8248519897461
+  },
+  "consoleAndPageErrors": [],
+  "png": {
+    "mainView": {
+      "width": 1920,
+      "height": 1080,
+      "colorType": 2,
+      "nonTransparent": 2073600,
+      "uniqueColors": 4096
+    },
+    "themeSettingsOpen": {
+      "width": 1920,
+      "height": 1080,
+      "colorType": 2,
+      "nonTransparent": 2073600,
+      "uniqueColors": 4096
+    }
+  }
+}
