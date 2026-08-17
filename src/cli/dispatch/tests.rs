@@ -2,7 +2,8 @@ use std::collections::BTreeMap;
 
 use super::*;
 use crate::cli::{
-    CreateArgs,
+    BoardArgs,
+    BoardCommand,
     IdArgs,
     ListArgs,
     ScanArgs,
@@ -13,6 +14,144 @@ use crate::cli::{
 use tempfile::tempdir;
 use ticket_api::storage::index::RedbIndexStore;
 use uuid::Uuid;
+
+fn run_git(
+    directory: &Path,
+    arguments: &[&str],
+) {
+    let output = std::process::Command::new("git")
+        .args(arguments)
+        .current_dir(directory)
+        .output()
+        .unwrap();
+    assert!(
+        output.status.success(),
+        "git {} failed: {}",
+        arguments.join(" "),
+        String::from_utf8_lossy(&output.stderr)
+    );
+}
+
+fn create_worktree_fixture() -> (tempfile::TempDir, PathBuf, PathBuf, String) {
+    let dir = tempdir().unwrap();
+    let main = dir.path().join("main");
+    std::fs::create_dir_all(&main).unwrap();
+    run_git(dir.path(), &["init", "main"]);
+    run_git(&main, &["config", "user.email", "ticket@example.test"]);
+    run_git(&main, &["config", "user.name", "Ticket Test"]);
+    std::fs::write(main.join("README.md"), "fixture\n").unwrap();
+    run_git(&main, &["add", "README.md"]);
+    run_git(&main, &["commit", "-m", "fixture"]);
+
+    let store = TicketStore::init(&main.join(".ticket")).unwrap();
+    let ticket_id = store
+        .create(
+            None,
+            "task",
+            Some("Canonical board fixture"),
+            None,
+            BTreeMap::new(),
+            None,
+            None,
+        )
+        .unwrap();
+    drop(store);
+
+    let worktree = main.join(".worktrees").join("session").join("fixture");
+    std::fs::create_dir_all(worktree.parent().unwrap()).unwrap();
+    run_git(
+        &main,
+        &[
+            "worktree",
+            "add",
+            "--detach",
+            worktree.to_str().unwrap(),
+            "HEAD",
+        ],
+    );
+    std::fs::create_dir_all(worktree.join(".ticket").join("tickets")).unwrap();
+    std::fs::write(
+        worktree.join(".ticket").join("tickets").join("copied.txt"),
+        "populated but indexless\n",
+    )
+    .unwrap();
+
+    (dir, main, worktree, ticket_id.to_string())
+}
+
+fn board_check_in(ticket_id: String) -> TicketCommandCli {
+    TicketCommandCli::Board(BoardArgs {
+        command: BoardCommand::CheckIn {
+            id: ticket_id,
+            agent: "test-agent".to_string(),
+            intent: None,
+            files: Vec::new(),
+            ttl_secs: None,
+            session_id: None,
+            worktree_path: None,
+            branch: None,
+        },
+    })
+}
+
+#[test]
+fn dispatch_board_check_in_uses_main_store_for_managed_worktree() {
+    let (_dir, main, worktree, ticket_id) = create_worktree_fixture();
+
+    let payload = dispatch(
+        board_check_in(ticket_id.clone()),
+        None,
+        Some(&worktree),
+        None,
+        true,
+        false,
+    )
+    .unwrap();
+
+    assert_eq!(payload["ticket_id"], ticket_id);
+    assert!(!worktree.join(".ticket").join("tickets.db").exists());
+    assert!(main.join(".ticket").join("tickets.db").is_file());
+    let store = TicketStore::open(&main).unwrap();
+    assert_eq!(store.board_show(None).unwrap().entries.len(), 1);
+}
+
+#[test]
+fn dispatch_board_check_in_keeps_main_workspace_routing() {
+    let (_dir, main, _worktree, ticket_id) = create_worktree_fixture();
+
+    dispatch(
+        board_check_in(ticket_id),
+        None,
+        Some(&main),
+        None,
+        true,
+        false,
+    )
+    .unwrap();
+
+    let store = TicketStore::open(&main).unwrap();
+    assert_eq!(store.board_show(None).unwrap().entries.len(), 1);
+}
+
+#[test]
+fn dispatch_board_rejects_malformed_worktree_metadata() {
+    let dir = tempdir().unwrap();
+    let workspace = dir.path().join("worktree");
+    std::fs::create_dir_all(&workspace).unwrap();
+    std::fs::write(workspace.join(".git"), "gitdir: missing\n").unwrap();
+
+    let error = dispatch(
+        board_check_in(Uuid::new_v4().to_string()),
+        None,
+        Some(&workspace),
+        None,
+        true,
+        false,
+    )
+    .unwrap_err();
+
+    assert!(error.to_string().contains("invalid board workspace"));
+}
 
 fn create_nested_ticket_fixture()
 -> (tempfile::TempDir, PathBuf, PathBuf, String) {
@@ -89,64 +228,13 @@ fn resolve_index_root_prefers_explicit_index_root_over_workspace_root() {
 }
 
 #[test]
-fn dispatch_init_and_create_isolate_a_bare_absolute_index_root() {
-    let dir = tempdir().unwrap();
-    let parent = dir.path().join("parent");
-    let child = parent.join("extracted-ticket");
-    let requested_root = child.join("isolated-store");
-    std::fs::create_dir_all(&child).unwrap();
-    let parent_store = TicketStore::init(&parent.join(".ticket")).unwrap();
-
-    let init = dispatch(
-        TicketCommandCli::Init,
-        Some(&requested_root),
-        None,
-        None,
-        true,
-        false,
-    )
-    .unwrap();
-    let isolated_index_root = requested_root.join(".ticket");
-    let expected_workspace = isolated_index_root
-        .display()
-        .to_string()
-        .replace('\\', "/");
-    assert_eq!(init["workspace"], expected_workspace);
-    assert!(isolated_index_root.join("tickets.db").is_file());
-
-    let created = dispatch(
-        TicketCommandCli::Create(CreateArgs {
-            id: None,
-            ticket_type: Some("tracker-improvement".to_string()),
-            title: Some("Isolated ticket".to_string()),
-            state: None,
-            fields: Vec::new(),
-            body_file: None,
-        }),
-        Some(&requested_root),
-        None,
-        None,
-        true,
-        false,
-    )
-    .unwrap();
-
-    let ticket_id = created["id"].as_str().unwrap().parse().unwrap();
-    assert!(TicketStore::open(&isolated_index_root)
-        .unwrap()
-        .get(&ticket_id)
-        .is_ok());
-    assert!(parent_store.get(&ticket_id).is_err());
-}
-
-#[test]
 fn dispatch_explicit_index_root_overrides_workspace_root() {
     let dir = tempdir().unwrap();
     let repo = dir.path().join("repo");
     let child = repo.join("memory-api");
     std::fs::create_dir_all(&child).unwrap();
-    let root_store = TicketStore::init(&repo.join(".ticket")).unwrap();
-    let child_store = TicketStore::init(&child.join(".ticket")).unwrap();
+    let root_store = TicketStore::init(&repo).unwrap();
+    let child_store = TicketStore::init(&child).unwrap();
     let ticket_id = Uuid::new_v4();
     root_store
         .create(

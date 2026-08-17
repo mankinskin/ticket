@@ -1,6 +1,8 @@
 use std::{
     collections::BTreeSet,
+    fs,
     path::{
+        Component,
         Path,
         PathBuf,
     },
@@ -191,13 +193,7 @@ fn resolve_index_root_from(
     cwd: Option<&Path>,
 ) -> PathBuf {
     if let Some(override_path) = override_path {
-        let index_root = absolute_path_from(override_path, cwd);
-        if index_root.file_name().and_then(|name| name.to_str())
-            == Some(ticket_api::workspace::TICKET_INDEX_DIR)
-        {
-            return index_root;
-        }
-        return index_root.join(ticket_api::workspace::TICKET_INDEX_DIR);
+        return absolute_path_from(override_path, cwd);
     }
 
     ticket_api::workspace::resolve_requested_store_root_from(
@@ -209,7 +205,10 @@ fn resolve_index_root_from(
     )
 }
 
-fn absolute_path_from(path: &Path, cwd: Option<&Path>) -> PathBuf {
+fn absolute_path_from(
+    path: &Path,
+    cwd: Option<&Path>,
+) -> PathBuf {
     if path.is_absolute() {
         path.to_path_buf()
     } else if let Some(cwd) = cwd {
@@ -231,7 +230,8 @@ fn export_command_schema_payload() -> Result<Value, CliRunError> {
 }
 
 fn capability_catalog_payload() -> Result<Value, CliRunError> {
-    let mut payload = ticket_api::contracts::capability_catalog::capability_catalog();
+    let mut payload =
+        ticket_api::contracts::capability_catalog::capability_catalog();
     if let Value::Object(map) = &mut payload {
         map.insert("command".to_string(), json!("catalog"));
         map.insert("status".to_string(), json!("ok"));
@@ -258,8 +258,11 @@ fn dispatch_store_backed(
         workspace_root_override,
     )?;
 
-    let index_root =
-        resolve_index_root(index_root_override, workspace_root_override);
+    let index_root = resolve_board_index_root(
+        &command,
+        index_root_override,
+        workspace_root_override,
+    )?;
     let workspace_root =
         resolve_workspace_root(&index_root, workspace_root_override);
     let store = open_store(&index_root, schema_dir_override)?;
@@ -289,6 +292,133 @@ fn require_explicit_workspace_for_create(
         ));
     }
     Ok(())
+}
+
+fn resolve_board_index_root(
+    command: &TicketCommandCli,
+    index_root_override: Option<&Path>,
+    workspace_root_override: Option<&Path>,
+) -> Result<PathBuf, CliRunError> {
+    if !matches!(command, TicketCommandCli::Board(_))
+        || index_root_override.is_some()
+    {
+        return Ok(resolve_index_root(
+            index_root_override,
+            workspace_root_override,
+        ));
+    }
+
+    let Some(workspace_root) = workspace_root_override else {
+        return Ok(resolve_index_root(None, None));
+    };
+
+    let workspace_root = canonical_board_workspace(workspace_root)?;
+    let git_path = workspace_root.join(".git");
+    if git_path.is_dir() {
+        return Ok(workspace_root.join(ticket_api::workspace::TICKET_INDEX_DIR));
+    }
+
+    let git_dir = resolve_worktree_git_dir(&workspace_root, &git_path)?;
+    let main_checkout = resolve_main_checkout(&workspace_root, &git_dir)?;
+    Ok(main_checkout.join(ticket_api::workspace::TICKET_INDEX_DIR))
+}
+
+fn canonical_board_workspace(path: &Path) -> Result<PathBuf, CliRunError> {
+    ticket_api::workspace::canonicalize_workspace_root_strict(path).map_err(
+        |error| {
+            CliRunError::BadRequest(format!(
+                "invalid board workspace '{}': {error}",
+                path.display()
+            ))
+        },
+    )
+}
+
+fn resolve_worktree_git_dir(
+    workspace_root: &Path,
+    git_path: &Path,
+) -> Result<PathBuf, CliRunError> {
+    let contents = fs::read_to_string(git_path).map_err(|error| {
+        CliRunError::BadRequest(format!(
+            "invalid board workspace '{}': expected a Git worktree .git file: {error}",
+            workspace_root.display()
+        ))
+    })?;
+    let git_dir = contents
+        .strip_prefix("gitdir: ")
+        .and_then(|value| value.lines().next())
+        .filter(|value| !value.is_empty())
+        .ok_or_else(|| {
+            CliRunError::BadRequest(format!(
+                "invalid board workspace '{}': malformed Git worktree .git file",
+                workspace_root.display()
+            ))
+        })?;
+    let git_dir = Path::new(git_dir);
+    let git_dir = if git_dir.is_absolute() {
+        git_dir.to_path_buf()
+    } else {
+        workspace_root.join(git_dir)
+    };
+    canonical_board_workspace(&git_dir)
+}
+
+fn resolve_main_checkout(
+    workspace_root: &Path,
+    git_dir: &Path,
+) -> Result<PathBuf, CliRunError> {
+    let common_dir = fs::read_to_string(git_dir.join("commondir"))
+        .map_err(|error| {
+            CliRunError::BadRequest(format!(
+                "invalid board workspace '{}': Git worktree has no commondir: {error}",
+                workspace_root.display()
+            ))
+        })?;
+    let common_dir = common_dir
+        .lines()
+        .next()
+        .filter(|value| !value.is_empty())
+        .ok_or_else(|| {
+            CliRunError::BadRequest(format!(
+                "invalid board workspace '{}': empty Git commondir",
+                workspace_root.display()
+            ))
+        })?;
+    let common_dir = Path::new(common_dir);
+    let common_dir = if common_dir.is_absolute() {
+        common_dir.to_path_buf()
+    } else {
+        git_dir.join(common_dir)
+    };
+    let common_dir = canonical_board_workspace(&common_dir)?;
+    let main_checkout = common_dir.parent().filter(|parent| {
+        common_dir.file_name().is_some_and(|name| name == ".git")
+            && parent.join(".worktrees").is_dir()
+    }).ok_or_else(|| {
+        CliRunError::BadRequest(format!(
+            "invalid board workspace '{}': Git common directory does not identify a managed main checkout",
+            workspace_root.display()
+        ))
+    })?;
+    let relative = workspace_root
+        .strip_prefix(main_checkout.join(".worktrees"))
+        .map_err(|_| {
+            CliRunError::BadRequest(format!(
+                "invalid board workspace '{}': not beneath the main checkout .worktrees directory",
+                workspace_root.display()
+            ))
+        })?;
+    if relative.components().count() != 2
+        || relative
+            .components()
+            .any(|component| !matches!(component, Component::Normal(_)))
+    {
+        return Err(CliRunError::BadRequest(format!(
+            "invalid board workspace '{}': expected .worktrees/<session>/<slug>",
+            workspace_root.display()
+        )));
+    }
+    Ok(main_checkout.to_path_buf())
 }
 
 fn command_uses_descendant_scan_roots(command: &TicketCommandCli) -> bool {
