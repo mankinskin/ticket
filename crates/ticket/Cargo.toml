@@ -48,6 +48,7 @@ tracing = { version = "0.1", optional = true }
 uuid = { version = "1", features = ["serde", "v4"], optional = true }
 
 [dev-dependencies]
+chrono = { version = "0.4", features = ["serde"] }
 memory-fixtures = { git = "https://github.com/mankinskin/memory-fixtures", branch = "main" }
 memory-kernel = { git = "https://github.com/mankinskin/memory-kernel", branch = "main", features = ["testing"]   }
 transport-harness = { git = "https://github.com/mankinskin/memory-kernel", branch = "main", features = ["cli", "mcp", "http"]  }
@@ -58,6 +59,51 @@ tower = { version = "0.5", features = ["util"] }
 pretty_assertions = "1"
 tempfile = "3"
 toml = "0.9"
+toon-format = "0.5"
 trybuild = "1"
 urlencoding = "2"
 uuid = { version = "1", features = ["v4"] }
+
+[[test]]
+name = "integration_board_cli"
+required-features = ["cli"]
+
+[[test]]
+name = "integration_catalog_cli"
+required-features = ["cli"]
+
+[[test]]
+name = "contracts_command_schema"
+required-features = ["cli"]
+
+[[test]]
+name = "integration_workflow_crud"
+required-features = ["cli"]
+
+[[test]]
+name = "integration_workspace_policy"
+required-features = ["cli"]
+
+[[test]]
+name = "integration_board_mcp"
+required-features = ["mcp"]
+
+[[test]]
+name = "integration_capabilities_mcp"
+required-features = ["mcp"]
+
+[[test]]
+name = "integration_move_mcp"
+required-features = ["mcp"]
+
+[[test]]
+name = "integration_update_mcp"
+required-features = ["mcp"]
+
+[[test]]
+name = "integration_sse_pipeline"
+required-features = ["http"]
+
+[[test]]
+name = "no_auto_init_missing_workspace"
+required-features = ["http"]
