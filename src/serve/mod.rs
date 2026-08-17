@@ -17,7 +17,10 @@ use axum::{
 pub use registry::WorkspaceRegistry;
 use serde_json::json;
 use std::{
-    collections::HashSet,
+    collections::{
+        BTreeSet,
+        HashSet,
+    },
     net::SocketAddr,
     path::Path,
     sync::{
@@ -35,6 +38,28 @@ use viewer_api::{
     auth::TokenSet,
     error::ApiError,
 };
+pub fn register_descendant_scan_roots(
+    store: &TicketStore,
+    workspace_root: &Path,
+) -> Result<bool, ticket_api::error::StorageError> {
+    let mut known_scan_roots = store
+        .list_scan_roots()?
+        .into_iter()
+        .map(|root| root.path)
+        .collect::<BTreeSet<_>>();
+    let mut reindex = false;
+    for root in ticket_api::workspace::discover_workspace_scan_roots(
+        workspace_root,
+        ticket_api::workspace::TICKET_INDEX_DIR,
+        "tickets",
+    ) {
+        if known_scan_roots.insert(root.path.clone()) {
+            reindex = true;
+        }
+        store.add_scan_root(root)?;
+    }
+    Ok(reindex)
+}
 pub fn reapply_workspace_scan_policy(
     store: &TicketStore,
     workspace_root: &Path,
