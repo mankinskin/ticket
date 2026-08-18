@@ -158,6 +158,12 @@ pub enum StorageError {
 	Other(String),
 }
 
+impl memory_kernel::storage::NotFoundError for StorageError {
+	fn is_workspace_not_found(&self) -> bool {
+		matches!(self, StorageError::WorkspaceNotFound { .. })
+	}
+}
+
 #[derive(Debug, Error)]
 pub enum ProtocolError {
 	#[error(

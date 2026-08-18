@@ -258,45 +258,33 @@ impl TicketStore {
         );
         let _span_guard = span.enter();
         let overall_started = Instant::now();
-        match Self::open_with_profiled(index_root, schema_registry.clone()) {
-            Ok((store, mut report)) => {
-                span.record("initialized_store", false);
-                report.phase_timings_ms.insert(
-                    "open_or_init_total_ms".to_string(),
-                    elapsed_ms(overall_started),
-                );
-                emit_store_open_report(
-                    "ticket_store_open_or_init_complete",
-                    &report,
-                );
-                Ok((store, report))
-            },
-            Err(StorageError::WorkspaceNotFound { .. }) => {
-                span.record("initialized_store", true);
-                let (store, mut report) =
-                    Self::init_with_profiled(index_root, schema_registry)?;
-                let initial_scan_started = Instant::now();
-                let initial_scan = store.scan(true)?;
-                report.phase_timings_ms.insert(
-                    "post_init_scan_ms".to_string(),
-                    elapsed_ms(initial_scan_started),
-                );
-                report
-                    .scan_reports
-                    .insert("post_init_scan".to_string(), initial_scan);
-                report.phase_timings_ms.insert(
-                    "open_or_init_total_ms".to_string(),
-                    elapsed_ms(overall_started),
-                );
-                emit_store_open_report(
-                    "ticket_store_open_or_init_complete",
-                    &report,
-                );
-                Ok((store, report))
-            },
-            Err(error) => Err(error),
+        let schema_for_init = schema_registry.clone();
+        let opened = memory_kernel::storage::open_or_init(
+            || Self::open_with_profiled(index_root, schema_registry.clone()),
+            || Self::init_with_profiled(index_root, schema_for_init),
+        )?;
+        let was_initialized = opened.was_initialized();
+        span.record("initialized_store", was_initialized);
+        let (store, mut report) = opened.into_inner();
+        if was_initialized {
+            let initial_scan_started = Instant::now();
+            let initial_scan = store.scan(true)?;
+            report.phase_timings_ms.insert(
+                "post_init_scan_ms".to_string(),
+                elapsed_ms(initial_scan_started),
+            );
+            report
+                .scan_reports
+                .insert("post_init_scan".to_string(), initial_scan);
         }
+        report.phase_timings_ms.insert(
+            "open_or_init_total_ms".to_string(),
+            elapsed_ms(overall_started),
+        );
+        emit_store_open_report("ticket_store_open_or_init_complete", &report);
+        Ok((store, report))
     }
+
 
     pub(super) fn open_internal_profiled(
         index_root: std::path::PathBuf,
