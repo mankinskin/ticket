@@ -4,16 +4,6 @@ version = "0.1.0"
 edition = "2024"
 publish = false
 
-[workspace]
-resolver = "2"
-members = [
-	"crates/ticket",
-	"crates/ticket-api",
-	"crates/ticket-vscode-core",
-	"ticket-viewer",
-	"ticket-viewer/frontend/dioxus",
-]
-
 [lib]
 path = "src/lib.rs"
 
@@ -40,7 +30,7 @@ required-features = ["http"]
 
 [dependencies]
 ticket-api = { path = "crates/ticket-api" }
-spec-api = { git = "https://github.com/mankinskin/memory-api", branch = "main", optional = true }
+spec-api = { git = "https://github.com/mankinskin/spec", branch = "main", optional = true }
 arc-swap = { version = "1", optional = true }
 axum = { version = "0.8", features = ["macros"], optional = true }
 chrono = { version = "0.4", features = ["serde"], optional = true }
