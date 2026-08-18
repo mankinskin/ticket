@@ -78,7 +78,8 @@ fn main() {
             &root,
             ticket_api::workspace::TICKET_INDEX_DIR,
         );
-    let store = TicketStore::open(&root).expect("failed to open ticket store");
+    let store =
+        TicketStore::open_or_init(&root).expect("failed to open ticket store");
     ticket::serve::reapply_workspace_scan_policy(&store, &workspace_root)
         .expect("failed to apply workspace policy");
 

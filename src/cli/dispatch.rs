@@ -482,7 +482,7 @@ fn open_store(
     if let Some(schema_dir) = schema_dir_override {
         registry.load_dir(schema_dir)?;
     }
-    TicketStore::open_with(index_root, registry).map_err(CliRunError::from)
+    TicketStore::open_or_init_with(index_root, registry).map_err(CliRunError::from)
 }
 
 fn register_descendant_scan_roots(

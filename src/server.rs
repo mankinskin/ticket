@@ -48,7 +48,7 @@ pub struct TicketServer {
 pub fn open_canonical_store(
     index_root: &Path,
 ) -> Result<TicketStore, ticket_api::error::StorageError> {
-    let store = TicketStore::open(index_root)?;
+    let store = TicketStore::open_or_init(index_root)?;
     let workspace_root = ticket_api::workspace::resolve_workspace_root_from_store_root(
         &store.index_root,
         ticket_api::workspace::TICKET_INDEX_DIR,
@@ -180,7 +180,8 @@ impl TicketServer {
     ) -> Result<T, McpError> {
         let index_root = self.resolve_workspace_root(workspace)?;
         let _guard = self.store_lock.lock().await;
-        let store = TicketStore::open(&index_root).map_err(Self::store_err)?;
+        let store =
+            TicketStore::open_or_init(&index_root).map_err(Self::store_err)?;
         store.scan(false).map_err(Self::store_err)?;
         let result = f(&store).map_err(Self::store_err);
         drop(store);
@@ -194,7 +195,8 @@ impl TicketServer {
     ) -> Result<T, McpError> {
         let index_root = self.resolve_workspace_root(workspace)?;
         let _guard = self.store_lock.lock().await;
-        let store = TicketStore::open(&index_root).map_err(Self::store_err)?;
+        let store =
+            TicketStore::open_or_init(&index_root).map_err(Self::store_err)?;
         store.scan(false).map_err(Self::store_err)?;
         let result = f(&store);
         drop(store);
