@@ -25,13 +25,6 @@ fn next_and_board_prefer_newer_tickets_before_older_ones() {
     assert!(next_items.len() >= 2);
     assert_eq!(next_items[0]["id"], newer.as_str());
     assert_eq!(next_items[1]["id"], older.as_str());
-
-    let show = s.ticket_json(&["board", "show"]);
-    assert_eq!(show["status"], "ok");
-    let recommended = show["recommended_next"].as_array().unwrap();
-    assert!(recommended.len() >= 2);
-    assert_eq!(recommended[0]["ticket_id"], newer.as_str());
-    assert_eq!(recommended[1]["ticket_id"], older.as_str());
 }
 
 #[test]
@@ -73,86 +66,6 @@ fn next_and_board_prefer_more_dependees_before_newer_tickets() {
     assert_eq!(next_items[0]["dependee_count"], 2);
     assert_eq!(next_items[1]["id"], newer_fewer_dependees.as_str());
     assert_eq!(next_items[1]["dependee_count"], 0);
-
-    let show = s.ticket_json(&["board", "show"]);
-    assert_eq!(show["status"], "ok");
-    let recommended = show["recommended_next"].as_array().unwrap();
-    assert!(recommended.len() >= 2);
-    assert_eq!(recommended[0]["ticket_id"], older_more_dependees.as_str());
-    assert_eq!(recommended[0]["dependee_count"], 2);
-    let first_created_at = recommended[0]["created_at"]
-        .as_str()
-        .expect("board show should preserve created_at");
-    let pretty_created_at = format_expected_board_created_at(first_created_at);
-    assert_eq!(recommended[1]["ticket_id"], newer_fewer_dependees.as_str());
-    assert_eq!(recommended[1]["dependee_count"], 0);
-
-    let human = show["human"].as_str().unwrap();
-    assert!(human.contains(&format!(
-        "#1  {}  Alpha older blocker",
-        &older_more_dependees[..8]
-    )));
-    assert!(human.contains(
-        "state: planned  priority: high  effort: -  dependee_count: 2  dependency_count: 0"
-    ));
-    assert!(human.contains(&format!("created_at: {pretty_created_at}")));
-    assert!(human.contains(&format!("ticket_id: {older_more_dependees}")));
-    assert!(!human.contains("DEPENDEES"));
-    assert!(!human.contains(first_created_at));
-    let show = s.ticket_json(&["board", "show"]);
-    assert_eq!(show["status"], "ok");
-
-    // --- typed struct assertions (Finding 2) ---
-    // Deserialise the recommended_next array into `NextTicketEntry` values so
-    // that the compiler catches any field-name or type changes at build time
-    // rather than at runtime via string matching.
-    let entries: Vec<NextTicketEntry> = serde_json::from_value(
-        show["recommended_next"].clone(),
-    )
-    .expect("recommended_next should deserialise into Vec<NextTicketEntry>");
-    assert!(
-        entries.len() >= 2,
-        "expected at least 2 recommended entries"
-    );
-    assert_eq!(
-        entries[0],
-        NextTicketEntry {
-            ticket_id: older_more_dependees.clone(),
-            state: Some("planned".into()),
-            priority: "high".into(),
-            effort: None,
-            dependee_count: 2,
-            dependency_count: 0,
-        }
-    );
-    assert_eq!(
-        entries[1],
-        NextTicketEntry {
-            ticket_id: newer_fewer_dependees.clone(),
-            state: Some("planned".into()),
-            priority: "high".into(),
-            effort: None,
-            dependee_count: 0,
-            dependency_count: 0,
-        }
-    );
-
-    // --- human rendering spot-checks ---
-    // These verify that the human output is formatted correctly; the
-    // data content is already covered by the typed assertions above.
-    let first_created_at = show["recommended_next"][0]["created_at"]
-        .as_str()
-        .expect("board show should preserve created_at");
-    let pretty_created_at = format_expected_board_created_at(first_created_at);
-    let human = show["human"].as_str().unwrap();
-    assert!(human.contains(&format!(
-        "#1  {}  Alpha older blocker",
-        &older_more_dependees[..8]
-    )));
-    assert!(human.contains(&format!("created_at: {pretty_created_at}")));
-    assert!(human.contains(&format!("ticket_id: {older_more_dependees}")));
-    assert!(!human.contains("DEPENDEES"));
-    assert!(!human.contains(first_created_at));
 }
 
 #[test]
@@ -206,16 +119,6 @@ fn next_and_board_prefer_recently_actionable_candidates_and_surface_timing_metad
     assert!(items[0]["became_actionable_at"].as_str().is_some());
     assert!(items[0]["last_blocker_progress_at"].is_null());
     assert!(items[1]["became_actionable_at"].as_str().is_some());
-
-    let show = s.ticket_json(&["board", "show"]);
-    assert_eq!(show["status"], "ok");
-    let recommended = show["recommended_next"].as_array().unwrap();
-    assert!(recommended.len() >= 2);
-    assert_eq!(recommended[0]["ticket_id"], recently_actionable.as_str());
-    assert_eq!(recommended[1]["ticket_id"], steadier_newer.as_str());
-    assert!(recommended[0]["became_actionable_at"].as_str().is_some());
-    assert!(recommended[0].get("last_blocker_progress_at").is_none());
-    assert!(recommended[1]["became_actionable_at"].as_str().is_some());
 }
 
 #[test]
@@ -270,16 +173,6 @@ fn next_and_board_promote_convergence_before_unrelated_ready_work() {
     assert_eq!(next_items[0]["affected_reverse_dependent_reach"], 1);
     assert_eq!(next_items[0]["dependency_state_gap"], 3);
     assert_eq!(next_items[1]["id"], unrelated_ready.as_str());
-
-    let show = s.ticket_json(&["board", "show"]);
-    assert_eq!(show["status"], "ok");
-    let recommended = show["recommended_next"].as_array().unwrap();
-    assert!(
-        recommended.len() >= 2,
-        "expected two board recommendations: {recommended:?}"
-    );
-    assert_eq!(recommended[0]["ticket_id"], lagging_prerequisite.as_str());
-    assert_eq!(recommended[1]["ticket_id"], unrelated_ready.as_str());
 }
 
 #[test]
@@ -337,17 +230,11 @@ fn board_show_excludes_history_and_board_history_lists_recent_completions() {
         "completed entries should be excluded from board show"
     );
 
-    let recommended = show["recommended_next"].as_array().unwrap();
-    assert!(!recommended.is_empty());
-    assert_eq!(recommended[0]["ticket_id"], next_ticket.as_str());
-    assert_eq!(recommended[0]["title"], "Ready board follow-up");
-
     let human = show["human"].as_str().unwrap();
-    let current_index = human.find("Current Work:").unwrap();
-    let next_index = human.find("Next Up:").unwrap();
-    assert!(current_index < next_index);
+    assert!(human.contains("Current Work:"));
     assert!(human.contains("Active board work"));
-    assert!(human.contains("Ready board follow-up"));
+    assert!(!human.contains("Ready board follow-up"));
+    assert!(!human.contains("Next Up:"));
     assert!(!human.contains("Recent Completions:"));
 
     let history = s.ticket_json(&["board", "history"]);

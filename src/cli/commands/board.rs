@@ -24,7 +24,6 @@ use crate::cli::{
     BoardCleanCommand,
     BoardCommand,
     CliRunError,
-    NextArgs,
 };
 
 use super::resolve_uuid_prefix;
@@ -41,7 +40,6 @@ use self::render::{
     BoardDisplayEntry,
     BoardHistoryDisplay,
     board_display_entry_to_json,
-    board_recommendation_to_json,
     config_to_json,
     entry_status,
     entry_to_json,
@@ -49,8 +47,6 @@ use self::render::{
     render_board_history_human,
     render_board_human,
 };
-
-const BOARD_RECOMMENDATIONS_LIMIT: usize = 10;
 
 // ── entry point ────────────────────────────────────────────────────────────────
 
@@ -159,11 +155,6 @@ fn cmd_board_show(
         .iter()
         .map(board_display_entry_to_json)
         .collect();
-    let recommended_next: Vec<Value> = display
-        .recommended_next
-        .iter()
-        .map(board_recommendation_to_json)
-        .collect();
     let actions = display.actions.clone();
     let human = render_board_human(&snap, &display);
     let file_ownership: Value = json!(snap.file_ownership);
@@ -183,7 +174,6 @@ fn cmd_board_show(
         "config": config_to_json(&snap.config),
         "entries": entries,
         "current_work": current_work,
-        "recommended_next": recommended_next,
         "actions": actions,
         "warnings": snap.warnings,
         "file_ownership": file_ownership,
@@ -283,30 +273,10 @@ fn build_board_display(
         })
         .collect();
 
-    let next_payload = super::cmd_next(
-        NextArgs {
-            root: None,
-            limit: Some(BOARD_RECOMMENDATIONS_LIMIT),
-            filter: None,
-            no_board: false,
-        },
-        store,
-    )?;
-    let recommended_next = next_payload["items"]
-        .as_array()
-        .map(|items| {
-            items
-                .iter()
-                .filter_map(parse_board_recommendation)
-                .collect::<Vec<_>>()
-        })
-        .unwrap_or_default();
-
-    let actions = build_actions(snap, &current_work, &recommended_next);
+    let actions = build_actions(snap, &current_work);
 
     Ok(BoardDisplay {
         current_work,
-        recommended_next,
         actions,
     })
 }
@@ -407,10 +377,6 @@ pub(crate) fn parse_board_recommendation(
             .or_else(|| value.get("dependees"))
             .and_then(Value::as_u64)
             .unwrap_or(0) as usize,
-        became_actionable_at: value
-            .get("became_actionable_at")
-            .and_then(Value::as_str)
-            .map(str::to_string),
         created_at: value
             .get("created_at")
             .and_then(Value::as_str)
@@ -422,7 +388,6 @@ pub(crate) fn parse_board_recommendation(
 fn build_actions(
     snap: &BoardSnapshot,
     current_work: &[BoardDisplayEntry],
-    recommended_next: &[BoardRecommendation],
 ) -> Vec<String> {
     let mut actions = Vec::new();
 
@@ -448,24 +413,9 @@ fn build_actions(
             snap.active_count + snap.stale_count,
             snap.config.max_wip
         ));
-    } else if let Some(next) = recommended_next.first() {
-        let action_target = format_action_target(next);
-        if current_work.is_empty() {
-            actions
-                .push(format!("Board is clear. Start {action_target} next.",));
-        } else {
-            actions.push(format!(
-                "When you free capacity, start {action_target} next.",
-            ));
-        }
     } else if current_work.is_empty() {
         actions.push(
-            "Board is clear, but there are no unblocked tickets ready right now."
-                .to_string(),
-        );
-    } else {
-        actions.push(
-            "No additional unblocked tickets are ready once the current board work finishes."
+            "Board is clear. Run 'ticket next' to see unblocked tickets."
                 .to_string(),
         );
     }
@@ -504,23 +454,6 @@ fn non_empty_or_default(
 
 fn plural_suffix(count: u32) -> &'static str {
     if count == 1 { "y" } else { "ies" }
-}
-
-fn format_action_target(next: &BoardRecommendation) -> String {
-    let state = next.state.as_deref().unwrap_or("unknown");
-    let short_ticket = short_ticket_value(&next.ticket_id);
-    let title = quote_action_title(&next.title);
-
-    format!("{state} {short_ticket} {title}")
-}
-
-fn quote_action_title(title: &str) -> String {
-    let escaped = title.replace('\\', "\\\\").replace('"', "\\\"");
-    format!("\"{escaped}\"")
-}
-
-fn short_ticket_value(ticket_id: &str) -> String {
-    ticket_id.chars().take(8).collect()
 }
 
 fn history_completed_at(entry: &BoardEntry) -> Option<chrono::DateTime<Utc>> {

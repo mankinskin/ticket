@@ -260,57 +260,46 @@ fn board_show_with_agent_refreshes_heartbeat() {
 }
 
 #[test]
-fn board_show_recommends_next_work_when_board_is_empty() {
+fn board_show_reports_run_next_hint_when_board_is_empty() {
     let s = Sandbox::new();
-    let next_ticket = create_ticket(&s, "Top ticket for board suggestions");
+    create_ticket(&s, "Top ticket for board suggestions");
 
     let show = s.ticket_json(&["board", "show"]);
     assert_eq!(show["status"], "ok");
     assert!(show["current_work"].as_array().unwrap().is_empty());
-
-    let recommended = show["recommended_next"].as_array().unwrap();
-    assert!(!recommended.is_empty(), "board should recommend ready work");
-    assert_eq!(recommended[0]["ticket_id"], next_ticket.as_str());
-    assert_eq!(recommended[0]["title"], "Top ticket for board suggestions");
+    assert!(
+        show.get("recommended_next").is_none(),
+        "board show should not embed ticket recommendations"
+    );
 
     let actions = show["actions"].as_array().unwrap();
     assert!(
         !actions.is_empty(),
         "board should include actionable guidance"
     );
+    assert!(actions[0].as_str().unwrap().contains("ticket next"));
 
     let human = show["human"].as_str().unwrap();
     assert!(human.contains("Current Work:"));
     assert!(human.contains("(no active board entries)"));
-    assert!(human.contains("Next Up:"));
-    assert!(human.contains("Top ticket for board suggestions"));
+    assert!(!human.contains("Next Up:"));
+    assert!(!human.contains("Top ticket for board suggestions"));
 }
 
 #[test]
-fn board_show_lists_ten_recommendations_when_available() {
+fn board_show_never_lists_recommendations_regardless_of_candidate_count() {
     let s = Sandbox::new();
-    let mut ticket_ids = Vec::new();
 
     for index in 1..=12 {
         let title = format!("Candidate {:02}", index);
-        ticket_ids.push((title.clone(), create_ticket(&s, &title)));
+        create_ticket(&s, &title);
     }
 
     let show = s.ticket_json(&["board", "show"]);
     assert_eq!(show["status"], "ok");
-
-    let recommended = show["recommended_next"].as_array().unwrap();
-    assert_eq!(
-        recommended.len(),
-        10,
-        "board show should surface 10 next-up entries when available"
-    );
-    assert_eq!(recommended[0]["title"], "Candidate 12");
-    assert_eq!(recommended[9]["title"], "Candidate 03");
+    assert!(show.get("recommended_next").is_none());
 
     let human = show["human"].as_str().unwrap();
-    assert!(human.contains("Candidate 12"));
-    assert!(human.contains("Candidate 03"));
-    assert!(!human.contains("Candidate 02"));
-    assert!(!human.contains("Candidate 01"));
+    assert!(!human.contains("Next Up:"));
+    assert!(!human.contains("Candidate 12"));
 }

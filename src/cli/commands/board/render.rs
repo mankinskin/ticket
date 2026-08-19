@@ -19,7 +19,6 @@ use ticket_api::storage::board::{
 use uuid::Uuid;
 pub(super) struct BoardDisplay {
     pub current_work: Vec<BoardDisplayEntry>,
-    pub recommended_next: Vec<BoardRecommendation>,
     pub actions: Vec<String>,
 }
 pub(super) struct BoardHistoryDisplay {
@@ -50,7 +49,6 @@ pub(crate) struct BoardRecommendation {
     pub effort: Option<String>,
     pub dependency_count: usize,
     pub dependee_count: usize,
-    pub became_actionable_at: Option<String>,
     pub created_at: String,
 }
 pub(super) fn entry_to_json(
@@ -102,23 +100,6 @@ pub(super) fn board_display_entry_to_json(entry: &BoardDisplayEntry) -> Value {
         "branch": entry.branch,
     })
 }
-pub(super) fn board_recommendation_to_json(
-    recommendation: &BoardRecommendation
-) -> Value {
-    json!({
-        "rank": recommendation.rank,
-        "ticket_id": recommendation.ticket_id,
-        "ticket_short": short_ticket_value(&recommendation.ticket_id),
-        "title": recommendation.title,
-        "state": recommendation.state,
-        "priority": recommendation.priority,
-        "effort": recommendation.effort,
-        "dependency_count": recommendation.dependency_count,
-        "dependee_count": recommendation.dependee_count,
-        "became_actionable_at": recommendation.became_actionable_at,
-        "created_at": recommendation.created_at,
-    })
-}
 pub(super) fn render_board_human(
     snap: &BoardSnapshot,
     display: &BoardDisplay,
@@ -127,7 +108,6 @@ pub(super) fn render_board_human(
     write_summary(&mut out, snap);
     write_actions(&mut out, &display.actions);
     write_current_work(&mut out, &display.current_work);
-    write_next_up(&mut out, &display.recommended_next);
     write_warnings(&mut out, &snap.warnings);
     write_file_ownership(&mut out, &snap.file_ownership);
     out
@@ -473,7 +453,6 @@ mod tests {
                 worktree_path: Some("/tmp/worktree-a".to_string()),
                 branch: Some("agent/metadata".to_string()),
             }],
-            recommended_next: Vec::new(),
             actions: Vec::new(),
         };
 

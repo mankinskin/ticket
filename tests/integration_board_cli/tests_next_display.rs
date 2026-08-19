@@ -1,9 +1,10 @@
 use super::*;
 
+#[test]
 fn board_show_text_output_stops_after_dashboard() {
     let s = Sandbox::new();
     assert_eq!(s.ticket_json(&["init"])["status"], "ok");
-    let next_ticket = create_ticket(&s, "Top ticket for board suggestions");
+    create_ticket(&s, "Top ticket for board suggestions");
 
     let out = Command::new(TICKET)
         .arg("--index-root")
@@ -21,36 +22,29 @@ fn board_show_text_output_stops_after_dashboard() {
 
     let stdout = String::from_utf8(out.stdout)
         .expect("board show stdout should be valid UTF-8");
-    let short_ticket = &next_ticket[..8];
 
     assert!(stdout.contains("Board: [0/5 active]"));
-    assert!(stdout.contains("Next Up:"));
-    assert!(stdout.contains(&format!(
-        "#1  {short_ticket}  Top ticket for board suggestions"
-    )));
-    assert!(stdout.contains(&format!("ticket_id: {next_ticket}")));
+    assert!(!stdout.contains("Next Up:"));
+    assert!(!stdout.contains("Top ticket for board suggestions"));
     assert!(!stdout.contains("board_show ok"));
     assert!(!stdout.contains("[recommended_next]"));
 }
 
 #[test]
-fn board_show_immediate_actions_include_state_and_escaped_title() {
+fn board_show_immediate_actions_hint_at_next_command_when_clear() {
     let s = Sandbox::new();
     assert_eq!(s.ticket_json(&["init"])["status"], "ok");
     let title = "Fix \"isometric\" layout defaults";
-    let next_ticket = create_ticket(&s, title);
-    let short_ticket = &next_ticket[..8];
-    let expected_action = format!(
-        "Board is clear. Start open {short_ticket} \"Fix \\\"isometric\\\" layout defaults\" next."
-    );
+    create_ticket(&s, title);
 
     let show = s.ticket_json(&["board", "show"]);
     assert_eq!(show["status"], "ok");
-    assert_eq!(show["actions"][0], expected_action.as_str());
+    let expected_action = "Board is clear. Run 'ticket next' to see unblocked tickets.";
+    assert_eq!(show["actions"][0], expected_action);
 
     let human = show["human"].as_str().unwrap();
     assert!(human.contains("Immediate Actions:"));
-    assert!(human.contains(&expected_action));
+    assert!(human.contains(expected_action));
 }
 
 #[test]
