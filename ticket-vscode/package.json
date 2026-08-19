@@ -333,7 +333,7 @@
     "bundle:node": "node ./scripts/bundle-node.mjs",
     "bundle:browser": "node ./scripts/bundle-browser.mjs",
     "build": "npm run compile && npm run bundle:node && npm run bundle:browser",
-    "build:wasm": "wasm-pack build ../../crates/ticket-vscode-core --target bundler --out-dir ../../tools/ticket-vscode/pkg -- --features wasm",
+    "build:wasm": "wasm-pack build ../../crates/ticket-vscode-core --target bundler --out-dir ../../ticket-vscode/pkg -- --features wasm",
     "build:full": "npm run build:wasm && npm run build",
     "watch": "tsc --watch -p tsconfig.json",
     "package": "npm run build:full && node ./scripts/run-vsce.cjs package --no-dependencies --allow-missing-repository --skip-license",

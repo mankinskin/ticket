@@ -6,11 +6,11 @@
       "type": "extensionHost",
       "request": "launch",
       "args": [
-        "--extensionDevelopmentPath=${workspaceFolder}/tools/ticket-vscode",
+        "--extensionDevelopmentPath=${workspaceFolder}/ticket-vscode",
         "--remote-debugging-port=9222",
         "${workspaceFolder}"
       ],
-      "outFiles": ["${workspaceFolder}/tools/ticket-vscode/out/**/*.js"],
+      "outFiles": ["${workspaceFolder}/ticket-vscode/out/**/*.js"],
       "preLaunchTask": "shell: ticket-vscode: compile"
     }
   ]
