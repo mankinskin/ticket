@@ -12,7 +12,7 @@ path = "src/main.rs"
 # Ticket crates
 ticket-api = { path = "../crates/ticket-api" }
 ticket-http = { package = "ticket", path = "..", features = ["http"] }
-feedback-http = { git = "https://github.com/mankinskin/memory-api", branch = "main" }
+feedback-http = { git = "https://github.com/mankinskin/feedback", branch = "main" }
 
 # Shared viewer infrastructure
 viewer-api = { git = "https://github.com/mankinskin/viewer-api", branch = "main" }
