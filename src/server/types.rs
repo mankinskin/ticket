@@ -82,19 +82,31 @@ pub struct ListTicketsInput {
 
 #[derive(Debug, Deserialize, JsonSchema)]
 pub struct TicketRefInput {
-    #[serde(default)]
+    #[serde(default, deserialize_with = "blank_as_none")]
     pub workspace: Option<String>,
     pub id: String,
     /// Named read-projection view profile: summary, plan, review, or full.
     /// Mutually exclusive with `parts`. Defaults to `summary` when neither
     /// is supplied. Ignored by tools other than `get_ticket`.
-    #[serde(default)]
+    #[serde(default, deserialize_with = "blank_as_none")]
     pub view: Option<String>,
     /// Explicit comma-separated part-kind list to project (e.g.
     /// "objective,acceptance_criteria"). Mutually exclusive with `view`.
     /// Ignored by tools other than `get_ticket`.
-    #[serde(default)]
+    #[serde(default, deserialize_with = "blank_as_none")]
     pub parts: Option<String>,
+}
+
+/// Treat an omitted, null, or blank string as "not supplied". LLM callers
+/// routinely fill every optional string field with `""` as a placeholder;
+/// without this, `view: ""` plus `parts: ""` trips the mutual-exclusion
+/// check and `workspace: ""` bypasses the `default` workspace fallback.
+fn blank_as_none<'de, D>(deserializer: D) -> Result<Option<String>, D::Error>
+where
+    D: serde::Deserializer<'de>,
+{
+    let value = Option::<String>::deserialize(deserializer)?;
+    Ok(value.filter(|s| !s.trim().is_empty()))
 }
 
 #[derive(Debug, Deserialize, JsonSchema)]
