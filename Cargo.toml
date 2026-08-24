@@ -9,9 +9,9 @@ path = "src/lib.rs"
 
 [features]
 default = []
-cli = ["dep:chrono", "dep:clap", "dep:memory-kernel", "dep:serde", "dep:serde_json", "dep:shell-words", "dep:spec-api", "dep:thiserror", "dep:tokio", "dep:toon-format", "dep:tracing", "dep:uuid"]
-mcp = ["dep:chrono", "dep:memory-kernel", "dep:rmcp", "dep:serde", "dep:serde_json", "dep:tokio", "dep:tracing", "dep:uuid"]
-http = ["dep:arc-swap", "dep:axum", "dep:chrono", "dep:futures-util", "dep:memory-kernel", "dep:serde", "dep:serde_json", "dep:thiserror", "dep:tokio", "dep:tracing", "dep:uuid"]
+cli = ["dep:chrono", "dep:clap", "dep:memory-kernel", "dep:serde", "dep:shell-words", "dep:spec-api", "dep:thiserror", "dep:tokio", "dep:toon-format", "dep:tracing", "dep:uuid"]
+mcp = ["dep:chrono", "dep:memory-kernel", "dep:rmcp", "dep:serde", "dep:tokio", "dep:tracing", "dep:uuid"]
+http = ["dep:arc-swap", "dep:axum", "dep:chrono", "dep:futures-util", "dep:memory-kernel", "dep:serde", "dep:thiserror", "dep:tokio", "dep:tracing", "dep:uuid"]
 
 [[bin]]
 name = "ticket"
@@ -28,8 +28,13 @@ name = "ticket-http"
 path = "src/bin/ticket-http.rs"
 required-features = ["http"]
 
+[[bin]]
+name = "ticket-record-merge"
+path = "src/bin/ticket-record-merge.rs"
+
 [dependencies]
 ticket-api = { path = "crates/ticket-api" }
+toml = "0.8"
 spec-api = { git = "https://github.com/mankinskin/spec", branch = "main", optional = true }
 arc-swap = { version = "1", optional = true }
 axum = { version = "0.8", features = ["macros"], optional = true }
@@ -39,7 +44,7 @@ futures-util = { version = "0.3", optional = true }
 memory-kernel = { git = "https://github.com/mankinskin/memory-kernel", branch = "main", optional = true   }
 rmcp = { version = "0.14", features = ["server", "transport-io"], optional = true }
 serde = { version = "1", features = ["derive"], optional = true }
-serde_json = { version = "1", optional = true }
+serde_json = "1"
 shell-words = { version = "1", optional = true }
 thiserror = { version = "2", optional = true }
 tokio = { version = "1", features = ["full"], optional = true }
@@ -57,7 +62,7 @@ tokio = { version = "1", features = ["macros", "rt-multi-thread"] }
 tower = { version = "0.5", features = ["util"] }
 pretty_assertions = "1"
 tempfile = "3"
-toml = "0.9"
+toml = "0.8"
 trybuild = "1"
 urlencoding = "2"
 uuid = { version = "1", features = ["v4"] }
