@@ -234,6 +234,8 @@ pub enum CliRunError {
     #[error("invalid exec command payload: {0}")]
     InvalidExecPayload(String),
     #[error("{0}")]
+    ConsumerWorkspace(#[from] ticket_api::workspace::ConsumerWorkspaceError),
+    #[error("{0}")]
     BadRequest(String),
 }
 

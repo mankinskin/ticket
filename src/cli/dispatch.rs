@@ -62,7 +62,7 @@ fn cmd_init(
     schema_dir_override: Option<&Path>,
 ) -> Result<Value, CliRunError> {
     let index_root =
-        resolve_index_root(index_root_override, workspace_root_override);
+        resolve_index_root(index_root_override, workspace_root_override)?;
     let mut registry = SchemaRegistry::with_builtins();
     if let Some(schema_dir) = schema_dir_override {
         registry.load_dir(schema_dir)?;
@@ -175,7 +175,7 @@ fn dry_run_payload(
 fn resolve_index_root(
     override_path: Option<&Path>,
     workspace_root_override: Option<&Path>,
-) -> PathBuf {
+) -> Result<PathBuf, ticket_api::workspace::ConsumerWorkspaceError> {
     let cwd = ticket_api::workspace::working_dir();
     let env_root = std::env::var_os("TICKET_INDEX_ROOT").map(PathBuf::from);
     resolve_index_root_from(
@@ -191,12 +191,12 @@ fn resolve_index_root_from(
     workspace_root_override: Option<&Path>,
     env_root: Option<&Path>,
     cwd: Option<&Path>,
-) -> PathBuf {
+) -> Result<PathBuf, ticket_api::workspace::ConsumerWorkspaceError> {
     if let Some(override_path) = override_path {
-        return absolute_path_from(override_path, cwd);
+        return Ok(absolute_path_from(override_path, cwd));
     }
 
-    ticket_api::workspace::resolve_requested_store_root_from(
+    ticket_api::workspace::resolve_consumer_store_root_from(
         override_path,
         workspace_root_override,
         env_root,
@@ -305,11 +305,11 @@ fn resolve_board_index_root(
         return Ok(resolve_index_root(
             index_root_override,
             workspace_root_override,
-        ));
+        )?);
     }
 
     let Some(workspace_root) = workspace_root_override else {
-        return Ok(resolve_index_root(None, None));
+        return Ok(resolve_index_root(None, None)?);
     };
 
     let workspace_root = canonical_board_workspace(workspace_root)?;

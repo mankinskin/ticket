@@ -204,7 +204,7 @@ fn resolve_index_root_prefers_explicit_workspace_root() {
     std::fs::create_dir_all(child.join(".ticket")).unwrap();
 
     let resolved =
-        resolve_index_root_from(None, Some(&child), None, Some(&repo));
+        resolve_index_root_from(None, Some(&child), None, Some(&repo)).unwrap();
 
     assert_eq!(resolved, child.join(".ticket"));
 }
@@ -222,7 +222,8 @@ fn resolve_index_root_prefers_explicit_index_root_over_workspace_root() {
         Some(&child),
         None,
         Some(&repo),
-    );
+    )
+    .unwrap();
 
     assert_eq!(resolved, repo.join(".ticket"));
 }
@@ -319,7 +320,8 @@ fn resolve_index_root_preserves_relative_explicit_index_root() {
         Some(&child),
         None,
         Some(&repo),
-    );
+    )
+    .unwrap();
 
     assert_eq!(resolved, repo.join(".ticket"));
 }
