@@ -1,11 +1,18 @@
 use std::{
-    path::Path,
+    path::{
+        Path,
+        PathBuf,
+    },
     sync::OnceLock,
-    time::Instant,
+    time::{
+        Duration,
+        Instant,
+    },
 };
 
 use chrono::Utc;
 use criterion::{
+    BenchmarkId,
     Criterion,
     Throughput,
     criterion_group,
@@ -17,6 +24,7 @@ use memory_fixtures::{
     materialize_fixture_with_ticket_perf_load,
     materialize_git_fixture_with_ticket_perf_load,
 };
+use tempfile::TempDir;
 use ticket_api::{
     health::collect_findings,
     model::edge::EdgeRecord,
@@ -646,6 +654,376 @@ fn bench_health_all_large_fixture(c: &mut Criterion) {
     group.finish();
 }
 
+// --- Scenario matrix: entity count x link topology x link density x phase ---
+//
+// Real move batches are a sequence of single-entity `plan_move_preflight` /
+// `execute_move_with_journal` / `rollback_move_with_journal` calls (the move
+// kernel has no multi-entity API), so "entity count per move" below means the
+// number of individual moves performed back-to-back within one measured
+// iteration, mirroring how the Mandatory Batch Protocol drives up to 25 moves
+// per batch in production.
+
+/// Fixed pool size for "crossing" external targets: large enough to give every
+/// density value (up to 20) a distinct target per moved ticket without
+/// duplicate edges.
+const CROSSING_EXTERNAL_POOL: usize = 20;
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum LinkTopology {
+    None,
+    Internal,
+    Crossing,
+}
+
+impl LinkTopology {
+    fn label(self) -> &'static str {
+        match self {
+            LinkTopology::None => "no_links",
+            LinkTopology::Internal => "internal_links",
+            LinkTopology::Crossing => "crossing_links",
+        }
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum MovePhase {
+    Preflight,
+    Apply,
+    Rollback,
+}
+
+impl MovePhase {
+    fn label(self) -> &'static str {
+        match self {
+            MovePhase::Preflight => "preflight",
+            MovePhase::Apply => "apply",
+            MovePhase::Rollback => "rollback",
+        }
+    }
+}
+
+#[derive(Debug, Clone, Copy)]
+struct MoveScenario {
+    entity_count: usize,
+    topology: LinkTopology,
+    links_per_entity: usize,
+    phase: MovePhase,
+}
+
+/// Prepared state handed to the measured closure; `Rollback` scenarios have
+/// already executed every move in the (unmeasured) setup step, so only the
+/// rollback itself is timed.
+enum ScenarioState {
+    Preflight {
+        _workspace_dir: TempDir,
+        store: TicketStore,
+        target_root: PathBuf,
+        ids: Vec<Uuid>,
+    },
+    Apply {
+        _workspace_dir: TempDir,
+        store: TicketStore,
+        target_root: PathBuf,
+        ids: Vec<Uuid>,
+    },
+    Rollback {
+        _workspace_dir: TempDir,
+        store: TicketStore,
+        journal_ids: Vec<Uuid>,
+    },
+}
+
+fn scenario_ticket_id(
+    prefix: u8,
+    offset: usize,
+) -> String {
+    format!("{prefix:08x}-0000-6000-8000-{offset:012x}")
+}
+
+/// Materialize an isolated store containing `entity_count` moved tickets and
+/// (for `LinkTopology::Crossing`) a fixed pool of external tickets that stay
+/// behind, then wire edges per `topology`/`links_per_entity`. The returned
+/// `TempDir` must stay alive for as long as `source_root`/`target_root` are used.
+fn build_move_scenario_fixture(
+    scenario: MoveScenario
+) -> (TempDir, TicketStore, PathBuf, Vec<Uuid>) {
+    let workspace_dir = tempfile::tempdir().expect("tempdir");
+    let source_root = workspace_dir.path().join("source-workspace");
+    let target_root = workspace_dir.path().join("target-workspace");
+    std::fs::create_dir_all(&source_root).expect("create source workspace");
+    std::fs::create_dir_all(&target_root).expect("create target workspace");
+
+    let git_init = std::process::Command::new("git")
+        .current_dir(workspace_dir.path())
+        .arg("init")
+        .status()
+        .expect("run git init");
+    assert!(git_init.success(), "git init failed");
+
+    let store = TicketStore::init(&source_root).expect("init source store");
+    TicketStore::init(&target_root).expect("init target store");
+    // `append_fixture_ticket` writes to `<store_root>/tickets/<id>`. With no
+    // pre-existing `.ticket`/`.workflow-tools/ticket` marker anywhere in this
+    // isolated tempdir's ancestor chain, `TicketStore::init` resolves its
+    // index root to `source_root` itself (see
+    // `workspace::resolve_store_root_from_with_diagnostics`'s no-marker-found
+    // fallback), so fixture tickets must land there directly.
+    let source_index_root = source_root.clone();
+
+    let moved_ids: Vec<Uuid> = (0..scenario.entity_count)
+        .map(|offset| {
+            let id = scenario_ticket_id(0x10, offset);
+            append_fixture_ticket(
+                &source_index_root,
+                &id,
+                &format!("scenario moved ticket {offset}"),
+                "planned",
+                "perf-scenario",
+            )
+            .expect("append moved fixture ticket");
+            id.parse().expect("valid moved ticket uuid")
+        })
+        .collect();
+
+    let external_ids: Vec<Uuid> = if scenario.topology == LinkTopology::Crossing
+    {
+        (0..CROSSING_EXTERNAL_POOL)
+            .map(|offset| {
+                let id = scenario_ticket_id(0x20, offset);
+                append_fixture_ticket(
+                    &source_index_root,
+                    &id,
+                    &format!("scenario external ticket {offset}"),
+                    "planned",
+                    "perf-scenario-external",
+                )
+                .expect("append external fixture ticket");
+                id.parse().expect("valid external ticket uuid")
+            })
+            .collect()
+    } else {
+        Vec::new()
+    };
+
+    store.scan(true).expect("scan scenario store");
+
+    let now = Utc::now();
+    match scenario.topology {
+        LinkTopology::None => {},
+        LinkTopology::Internal => {
+            let available = moved_ids.len().saturating_sub(1);
+            let density = scenario.links_per_entity.min(available);
+            for (idx, id) in moved_ids.iter().enumerate() {
+                for step in 0..density {
+                    let target_idx = (idx + 1 + step) % moved_ids.len();
+                    if target_idx == idx {
+                        continue;
+                    }
+                    store
+                        .add_edge(EdgeRecord {
+                            from: *id,
+                            to: moved_ids[target_idx],
+                            kind: "linked".to_string(),
+                            created_at: now,
+                        })
+                        .expect("add internal scenario edge");
+                }
+            }
+        },
+        LinkTopology::Crossing => {
+            let density =
+                scenario.links_per_entity.min(external_ids.len());
+            for (idx, id) in moved_ids.iter().enumerate() {
+                for step in 0..density {
+                    let target_idx = (idx + step) % external_ids.len();
+                    store
+                        .add_edge(EdgeRecord {
+                            from: *id,
+                            to: external_ids[target_idx],
+                            kind: "linked".to_string(),
+                            created_at: now,
+                        })
+                        .expect("add crossing scenario edge");
+                }
+            }
+        },
+    }
+
+    (workspace_dir, store, target_root, moved_ids)
+}
+
+fn active_move_preflight(
+    store: &TicketStore,
+    target_root: &Path,
+    id: &Uuid,
+) -> ticket_api::storage::move_planner::MovePreflightReport {
+    let mut plan = store
+        .plan_move_preflight(id, target_root)
+        .expect("plan preflight");
+    plan.blockers.retain(|blocker| {
+        !matches!(
+            blocker,
+            MovePreflightBlocker::PathReferenceScanUnavailable { .. }
+                | MovePreflightBlocker::DirtyTrackedFiles { .. }
+        )
+    });
+    assert!(
+        plan.blockers.is_empty(),
+        "unexpected move blockers: {:?}",
+        plan.blockers
+    );
+    plan
+}
+
+fn prepare_scenario_state(scenario: MoveScenario) -> ScenarioState {
+    let (workspace_dir, store, target_root, ids) =
+        build_move_scenario_fixture(scenario);
+    match scenario.phase {
+        MovePhase::Preflight => ScenarioState::Preflight {
+            _workspace_dir: workspace_dir,
+            store,
+            target_root,
+            ids,
+        },
+        MovePhase::Apply => ScenarioState::Apply {
+            _workspace_dir: workspace_dir,
+            store,
+            target_root,
+            ids,
+        },
+        MovePhase::Rollback => {
+            let journal_ids = ids
+                .iter()
+                .map(|id| {
+                    let plan =
+                        active_move_preflight(&store, &target_root, id);
+                    let outcome = store
+                        .execute_move_with_journal(&plan)
+                        .expect("execute move for rollback setup");
+                    outcome.journal.id
+                })
+                .collect();
+            ScenarioState::Rollback {
+                _workspace_dir: workspace_dir,
+                store,
+                journal_ids,
+            }
+        },
+    }
+}
+
+fn run_scenario_state(state: ScenarioState) {
+    match state {
+        ScenarioState::Preflight {
+            store,
+            target_root,
+            ids,
+            ..
+        } => {
+            for id in &ids {
+                let plan = store
+                    .plan_move_preflight(id, &target_root)
+                    .expect("plan preflight");
+                criterion::black_box(plan);
+            }
+        },
+        ScenarioState::Apply {
+            store,
+            target_root,
+            ids,
+            ..
+        } => {
+            for id in &ids {
+                let plan = active_move_preflight(&store, &target_root, id);
+                let outcome = store
+                    .execute_move_with_journal(&plan)
+                    .expect("execute move");
+                assert_eq!(outcome.journal.phase, MoveExecutionPhase::Validated);
+                criterion::black_box(outcome);
+            }
+        },
+        ScenarioState::Rollback {
+            store,
+            journal_ids,
+            ..
+        } => {
+            for journal_id in journal_ids {
+                let outcome = store
+                    .rollback_move_with_journal(journal_id)
+                    .expect("rollback move");
+                assert!(outcome.rolled_back);
+                criterion::black_box(outcome);
+            }
+        },
+    }
+}
+
+fn bench_move_scenario_matrix(c: &mut Criterion) {
+    init_perf_bench_tracing();
+
+    let entity_counts = [1usize, 25, 100, 500];
+    let topologies =
+        [LinkTopology::None, LinkTopology::Internal, LinkTopology::Crossing];
+    let phases =
+        [MovePhase::Preflight, MovePhase::Apply, MovePhase::Rollback];
+
+    let mut group = c.benchmark_group("move_scenario_matrix");
+    // Fixture setup (fresh store + N tickets + edges) dominates cost at the
+    // upper end of the matrix (500 entities x 20 links), so keep the sample
+    // count and per-benchmark time budget low; this is a deliberately slow
+    // perf suite, not a CI-gated unit test.
+    group.sample_size(10);
+    group.warm_up_time(Duration::from_millis(500));
+    group.measurement_time(Duration::from_secs(5));
+
+    for &entity_count in &entity_counts {
+        for &topology in &topologies {
+            // A batch of one has no other moved entity to link to internally.
+            if topology == LinkTopology::Internal && entity_count < 2 {
+                continue;
+            }
+
+            let densities: &[usize] = match topology {
+                LinkTopology::None => &[0],
+                LinkTopology::Internal | LinkTopology::Crossing => {
+                    &[1, 5, 20]
+                },
+            };
+
+            for &links_per_entity in densities {
+                for &phase in &phases {
+                    let scenario = MoveScenario {
+                        entity_count,
+                        topology,
+                        links_per_entity,
+                        phase,
+                    };
+                    let bench_id = format!(
+                        "{entity_count}entities_{topo}_{links_per_entity}links_{phase}",
+                        topo = topology.label(),
+                        phase = phase.label(),
+                    );
+
+                    group.throughput(Throughput::Elements(entity_count as u64));
+                    group.bench_with_input(
+                        BenchmarkId::new("move", bench_id),
+                        &scenario,
+                        |b, scenario| {
+                            b.iter_batched(
+                                || prepare_scenario_state(*scenario),
+                                run_scenario_state,
+                                criterion::BatchSize::SmallInput,
+                            );
+                        },
+                    );
+                }
+            }
+        }
+    }
+
+    group.finish();
+}
+
 criterion_group!(
     benches,
     bench_open_or_init_root_perf_fixture,
@@ -656,6 +1034,7 @@ criterion_group!(
     bench_move_preflight_reference_heavy,
     bench_move_execute_reference_heavy,
     bench_move_rollback_reference_heavy,
+    bench_move_scenario_matrix,
     bench_health_workflow_build_large_fixture,
     bench_health_collect_large_fixture,
     bench_health_all_large_fixture,
