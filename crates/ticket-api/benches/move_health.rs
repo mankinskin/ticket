@@ -1,4 +1,5 @@
 use std::{
+    cell::Cell,
     path::{
         Path,
         PathBuf,
@@ -710,27 +711,95 @@ struct MoveScenario {
     phase: MovePhase,
 }
 
-/// Prepared state handed to the measured closure; `Rollback` scenarios have
-/// already executed every move in the (unmeasured) setup step, so only the
-/// rollback itself is timed.
-enum ScenarioState {
-    Preflight {
-        _workspace_dir: TempDir,
-        store: TicketStore,
-        target_root: PathBuf,
+/// Pre-built pool for one scenario: the fixture (git init + tickets + edges)
+/// is built exactly once, not once per Criterion iteration/sample. Preflight
+/// is read-only, so its single `ids` batch is reused unmodified across every
+/// iteration. Apply/Rollback mutate state, so the pool holds
+/// `SCENARIO_POOL_SIZE` independent batches (built from one bulk fixture
+/// `entity_count * SCENARIO_POOL_SIZE` tickets wide) so each Criterion
+/// iteration consumes the next untouched batch instead of the whole fixture
+/// being torn down and rebuilt.
+struct ScenarioPool {
+    _workspace_dir: TempDir,
+    store: TicketStore,
+    target_root: PathBuf,
+    phase: MovePhase,
+    batches: Vec<Vec<Uuid>>,
+}
+
+/// Batches to pre-build per mutating scenario: must exceed the real number
+/// of Criterion iterations (warm-up + measurement samples) or `next_batch`
+/// panics with a message telling you to raise this rather than silently
+/// wrapping around and re-measuring an already-mutated ticket.
+const SCENARIO_POOL_SIZE: usize = 40;
+
+impl ScenarioPool {
+    /// Cheap: for `Preflight` this clones the one reusable read-only batch;
+    /// for `Apply`/`Rollback` it hands out the next untouched pre-built
+    /// batch. No fixture I/O happens here — that is the whole point.
+    fn next_batch(
+        &self,
+        cursor: &Cell<usize>,
+    ) -> Vec<Uuid> {
+        match self.phase {
+            MovePhase::Preflight => self.batches[0].clone(),
+            MovePhase::Apply | MovePhase::Rollback => {
+                let i = cursor.get();
+                cursor.set(i + 1);
+                self.batches.get(i).unwrap_or_else(|| {
+                    panic!(
+                        "scenario pool exhausted after {i} iterations; \
+                         raise SCENARIO_POOL_SIZE"
+                    )
+                }).clone()
+            },
+        }
+    }
+
+    /// The real production call(s), one per entity in `ids` — identical to
+    /// what `move_scenario_matrix` measured before, just no longer
+    /// interleaved with fixture setup.
+    fn run_batch(
+        &self,
         ids: Vec<Uuid>,
-    },
-    Apply {
-        _workspace_dir: TempDir,
-        store: TicketStore,
-        target_root: PathBuf,
-        ids: Vec<Uuid>,
-    },
-    Rollback {
-        _workspace_dir: TempDir,
-        store: TicketStore,
-        journal_ids: Vec<Uuid>,
-    },
+    ) {
+        match self.phase {
+            MovePhase::Preflight => {
+                for id in &ids {
+                    let plan = self
+                        .store
+                        .plan_move_preflight(id, &self.target_root)
+                        .expect("plan preflight");
+                    criterion::black_box(plan);
+                }
+            },
+            MovePhase::Apply => {
+                for id in &ids {
+                    let plan =
+                        active_move_preflight(&self.store, &self.target_root, id);
+                    let outcome = self
+                        .store
+                        .execute_move_with_journal(&plan)
+                        .expect("execute move");
+                    assert_eq!(
+                        outcome.journal.phase,
+                        MoveExecutionPhase::Validated
+                    );
+                    criterion::black_box(outcome);
+                }
+            },
+            MovePhase::Rollback => {
+                for journal_id in ids {
+                    let outcome = self
+                        .store
+                        .rollback_move_with_journal(journal_id)
+                        .expect("rollback move");
+                    assert!(outcome.rolled_back);
+                    criterion::black_box(outcome);
+                }
+            },
+        }
+    }
 }
 
 fn scenario_ticket_id(
@@ -875,107 +944,132 @@ fn active_move_preflight(
     plan
 }
 
-fn prepare_scenario_state(scenario: MoveScenario) -> ScenarioState {
-    let (workspace_dir, store, target_root, ids) =
-        build_move_scenario_fixture(scenario);
+/// Build the pool for `scenario` once. Apply/Rollback need `pool_size`
+/// independent batches, so the underlying fixture is built `pool_size`
+/// entities wide and sliced into `entity_count`-sized chunks — one bulk
+/// setup instead of `pool_size` separate fixture rebuilds. Rollback
+/// additionally executes every move up front (unmeasured) so each batch is
+/// a set of real, distinct journal ids ready to roll back.
+///
+/// Caveat: because Apply/Rollback share one bulk fixture across all
+/// batches, the store holds `entity_count * pool_size` tickets throughout —
+/// larger than the single-batch fixture Preflight uses. If a measured call
+/// has a cost component proportional to *total store size* rather than just
+/// the touched entities, this will read as somewhat pessimistic versus a
+/// freshly-sized store; no evidence of such a component has been found so
+/// far (Apply/Rollback costs track batch-local edge count, not pool size).
+fn build_scenario_pool(
+    scenario: MoveScenario,
+    pool_size: usize,
+) -> ScenarioPool {
     match scenario.phase {
-        MovePhase::Preflight => ScenarioState::Preflight {
-            _workspace_dir: workspace_dir,
-            store,
-            target_root,
-            ids,
+        MovePhase::Preflight => {
+            let (workspace_dir, store, target_root, ids) =
+                build_move_scenario_fixture(scenario);
+            ScenarioPool {
+                _workspace_dir: workspace_dir,
+                store,
+                target_root,
+                phase: scenario.phase,
+                batches: vec![ids],
+            }
         },
-        MovePhase::Apply => ScenarioState::Apply {
-            _workspace_dir: workspace_dir,
-            store,
-            target_root,
-            ids,
+        MovePhase::Apply => {
+            let bulk = MoveScenario {
+                entity_count: scenario.entity_count * pool_size,
+                ..scenario
+            };
+            let (workspace_dir, store, target_root, ids) =
+                build_move_scenario_fixture(bulk);
+            let batches = ids
+                .chunks(scenario.entity_count)
+                .take(pool_size)
+                .map(<[Uuid]>::to_vec)
+                .collect();
+            ScenarioPool {
+                _workspace_dir: workspace_dir,
+                store,
+                target_root,
+                phase: scenario.phase,
+                batches,
+            }
         },
         MovePhase::Rollback => {
-            let journal_ids = ids
+            let bulk = MoveScenario {
+                entity_count: scenario.entity_count * pool_size,
+                ..scenario
+            };
+            let (workspace_dir, store, target_root, ids) =
+                build_move_scenario_fixture(bulk);
+            let journal_ids: Vec<Uuid> = ids
                 .iter()
                 .map(|id| {
                     let plan =
                         active_move_preflight(&store, &target_root, id);
-                    let outcome = store
+                    store
                         .execute_move_with_journal(&plan)
-                        .expect("execute move for rollback setup");
-                    outcome.journal.id
+                        .expect("execute move for rollback setup")
+                        .journal
+                        .id
                 })
                 .collect();
-            ScenarioState::Rollback {
+            let batches = journal_ids
+                .chunks(scenario.entity_count)
+                .take(pool_size)
+                .map(<[Uuid]>::to_vec)
+                .collect();
+            ScenarioPool {
                 _workspace_dir: workspace_dir,
                 store,
-                journal_ids,
+                target_root,
+                phase: scenario.phase,
+                batches,
             }
         },
     }
 }
 
-fn run_scenario_state(state: ScenarioState) {
-    match state {
-        ScenarioState::Preflight {
-            store,
-            target_root,
-            ids,
-            ..
-        } => {
-            for id in &ids {
-                let plan = store
-                    .plan_move_preflight(id, &target_root)
-                    .expect("plan preflight");
-                criterion::black_box(plan);
-            }
-        },
-        ScenarioState::Apply {
-            store,
-            target_root,
-            ids,
-            ..
-        } => {
-            for id in &ids {
-                let plan = active_move_preflight(&store, &target_root, id);
-                let outcome = store
-                    .execute_move_with_journal(&plan)
-                    .expect("execute move");
-                assert_eq!(outcome.journal.phase, MoveExecutionPhase::Validated);
-                criterion::black_box(outcome);
-            }
-        },
-        ScenarioState::Rollback {
-            store,
-            journal_ids,
-            ..
-        } => {
-            for journal_id in journal_ids {
-                let outcome = store
-                    .rollback_move_with_journal(journal_id)
-                    .expect("rollback move");
-                assert!(outcome.rolled_back);
-                criterion::black_box(outcome);
-            }
-        },
-    }
+/// Sample size floor Criterion enforces (`Criterion` rejects `sample_size <
+/// 10`); every scenario's `measurement_time` budget below is derived to fit
+/// this many real iterations, not the other way around.
+const SCENARIO_SAMPLE_SIZE: usize = 10;
+
+/// Real single-iteration cost of *just* the production call this scenario
+/// measures (fixture setup is built once via a throwaway `pool_size=1` pool
+/// and excluded from the timed portion, mirroring exactly what Criterion
+/// itself times below). This is the actual entity_count/linkage-driven cost,
+/// not a guessed or extrapolated number, so the `measurement_time` budget
+/// computed from it reflects reality per scenario instead of one blanket
+/// duration applied to the whole matrix.
+fn calibrate_scenario_cost(scenario: MoveScenario) -> Duration {
+    let pool = build_scenario_pool(scenario, 1);
+    let cursor = Cell::new(0usize);
+    let batch = pool.next_batch(&cursor);
+    let start = Instant::now();
+    pool.run_batch(batch);
+    start.elapsed()
 }
 
-fn bench_move_scenario_matrix(c: &mut Criterion) {
-    init_perf_bench_tracing();
+/// First non-flag CLI argument, mirroring Criterion's own substring-filter
+/// convention (`cargo bench -- <filter>`). Checked before calibrating each
+/// scenario so a filtered manual run (e.g. one scenario id) does not pay the
+/// real setup+measure cost of every other scenario in the matrix just to
+/// have Criterion discard it afterward.
+fn requested_scenario_filter() -> Option<String> {
+    std::env::args().skip(1).find(|arg| !arg.starts_with('-'))
+}
 
+/// Every `(scenario, bench_id)` pair the matrix covers, shared between the
+/// real Criterion registration loop and `estimate_scenario_matrix_budget` so
+/// the two enumerations cannot drift apart.
+fn scenario_matrix() -> Vec<(MoveScenario, String)> {
     let entity_counts = [1usize, 25, 100, 500];
     let topologies =
         [LinkTopology::None, LinkTopology::Internal, LinkTopology::Crossing];
     let phases =
         [MovePhase::Preflight, MovePhase::Apply, MovePhase::Rollback];
 
-    let mut group = c.benchmark_group("move_scenario_matrix");
-    // Fixture setup (fresh store + N tickets + edges) dominates cost at the
-    // upper end of the matrix (500 entities x 20 links), so keep the sample
-    // count and per-benchmark time budget low; this is a deliberately slow
-    // perf suite, not a CI-gated unit test.
-    group.sample_size(10);
-    group.warm_up_time(Duration::from_millis(500));
-    group.measurement_time(Duration::from_secs(5));
-
+    let mut scenarios = Vec::new();
     for &entity_count in &entity_counts {
         for &topology in &topologies {
             // A batch of one has no other moved entity to link to internally.
@@ -1003,23 +1097,115 @@ fn bench_move_scenario_matrix(c: &mut Criterion) {
                         topo = topology.label(),
                         phase = phase.label(),
                     );
-
-                    group.throughput(Throughput::Elements(entity_count as u64));
-                    group.bench_with_input(
-                        BenchmarkId::new("move", bench_id),
-                        &scenario,
-                        |b, scenario| {
-                            b.iter_batched(
-                                || prepare_scenario_state(*scenario),
-                                run_scenario_state,
-                                criterion::BatchSize::SmallInput,
-                            );
-                        },
-                    );
+                    scenarios.push((scenario, bench_id));
                 }
             }
         }
     }
+    scenarios
+}
+
+/// `measurement_time` budget for a scenario given its real calibrated
+/// single-iteration cost: `SCENARIO_SAMPLE_SIZE` real samples plus a 30%
+/// margin absorbing the variance Criterion itself discovers across samples.
+fn measurement_budget(calibrated: Duration) -> Duration {
+    calibrated
+        .saturating_mul(SCENARIO_SAMPLE_SIZE as u32)
+        .mul_f64(1.3)
+        .max(Duration::from_millis(200))
+}
+
+/// Real, measured (not guessed) total wall-time budget for every scenario in
+/// the matrix: one calibration iteration per scenario (entity_count- and
+/// linkage-driven, exactly as `calibrate_scenario_cost` measures it), summed
+/// into the same `warm_up + measurement_time` budget the real Criterion run
+/// below would use per scenario — at roughly 1/10th the cost, since it skips
+/// the 10-sample collection. Enabled via `MOVE_BENCH_ESTIMATE_ONLY=1` so the
+/// full-matrix total can be derived from real data before committing to the
+/// full run.
+fn estimate_scenario_matrix_budget() {
+    let mut total = Duration::ZERO;
+    for (scenario, bench_id) in scenario_matrix() {
+        let calibrated = calibrate_scenario_cost(scenario);
+        let budget = calibrated.max(Duration::from_millis(50))
+            + measurement_budget(calibrated);
+        total += budget;
+        eprintln!(
+            "{bench_id}: calibrated_iter={:.3}s budget={:.1}s running_total={:.1}s",
+            calibrated.as_secs_f64(),
+            budget.as_secs_f64(),
+            total.as_secs_f64(),
+        );
+    }
+    eprintln!(
+        "move_scenario_matrix estimate: {} scenarios, total derived budget = {:.1}s ({:.1} min)",
+        scenario_matrix().len(),
+        total.as_secs_f64(),
+        total.as_secs_f64() / 60.0,
+    );
+}
+
+fn bench_move_scenario_matrix(c: &mut Criterion) {
+    init_perf_bench_tracing();
+
+    if std::env::var("MOVE_BENCH_ESTIMATE_ONLY").as_deref() == Ok("1") {
+        estimate_scenario_matrix_budget();
+        return;
+    }
+
+    let mut group = c.benchmark_group("move_scenario_matrix");
+    // The fixture (git init + N tickets + edges) is built once per scenario
+    // via `build_scenario_pool`, not once per Criterion iteration/sample, so
+    // the measured time below is the real production call only. Scenario
+    // cost still varies enormously (entity count, link density), so a single
+    // blanket measurement_time would waste time on cheap scenarios or
+    // overrun on expensive ones; each scenario's `measurement_time` is sized
+    // from its own calibrated per-call cost instead.
+    group.sample_size(SCENARIO_SAMPLE_SIZE);
+    let filter = requested_scenario_filter();
+    let mut total_expected = Duration::ZERO;
+    let mut scenario_count = 0usize;
+
+    for (scenario, bench_id) in scenario_matrix() {
+        let full_bench_id = format!("move_scenario_matrix/move/{bench_id}");
+        if let Some(filter) = &filter {
+            if !full_bench_id.contains(filter.as_str()) {
+                continue;
+            }
+        }
+
+        let calibrated = calibrate_scenario_cost(scenario);
+        let warm_up = calibrated.max(Duration::from_millis(50));
+        let measurement = measurement_budget(calibrated);
+        total_expected += warm_up + measurement;
+        scenario_count += 1;
+        group.warm_up_time(warm_up);
+        group.measurement_time(measurement);
+
+        // Built once per scenario, outside `bench_with_input`'s closure:
+        // Criterion invokes that closure once per sample (not once total),
+        // so a pool built *inside* it would still be rebuilt every sample.
+        let pool = build_scenario_pool(scenario, SCENARIO_POOL_SIZE);
+        let cursor = Cell::new(0usize);
+
+        group.throughput(Throughput::Elements(scenario.entity_count as u64));
+        group.bench_with_input(
+            BenchmarkId::new("move", bench_id),
+            &scenario,
+            |b, _scenario| {
+                b.iter_batched(
+                    || pool.next_batch(&cursor),
+                    |batch| pool.run_batch(batch),
+                    criterion::BatchSize::SmallInput,
+                );
+            },
+        );
+    }
+
+    eprintln!(
+        "move_scenario_matrix: {scenario_count} scenarios, calibrated total budget = {:.1}s",
+        total_expected.as_secs_f64(),
+    );
 
     group.finish();
 }

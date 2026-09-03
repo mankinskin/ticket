@@ -6,9 +6,12 @@
 //! specialization via [`TicketMoveDomain`] and re-exports the kernel types under
 //! the names the ticket surfaces (CLI/MCP/HTTP) consume.
 
-use std::path::{
+use std::{
+    collections::BTreeMap,
+    path::{
     Path,
     PathBuf,
+    },
 };
 
 use memory_kernel::storage::move_kernel::{
@@ -144,6 +147,25 @@ impl MoveDomain for TicketMoveDomain<'_> {
         Ok(references)
     }
 
+    fn related_entities_for_set(
+        &self,
+        entity_ids: &[Uuid],
+    ) -> MoveResult<BTreeMap<Uuid, MoveReferences>> {
+        let mut references = entity_ids
+            .iter()
+            .map(|entity_id| (*entity_id, MoveReferences::default()))
+            .collect::<BTreeMap<_, _>>();
+        for edge in self.store.list_all_edges().map_err(to_move_error)? {
+            if let Some(entry) = references.get_mut(&edge.from) {
+                entry.outbound.push(edge.to);
+            }
+            if let Some(entry) = references.get_mut(&edge.to) {
+                entry.inbound.push(edge.from);
+            }
+        }
+        Ok(references)
+    }
+
     fn target_store_present(
         &self,
         target_store_root: &Path,
@@ -196,6 +218,30 @@ impl MoveDomain for TicketMoveDomain<'_> {
         Ok(state)
     }
 
+    fn board_state_for_set(
+        &self,
+        entity_ids: &[Uuid],
+    ) -> MoveResult<BTreeMap<Uuid, MoveBoardState>> {
+        let mut states = entity_ids
+            .iter()
+            .map(|entity_id| (*entity_id, MoveBoardState::default()))
+            .collect::<BTreeMap<_, _>>();
+        for entry in self.store.board_show(None).map_err(map_board_error)?.entries {
+            if (entry.status == BoardEntryStatus::Active
+                || entry.status == BoardEntryStatus::Stale)
+                && let Some(state) = states.get_mut(&entry.ticket_id)
+            {
+                state.active_entries.push(entry);
+            }
+        }
+        for entry in self.store.board_history(None).map_err(map_board_error)?.entries {
+            if let Some(state) = states.get_mut(&entry.ticket_id) {
+                state.historical_entries.push(entry);
+            }
+        }
+        Ok(states)
+    }
+
     fn active_leases(
         &self,
         entity_id: &Uuid,
@@ -204,6 +250,25 @@ impl MoveDomain for TicketMoveDomain<'_> {
         for lease in self.store.list_leases().map_err(to_move_error)? {
             if lease.ticket_id == *entity_id {
                 leases.push(MoveLeaseBlock {
+                    entity_id: lease.ticket_id,
+                    working_by: lease.working_by.clone(),
+                });
+            }
+        }
+        Ok(leases)
+    }
+
+    fn active_leases_for_set(
+        &self,
+        entity_ids: &[Uuid],
+    ) -> MoveResult<BTreeMap<Uuid, Vec<MoveLeaseBlock>>> {
+        let mut leases = entity_ids
+            .iter()
+            .map(|entity_id| (*entity_id, Vec::new()))
+            .collect::<BTreeMap<_, _>>();
+        for lease in self.store.list_leases().map_err(to_move_error)? {
+            if let Some(entries) = leases.get_mut(&lease.ticket_id) {
+                entries.push(MoveLeaseBlock {
                     entity_id: lease.ticket_id,
                     working_by: lease.working_by.clone(),
                 });
