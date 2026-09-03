@@ -7,7 +7,7 @@
 //! the names the ticket surfaces (CLI/MCP/HTTP) consume.
 
 use std::{
-    collections::BTreeMap,
+    collections::{BTreeMap, BTreeSet},
     path::{Path, PathBuf},
 };
 
@@ -104,6 +104,26 @@ impl MoveDomain for TicketMoveDomain<'_> {
             .get_indexed(entity_id)
             .map_err(to_move_error)?
             .and_then(|ticket| ticket.path.starts_with(&entity_root).then_some(ticket.path)))
+    }
+
+    fn source_entity_paths_for_set(
+        &self,
+        entity_ids: &[Uuid],
+    ) -> MoveResult<BTreeMap<Uuid, PathBuf>> {
+        let entity_root = ticket_entity_root(&self.store.index_root);
+        let indexed = self
+            .store
+            .get_indexed_many(entity_ids)
+            .map_err(to_move_error)?;
+        Ok(entity_ids
+            .iter()
+            .filter_map(|entity_id| {
+                indexed
+                    .get(entity_id)
+                    .filter(|ticket| ticket.path.starts_with(&entity_root))
+                    .map(|ticket| (*entity_id, ticket.path.clone()))
+            })
+            .collect())
     }
 
     fn related_entities(&self, entity_id: &Uuid) -> MoveResult<MoveReferences> {
@@ -301,6 +321,62 @@ impl MoveDomain for TicketMoveDomain<'_> {
             .map_err(map_board_error)?;
 
         Ok(historical_entries)
+    }
+
+    fn migrate_board_history_for_set(
+        &self,
+        target_store_root: &Path,
+        entity_ids: &[Uuid],
+    ) -> MoveResult<BTreeMap<Uuid, Vec<BoardEntry>>> {
+        let requested = entity_ids.iter().copied().collect::<BTreeSet<_>>();
+        let mut entries_by_entity = entity_ids
+            .iter()
+            .map(|entity_id| (*entity_id, Vec::new()))
+            .collect::<BTreeMap<_, _>>();
+        for entry in self
+            .store
+            .board_show(None)
+            .map_err(map_board_error)?
+            .entries
+        {
+            if (entry.status == BoardEntryStatus::Active || entry.status == BoardEntryStatus::Stale)
+                && requested.contains(&entry.ticket_id)
+            {
+                return Err(MoveError::Domain(format!(
+                    "cannot move entity {} while board entry {} is active/stale",
+                    entry.ticket_id, entry.entry_id
+                )));
+            }
+        }
+        for entry in self
+            .store
+            .board_history(None)
+            .map_err(map_board_error)?
+            .entries
+        {
+            if let Some(entries) = entries_by_entity.get_mut(&entry.ticket_id) {
+                entries.push(entry);
+            }
+        }
+        let historical_entries = entries_by_entity
+            .values()
+            .flat_map(|entries| entries.iter().cloned())
+            .collect::<Vec<_>>();
+        if historical_entries.is_empty() {
+            return Ok(entries_by_entity);
+        }
+        let target_store = self.open(target_store_root)?;
+        target_store
+            .board_import_entries(&historical_entries)
+            .map_err(map_board_error)?;
+        let ids = historical_entries
+            .iter()
+            .map(|entry| entry.entry_id)
+            .collect::<Vec<_>>();
+        self.store
+            .board_delete_entries(&ids)
+            .map_err(map_board_error)?;
+        Ok(entries_by_entity)
     }
 
     fn restore_board_history(
