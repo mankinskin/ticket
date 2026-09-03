@@ -8,30 +8,18 @@
 
 use std::{
     collections::BTreeMap,
-    path::{
-    Path,
-    PathBuf,
-    },
+    path::{Path, PathBuf},
 };
 
 use memory_kernel::storage::move_kernel::{
-    self,
-    MoveBoardState,
-    MoveDomain,
-    MoveError,
-    MoveLeaseBlock,
-    MoveReferences,
-    MoveResult,
+    self, MoveBoardState, MoveDomain, MoveError, MoveLeaseBlock, MoveReferences, MoveResult,
+    MoveSetPlan,
 };
 use uuid::Uuid;
 
 use crate::{
     error::StorageError,
-    storage::{
-        BoardEntry,
-        BoardEntryStatus,
-        store::TicketStore,
-    },
+    storage::{BoardEntry, BoardEntryStatus, store::TicketStore},
     workspace,
 };
 
@@ -39,11 +27,8 @@ use crate::{
 // command is domain-neutral now; these aliases keep the existing public paths
 // (`ticket_api::storage::move_planner::MovePreflightReport`, etc.) stable.
 pub use memory_kernel::storage::move_kernel::{
-    GitWorktreeTopology,
-    MoveBlocker as MovePreflightBlocker,
-    MovePlan as MovePreflightReport,
-    MoveReferenceDirection,
-    MoveReferenceVisibility,
+    GitWorktreeTopology, MoveBlocker as MovePreflightBlocker, MovePlan as MovePreflightReport,
+    MoveReferenceDirection, MoveReferenceVisibility,
 };
 
 /// Map a ticket [`StorageError`] into a kernel [`MoveError`].
@@ -74,15 +59,13 @@ pub(crate) fn from_move_error(error: MoveError) -> StorageError {
 
 fn map_board_error(error: crate::storage::BoardError) -> MoveError {
     match error {
-        crate::storage::BoardError::Storage(storage_error) =>
-            to_move_error(storage_error),
+        crate::storage::BoardError::Storage(storage_error) => to_move_error(storage_error),
         other => MoveError::Domain(other.to_string()),
     }
 }
 
 fn ticket_entity_root(store_root: &Path) -> PathBuf {
-    workspace::resolve_store_root_from(store_root, workspace::TICKET_INDEX_DIR)
-        .join("tickets")
+    workspace::resolve_store_root_from(store_root, workspace::TICKET_INDEX_DIR).join("tickets")
 }
 
 /// Ticket-domain implementation of the move kernel's [`MoveDomain`] trait.
@@ -95,10 +78,7 @@ impl<'a> TicketMoveDomain<'a> {
         Self { store }
     }
 
-    fn open(
-        &self,
-        store_root: &Path,
-    ) -> MoveResult<TicketStore> {
+    fn open(&self, store_root: &Path) -> MoveResult<TicketStore> {
         TicketStore::open_with(store_root, self.store.schema_registry().clone())
             .map_err(to_move_error)
     }
@@ -117,24 +97,16 @@ impl MoveDomain for TicketMoveDomain<'_> {
         self.store.index_root.clone()
     }
 
-    fn source_entity_path(
-        &self,
-        entity_id: &Uuid,
-    ) -> MoveResult<Option<PathBuf>> {
+    fn source_entity_path(&self, entity_id: &Uuid) -> MoveResult<Option<PathBuf>> {
         let entity_root = ticket_entity_root(&self.store.index_root);
         Ok(self
             .store
             .get_indexed(entity_id)
             .map_err(to_move_error)?
-            .and_then(|ticket| {
-                ticket.path.starts_with(&entity_root).then_some(ticket.path)
-            }))
+            .and_then(|ticket| ticket.path.starts_with(&entity_root).then_some(ticket.path)))
     }
 
-    fn related_entities(
-        &self,
-        entity_id: &Uuid,
-    ) -> MoveResult<MoveReferences> {
+    fn related_entities(&self, entity_id: &Uuid) -> MoveResult<MoveReferences> {
         let mut references = MoveReferences::default();
         for edge in self.store.list_all_edges().map_err(to_move_error)? {
             if edge.from == *entity_id {
@@ -166,25 +138,15 @@ impl MoveDomain for TicketMoveDomain<'_> {
         Ok(references)
     }
 
-    fn target_store_present(
-        &self,
-        target_store_root: &Path,
-    ) -> MoveResult<bool> {
-        match TicketStore::open_with(
-            target_store_root,
-            self.store.schema_registry().clone(),
-        ) {
+    fn target_store_present(&self, target_store_root: &Path) -> MoveResult<bool> {
+        match TicketStore::open_with(target_store_root, self.store.schema_registry().clone()) {
             Ok(_) => Ok(true),
             Err(StorageError::WorkspaceNotFound { .. }) => Ok(false),
             Err(error) => Err(to_move_error(error)),
         }
     }
 
-    fn entity_indexed_in(
-        &self,
-        store_root: &Path,
-        entity_id: &Uuid,
-    ) -> MoveResult<bool> {
+    fn entity_indexed_in(&self, store_root: &Path, entity_id: &Uuid) -> MoveResult<bool> {
         let store = self.open(store_root)?;
         let entity_root = ticket_entity_root(store_root);
         Ok(store
@@ -194,10 +156,29 @@ impl MoveDomain for TicketMoveDomain<'_> {
             .unwrap_or(false))
     }
 
-    fn board_state(
+    fn entity_indexed_in_many(
         &self,
-        entity_id: &Uuid,
-    ) -> MoveResult<MoveBoardState> {
+        store_root: &Path,
+        entity_ids: &[Uuid],
+    ) -> MoveResult<BTreeMap<Uuid, bool>> {
+        let store = self.open(store_root)?;
+        let entity_root = ticket_entity_root(store_root);
+        let indexed = store.get_indexed_many(entity_ids).map_err(to_move_error)?;
+        Ok(entity_ids
+            .iter()
+            .map(|entity_id| {
+                (
+                    *entity_id,
+                    indexed
+                        .get(entity_id)
+                        .map(|ticket| ticket.path.starts_with(&entity_root))
+                        .unwrap_or(false),
+                )
+            })
+            .collect())
+    }
+
+    fn board_state(&self, entity_id: &Uuid) -> MoveResult<MoveBoardState> {
         let mut state = MoveBoardState::default();
         let snapshot = self.store.board_show(None).map_err(map_board_error)?;
         for entry in snapshot.entries {
@@ -208,8 +189,7 @@ impl MoveDomain for TicketMoveDomain<'_> {
                 state.active_entries.push(entry);
             }
         }
-        let history =
-            self.store.board_history(None).map_err(map_board_error)?;
+        let history = self.store.board_history(None).map_err(map_board_error)?;
         for entry in history.entries {
             if entry.ticket_id == *entity_id {
                 state.historical_entries.push(entry);
@@ -226,15 +206,24 @@ impl MoveDomain for TicketMoveDomain<'_> {
             .iter()
             .map(|entity_id| (*entity_id, MoveBoardState::default()))
             .collect::<BTreeMap<_, _>>();
-        for entry in self.store.board_show(None).map_err(map_board_error)?.entries {
-            if (entry.status == BoardEntryStatus::Active
-                || entry.status == BoardEntryStatus::Stale)
+        for entry in self
+            .store
+            .board_show(None)
+            .map_err(map_board_error)?
+            .entries
+        {
+            if (entry.status == BoardEntryStatus::Active || entry.status == BoardEntryStatus::Stale)
                 && let Some(state) = states.get_mut(&entry.ticket_id)
             {
                 state.active_entries.push(entry);
             }
         }
-        for entry in self.store.board_history(None).map_err(map_board_error)?.entries {
+        for entry in self
+            .store
+            .board_history(None)
+            .map_err(map_board_error)?
+            .entries
+        {
             if let Some(state) = states.get_mut(&entry.ticket_id) {
                 state.historical_entries.push(entry);
             }
@@ -242,10 +231,7 @@ impl MoveDomain for TicketMoveDomain<'_> {
         Ok(states)
     }
 
-    fn active_leases(
-        &self,
-        entity_id: &Uuid,
-    ) -> MoveResult<Vec<MoveLeaseBlock>> {
+    fn active_leases(&self, entity_id: &Uuid) -> MoveResult<Vec<MoveLeaseBlock>> {
         let mut leases = Vec::new();
         for lease in self.store.list_leases().map_err(to_move_error)? {
             if lease.ticket_id == *entity_id {
@@ -290,9 +276,7 @@ impl MoveDomain for TicketMoveDomain<'_> {
 
         let mut historical_entries = Vec::new();
         for entry in entries {
-            if entry.status == BoardEntryStatus::Active
-                || entry.status == BoardEntryStatus::Stale
-            {
+            if entry.status == BoardEntryStatus::Active || entry.status == BoardEntryStatus::Stale {
                 return Err(MoveError::Domain(format!(
                     "cannot move entity {} while board entry {} is active/stale",
                     entity_id, entry.entry_id
@@ -331,18 +315,14 @@ impl MoveDomain for TicketMoveDomain<'_> {
         self.store
             .board_import_entries(entries)
             .map_err(map_board_error)?;
-        let ids: Vec<Uuid> =
-            entries.iter().map(|entry| entry.entry_id).collect();
+        let ids: Vec<Uuid> = entries.iter().map(|entry| entry.entry_id).collect();
         target_store
             .board_delete_entries(&ids)
             .map_err(map_board_error)?;
         Ok(())
     }
 
-    fn scan_store(
-        &self,
-        store_root: &Path,
-    ) -> MoveResult<()> {
+    fn scan_store(&self, store_root: &Path) -> MoveResult<()> {
         let store = self.open(store_root)?;
         store.scan(false).map_err(to_move_error)?;
         Ok(())
@@ -370,7 +350,17 @@ impl TicketStore {
         target_workspace_root: &Path,
     ) -> Result<MovePreflightReport, StorageError> {
         let domain = TicketMoveDomain::new(self);
-        move_kernel::plan_move(&domain, ticket_id, target_workspace_root)
+        move_kernel::plan_move(&domain, ticket_id, target_workspace_root).map_err(from_move_error)
+    }
+
+    /// Build one normalized preflight plan for a set of tickets.
+    pub fn plan_move_set(
+        &self,
+        ticket_ids: &[Uuid],
+        target_workspace_root: &Path,
+    ) -> Result<MoveSetPlan, StorageError> {
+        let domain = TicketMoveDomain::new(self);
+        move_kernel::plan_move_set(&domain, ticket_ids, target_workspace_root)
             .map_err(from_move_error)
     }
 }
@@ -379,23 +369,14 @@ impl TicketStore {
 mod tests {
     use super::*;
     use crate::{
-        model::{
-            edge::EdgeRecord,
-            filesystem::ScanRoot,
-        },
+        model::{edge::EdgeRecord, filesystem::ScanRoot},
         storage::index::RedbIndexStore,
     };
     use chrono::Utc;
-    use std::{
-        fs,
-        process::Command,
-    };
+    use std::{fs, process::Command};
     use tempfile::tempdir;
 
-    fn run_git(
-        repo_root: &Path,
-        args: &[&str],
-    ) {
+    fn run_git(repo_root: &Path, args: &[&str]) {
         let status = Command::new("git")
             .current_dir(repo_root)
             .args(args)
@@ -485,8 +466,7 @@ mod tests {
             .to_string_lossy()
             .replace('\\', "/");
         let tracked_doc = docs_dir.join("move.md");
-        fs::write(&tracked_doc, format!("See {relative_ticket_path}\n"))
-            .unwrap();
+        fs::write(&tracked_doc, format!("See {relative_ticket_path}\n")).unwrap();
         run_git(&repo, &["add", "docs/move.md"]);
 
         let report = source_store
@@ -505,10 +485,12 @@ mod tests {
                 .iter()
                 .any(|path| { path.ends_with("docs/move.md") })
         );
-        assert!(!report.blockers.iter().any(|blocker| matches!(
-            blocker,
-            MovePreflightBlocker::InvisibleReference { .. }
-        )));
+        assert!(
+            !report
+                .blockers
+                .iter()
+                .any(|blocker| matches!(blocker, MovePreflightBlocker::InvisibleReference { .. }))
+        );
     }
 
     #[test]
@@ -545,10 +527,12 @@ mod tests {
             report.git_worktree_topology,
             GitWorktreeTopology::ParentToSubmodule
         );
-        assert!(!report.blockers.iter().any(|blocker| matches!(
-            blocker,
-            MovePreflightBlocker::DifferentGitWorktree { .. }
-        )));
+        assert!(
+            !report.blockers.iter().any(|blocker| matches!(
+                blocker,
+                MovePreflightBlocker::DifferentGitWorktree { .. }
+            ))
+        );
     }
 
     #[test]
@@ -580,14 +564,13 @@ mod tests {
             .plan_move_preflight(&source_ticket, &target_repo)
             .unwrap();
 
-        assert_eq!(
-            report.git_worktree_topology,
-            GitWorktreeTopology::Unrelated
+        assert_eq!(report.git_worktree_topology, GitWorktreeTopology::Unrelated);
+        assert!(
+            report.blockers.iter().any(|blocker| matches!(
+                blocker,
+                MovePreflightBlocker::DifferentGitWorktree { .. }
+            ))
         );
-        assert!(report.blockers.iter().any(|blocker| matches!(
-            blocker,
-            MovePreflightBlocker::DifferentGitWorktree { .. }
-        )));
     }
 
     #[test]
@@ -624,8 +607,7 @@ mod tests {
         let target_indexed = target_store.get_indexed(&id).unwrap().unwrap();
 
         let poisoned_index =
-            RedbIndexStore::open(&source_store.index_root.join("tickets.db"))
-                .unwrap();
+            RedbIndexStore::open(&source_store.index_root.join("tickets.db")).unwrap();
         poisoned_index.insert_ticket(&target_indexed).unwrap();
 
         let source_domain = TicketMoveDomain::new(&source_store);

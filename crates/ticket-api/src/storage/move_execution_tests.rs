@@ -1,20 +1,13 @@
 use super::*;
 use crate::{
     model::filesystem::ScanRoot,
-    storage::{
-        BoardEntryStatus,
-        index::RedbIndexStore,
-        move_planner::MovePreflightBlocker,
-    },
+    storage::{BoardEntryStatus, index::RedbIndexStore, move_planner::MovePreflightBlocker},
 };
 use chrono::Utc;
 use std::process::Command;
 use tempfile::tempdir;
 
-fn run_git(
-    repo_root: &std::path::Path,
-    args: &[&str],
-) {
+fn run_git(repo_root: &std::path::Path, args: &[&str]) {
     let status = Command::new("git")
         .current_dir(repo_root)
         .args(args)
@@ -23,11 +16,7 @@ fn run_git(
     assert!(status.success(), "git {args:?} failed: {status}");
 }
 
-fn git_commit_path(
-    repo_root: &std::path::Path,
-    pathspec: &str,
-    message: &str,
-) {
+fn git_commit_path(repo_root: &std::path::Path, pathspec: &str, message: &str) {
     run_git(repo_root, &["config", "user.name", "Move Test"]);
     run_git(
         repo_root,

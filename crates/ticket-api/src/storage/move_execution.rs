@@ -12,25 +12,30 @@ use memory_kernel::storage::move_kernel;
 use crate::{
     error::StorageError,
     storage::{
-        move_planner::{
-            MovePreflightReport,
-            TicketMoveDomain,
-            from_move_error,
-        },
+        move_planner::{MovePreflightReport, TicketMoveDomain, from_move_error},
         store::TicketStore,
     },
 };
 
 // Re-export the neutral kernel execution types under their established paths.
 pub use memory_kernel::storage::move_kernel::{
-    MoveExecutionPhase,
-    MoveJournal,
-    MoveManualFollowup,
-    MoveOutcome as MoveExecutionOutcome,
-    MovePathRewrite,
+    MoveExecutionPhase, MoveJournal, MoveManualFollowup, MoveOutcome as MoveExecutionOutcome,
+    MovePathRewrite, MoveSetOutcome, MoveSetPlan, rollback_move_set,
 };
 
 impl TicketStore {
+    /// Execute a supported normalized set move with one shared lock lifecycle.
+    pub fn execute_move_set(&self, plan: &MoveSetPlan) -> Result<MoveSetOutcome, StorageError> {
+        let domain = TicketMoveDomain::new(self);
+        move_kernel::execute_move_set(&domain, plan).map_err(from_move_error)
+    }
+
+    /// Roll back a completed or partially completed set move.
+    pub fn rollback_move_set(&self, journal_id: Uuid) -> Result<MoveSetOutcome, StorageError> {
+        let domain = TicketMoveDomain::new(self);
+        move_kernel::rollback_move_set(&domain, journal_id).map_err(from_move_error)
+    }
+
     pub fn execute_move_with_journal(
         &self,
         plan: &MovePreflightReport,

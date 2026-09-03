@@ -85,16 +85,17 @@ fn sequential_move_can_execute_without_commit_between_moves() {
         .to_string_lossy()
         .replace('\\', "/");
 
-    let _first_outcome =
-        source_store.execute_move_with_journal(&first_plan).unwrap();
+    let _first_outcome = source_store.execute_move_with_journal(&first_plan).unwrap();
 
     let second_after_first = source_store
         .plan_move_preflight(&second, &nested_repo)
         .unwrap();
-    assert!(!second_after_first.blockers.iter().any(|blocker| matches!(
-        blocker,
-        MovePreflightBlocker::DirtyTrackedFiles { .. }
-    )));
+    assert!(
+        !second_after_first
+            .blockers
+            .iter()
+            .any(|blocker| matches!(blocker, MovePreflightBlocker::DirtyTrackedFiles { .. }))
+    );
 
     let second_destination_rel = second_after_first
         .destination_entity_path
@@ -145,20 +146,12 @@ fn entity_indexed_in_requires_path_ownership_not_aggregate_visibility() {
 
     let target_indexed = target_store.get_indexed(&id).unwrap().unwrap();
 
-    let poisoned_index =
-        RedbIndexStore::open(&source_store.index_root.join("tickets.db"))
-            .unwrap();
+    let poisoned_index = RedbIndexStore::open(&source_store.index_root.join("tickets.db")).unwrap();
     poisoned_index.insert_ticket(&target_indexed).unwrap();
 
     let domain = TicketMoveDomain::new(&source_store);
-    assert!(
-        !move_kernel::MoveDomain::entity_indexed_in(&domain, &repo, &id)
-            .unwrap()
-    );
-    assert!(
-        move_kernel::MoveDomain::entity_indexed_in(&domain, &nested_repo, &id)
-            .unwrap()
-    );
+    assert!(!move_kernel::MoveDomain::entity_indexed_in(&domain, &repo, &id).unwrap());
+    assert!(move_kernel::MoveDomain::entity_indexed_in(&domain, &nested_repo, &id).unwrap());
 }
 
 #[test]
@@ -256,9 +249,7 @@ fn sequential_move_after_resumed_execution_can_continue_without_clean_commit() {
         created_at: Utc::now(),
         updated_at: Utc::now(),
         steps: vec!["created move journal".to_string()],
-        rollback_steps: vec![
-            "rename destination entity folder back to source path".to_string(),
-        ],
+        rollback_steps: vec!["rename destination entity folder back to source path".to_string()],
         lock_paths: move_kernel::collect_lock_paths(
             first,
             &first_plan.source_store_root,
@@ -271,8 +262,7 @@ fn sequential_move_after_resumed_execution_can_continue_without_clean_commit() {
         failure: None,
         next_recovery_step: None,
     };
-    move_kernel::persist_journal(&first_plan.source_store_root, &journal)
-        .unwrap();
+    move_kernel::persist_journal(&first_plan.source_store_root, &journal).unwrap();
 
     let resumed = source_store.resume_move_with_journal(journal_id).unwrap();
     assert!(resumed.resumed);
@@ -281,10 +271,12 @@ fn sequential_move_after_resumed_execution_can_continue_without_clean_commit() {
     let second_after_resume = source_store
         .plan_move_preflight(&second, &nested_repo)
         .unwrap();
-    assert!(!second_after_resume.blockers.iter().any(|blocker| matches!(
-        blocker,
-        MovePreflightBlocker::DirtyTrackedFiles { .. }
-    )));
+    assert!(
+        !second_after_resume
+            .blockers
+            .iter()
+            .any(|blocker| matches!(blocker, MovePreflightBlocker::DirtyTrackedFiles { .. }))
+    );
 
     let continued = source_store
         .execute_move_with_journal(&second_after_resume)
@@ -324,10 +316,8 @@ fn resume_move_normalizes_journal_paths_before_validation() {
         .unwrap();
 
     let plan = source_store.plan_move_preflight(&id, &nested_repo).unwrap();
-    std::fs::create_dir_all(plan.destination_entity_path.parent().unwrap())
-        .unwrap();
-    std::fs::rename(&plan.source_entity_path, &plan.destination_entity_path)
-        .unwrap();
+    std::fs::create_dir_all(plan.destination_entity_path.parent().unwrap()).unwrap();
+    std::fs::rename(&plan.source_entity_path, &plan.destination_entity_path).unwrap();
     let source_domain = TicketMoveDomain::new(&source_store);
     let target_domain = TicketMoveDomain::new(&target_store);
     move_kernel::MoveDomain::reconcile_store_touched(
@@ -356,15 +346,12 @@ fn resume_move_normalizes_journal_paths_before_validation() {
         updated_at: Utc::now(),
         steps: vec![
             "created move journal".to_string(),
-            "acquired source/target store locks and move entity lock"
-                .to_string(),
+            "acquired source/target store locks and move entity lock".to_string(),
             "moved entity folder".to_string(),
             "scanned source store".to_string(),
             "scanned target store".to_string(),
         ],
-        rollback_steps: vec![
-            "rename destination entity folder back to source path".to_string(),
-        ],
+        rollback_steps: vec!["rename destination entity folder back to source path".to_string()],
         lock_paths: move_kernel::collect_lock_paths(
             id,
             &plan.source_store_root,
@@ -434,8 +421,7 @@ fn move_rewrites_skip_generated_store_indexes_and_journals() {
         .unwrap()
         .to_string_lossy()
         .replace('\\', "/");
-    let source_abs =
-        plan.source_entity_path.to_string_lossy().replace('\\', "/");
+    let source_abs = plan.source_entity_path.to_string_lossy().replace('\\', "/");
 
     let persistent_doc = repo
         .join(".ticket")
@@ -444,22 +430,17 @@ fn move_rewrites_skip_generated_store_indexes_and_journals() {
         .join("description.md");
     std::fs::create_dir_all(persistent_doc.parent().unwrap()).unwrap();
     std::fs::write(
-            &persistent_doc,
-            format!("persistent rel ref: {source_rel}\npersistent abs ref: {source_abs}\n"),
-        )
-        .unwrap();
+        &persistent_doc,
+        format!("persistent rel ref: {source_rel}\npersistent abs ref: {source_abs}\n"),
+    )
+    .unwrap();
 
     let generated_readme = repo.join(".ticket").join("README.md");
     std::fs::create_dir_all(generated_readme.parent().unwrap()).unwrap();
-    std::fs::write(&generated_readme, format!("generated ref: {source_rel}\n"))
-        .unwrap();
+    std::fs::write(&generated_readme, format!("generated ref: {source_rel}\n")).unwrap();
 
     let generated_index = repo.join(".ticket").join("index.toon");
-    std::fs::write(
-        &generated_index,
-        format!("source_path: \"{source_rel}\"\n"),
-    )
-    .unwrap();
+    std::fs::write(&generated_index, format!("source_path: \"{source_rel}\"\n")).unwrap();
 
     let generated_journal = repo
         .join(".ticket")
@@ -594,8 +575,7 @@ fn rollback_clears_rewrites_and_unblocks_next_sequential_move() {
         )
     });
 
-    let first_outcome =
-        source_store.execute_move_with_journal(&first_plan).unwrap();
+    let first_outcome = source_store.execute_move_with_journal(&first_plan).unwrap();
     let _rolled_back = source_store
         .rollback_move_with_journal(first_outcome.journal.id)
         .unwrap();
@@ -607,10 +587,7 @@ fn rollback_clears_rewrites_and_unblocks_next_sequential_move() {
         !second_after_rollback
             .blockers
             .iter()
-            .any(|blocker| matches!(
-                blocker,
-                MovePreflightBlocker::DirtyTrackedFiles { .. }
-            ))
+            .any(|blocker| matches!(blocker, MovePreflightBlocker::DirtyTrackedFiles { .. }))
     );
 }
 
@@ -701,8 +678,7 @@ fn rollback_of_second_move_preserves_first_move_rewrites() {
         .unwrap()
         .to_string_lossy()
         .replace('\\', "/");
-    let first_outcome =
-        source_store.execute_move_with_journal(&first_plan).unwrap();
+    let first_outcome = source_store.execute_move_with_journal(&first_plan).unwrap();
 
     let second_after_first = source_store
         .plan_move_preflight(&second, &nested_repo)

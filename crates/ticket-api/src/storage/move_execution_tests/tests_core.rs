@@ -124,16 +124,7 @@ fn execute_move_with_journal_fails_when_board_entry_is_active() {
         .unwrap();
 
     source_store
-        .board_check_in(
-            &id,
-            "agent-a",
-            300,
-            "working",
-            Vec::new(),
-            None,
-            None,
-            None,
-        )
+        .board_check_in(&id, "agent-a", 300, "working", Vec::new(), None, None, None)
         .unwrap();
 
     let plan = source_store
@@ -179,16 +170,7 @@ fn execute_move_with_journal_migrates_historical_board_rows() {
         .unwrap();
 
     source_store
-        .board_check_in(
-            &id,
-            "agent-a",
-            300,
-            "working",
-            Vec::new(),
-            None,
-            None,
-            None,
-        )
+        .board_check_in(&id, "agent-a", 300, "working", Vec::new(), None, None, None)
         .unwrap();
     source_store
         .board_check_out(&id, "agent-a", Some("done"))
@@ -261,13 +243,8 @@ fn execute_move_with_journal_rewrites_path_references_and_rollback_restores() {
 
     let doc_path = repo.join("docs").join("ticket-path.md");
     std::fs::create_dir_all(doc_path.parent().unwrap()).unwrap();
-    std::fs::write(&doc_path, format!("ticket path: {}\n", source_rel))
-        .unwrap();
-    git_commit_path(
-        &repo,
-        "docs/ticket-path.md",
-        "seed tracked ticket path ref",
-    );
+    std::fs::write(&doc_path, format!("ticket path: {}\n", source_rel)).unwrap();
+    git_commit_path(&repo, "docs/ticket-path.md", "seed tracked ticket path ref");
 
     plan = source_store
         .plan_move_preflight(&id, &target_workspace)

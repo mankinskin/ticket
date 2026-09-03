@@ -40,11 +40,8 @@ fn resume_move_with_journal_continues_from_locked_phase() {
     let source_ticket = plan.source_entity_path.clone();
     let destination_ticket = plan.destination_entity_path.clone();
     let journal_id = Uuid::new_v4();
-    let lock_paths = move_kernel::collect_lock_paths(
-        id,
-        &plan.source_store_root,
-        &plan.target_store_root,
-    );
+    let lock_paths =
+        move_kernel::collect_lock_paths(id, &plan.source_store_root, &plan.target_store_root);
     let journal = MoveJournal {
         id: journal_id,
         entity_id: id,
@@ -56,9 +53,7 @@ fn resume_move_with_journal_continues_from_locked_phase() {
         created_at: Utc::now(),
         updated_at: Utc::now(),
         steps: vec!["created move journal".to_string()],
-        rollback_steps: vec![
-            "rename destination entity folder back to source path".to_string(),
-        ],
+        rollback_steps: vec!["rename destination entity folder back to source path".to_string()],
         lock_paths,
         migrated_board_entries: Vec::new(),
         rewritten_path_files: Vec::new(),
