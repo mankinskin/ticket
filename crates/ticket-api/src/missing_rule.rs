@@ -57,7 +57,11 @@ pub fn handle_missing_rule_match(
         )
         .map_err(|e| format!("Failed to create missing-rule ticket: {e}"))?;
 
-    let ticket_urn = EntityUrn::ticket(feedback_store.workspace_slug(), ticket_id.to_string())?;
+    let workspace = feedback_store.workspace_path();
+    let ticket_urn = EntityUrn::ticket(
+        workspace.to_string_lossy().into_owned(),
+        ticket_id.to_string(),
+    )?;
     let note = format!(
         "no matching rule found for query '{}' with tags {:?}; opened missing-rule ticket {}",
         query_text, context_tags, ticket_id
