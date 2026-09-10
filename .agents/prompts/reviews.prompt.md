@@ -9,7 +9,7 @@ agent: "agent"
 
 Use this workflow to review the highest-ranked tickets currently in `in-review`.
 
-Reference [ticket-cli](../../memory-api/tools/cli/ticket-cli/README.md), [ticket-mcp](../../memory-api/tools/mcp/ticket-mcp/README.md), [spec-cli](../../memory-api/tools/cli/spec-cli/README.md), [spec-mcp](../../memory-api/tools/mcp/spec-mcp/README.md), [audit-cli](../../workflow-tools/audit/crates/audit-cli/README.md), and [audit-mcp](../../workflow-tools/audit/crates/audit-mcp/README.md).
+Reference [ticket-cli](../../../../context-engine/memory-api/tools/cli/ticket-cli/README.md), [ticket-mcp](../../../../context-engine/memory-api/tools/mcp/ticket-mcp/README.md), [spec-cli](../../../../context-engine/memory-api/tools/cli/spec-cli/README.md), [spec-mcp](../../../../context-engine/memory-api/tools/mcp/spec-mcp/README.md), [audit-cli](../../../audit/crates/audit-cli/README.md), and [audit-mcp](../../../audit/crates/audit-mcp/README.md).
 
 ## Limit Handling
 

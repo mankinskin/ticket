@@ -53,8 +53,8 @@ checks the board before editing and claims files when concurrent ownership is a
 risk. A worktree-backed task additionally claims the authoritative
 session-to-worktree-to-branch assignment with `session_check_in`. A conflict on
 an applicable claim is an escalation per
-[escalation-gate.instructions.md](../orchestration/escalation-gate.instructions.md), not something to work around. See
-[worktree-claim.instructions.md](../commit/worktree-claim.instructions.md).
+[escalation-gate.instructions.md](../../../../.agents/instructions/workflow/escalation-gate.instructions.md), not something to work around. See
+[worktree-claim.instructions.md](../../../../session/.agents/instructions/worktree/worktree-claim.instructions.md).
 
 ### WIP Limit
 

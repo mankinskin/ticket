@@ -31,7 +31,7 @@ Estimate work, split it into isolated task blocks and larger phases, produce the
 
 ## Constraints
 
-Use [workflow.instructions.md](../instructions/ticket/workflow.instructions.md) for dependency semantics and batch operations, [session-workflow.instructions.md](../instructions/session/session-workflow.instructions.md) for durable workflow graphs, and [orchestrator-delegation.instructions.md](../instructions/orchestration/orchestrator-delegation.instructions.md) for work-case capability roles. Route unresolved ambiguity through [escalation-gate.instructions.md](../instructions/orchestration/escalation-gate.instructions.md) and use [question-quality.instructions.md](../instructions/orchestration/question-quality.instructions.md) for interview prompts.
+Use [workflow.instructions.md](../instructions/ticket/workflow.instructions.md) for dependency semantics and batch operations, [session-workflow.instructions.md](../../../session/.agents/instructions/session/session-workflow.instructions.md) for durable workflow graphs, and [orchestrator-delegation.instructions.md](../../../.agents/instructions/workflow/orchestrator-delegation.instructions.md) for work-case capability roles. Route unresolved ambiguity through [escalation-gate.instructions.md](../../../.agents/instructions/workflow/escalation-gate.instructions.md) and use [question-quality.instructions.md](../../../.agents/instructions/workflow/question-quality.instructions.md) for interview prompts.
 
 Each task block must be small enough for one agent to complete without unresolved open questions. Split a block further or flag the block for interview before dispatch when a material question remains.
 

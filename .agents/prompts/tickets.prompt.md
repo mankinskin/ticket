@@ -10,7 +10,7 @@ agent: "agent"
 Create one or more new tickets from the user's current slash-command request using the ticket-api flow.
 Follow the repository workflow: tickets first, spec second, implementation later.
 
-Reference [ticket-cli](../../memory-api/tools/cli/ticket-cli/README.md) and [ticket-mcp](../../memory-api/tools/mcp/ticket-mcp/README.md).
+Reference [ticket-cli](../../../../context-engine/memory-api/tools/cli/ticket-cli/README.md) and [ticket-mcp](../../../../context-engine/memory-api/tools/mcp/ticket-mcp/README.md).
 
 Install or build the ticket tools when needed:
 - Build the CLI in this workspace with `cargo build -p ticket-cli --bin ticket` and use `./target/debug/ticket.exe`.
