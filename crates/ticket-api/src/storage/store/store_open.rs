@@ -190,8 +190,12 @@ impl TicketStore {
         .entered();
         let overall_started = Instant::now();
         let resolve_started = Instant::now();
-        let index_root = workspace::resolve_store_root_from(
+        let workspace_root = workspace::resolve_workspace_root_from_store_root(
             index_root,
+            workspace::TICKET_INDEX_DIR,
+        );
+        let index_root = workspace::resolve_store_root_at_fixed_workspace(
+            &workspace_root,
             workspace::TICKET_INDEX_DIR,
         );
         let mut report = StoreOpenReport {

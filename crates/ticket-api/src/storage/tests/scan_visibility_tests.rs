@@ -214,7 +214,7 @@ fn open_creates_gitignore_for_local_ticket_artifacts() {
 
     TicketStore::init(dir.path()).unwrap();
 
-    let gitignore = fs::read_to_string(dir.path().join(".gitignore")).unwrap();
+    let gitignore = fs::read_to_string(dir.path().join(".ticket").join(".gitignore")).unwrap();
     assert!(gitignore.contains("tickets.db"));
     assert!(gitignore.contains("tickets.db-shm"));
     assert!(gitignore.contains("tickets.db-wal"));

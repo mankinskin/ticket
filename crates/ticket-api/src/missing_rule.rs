@@ -87,8 +87,7 @@ mod tests {
     fn creates_missing_rule_ticket_and_feedback_entry() {
         let dir = tempfile::tempdir().expect("tempdir");
         let ticket_store = TicketStore::open_or_init(dir.path()).expect("ticket store");
-        let feedback_store =
-            EntityFeedbackStore::new(dir.path(), "default").expect("feedback store");
+        let feedback_store = EntityFeedbackStore::new(dir.path().join(".feedback"));
 
         let tags = vec!["session".to_string(), "policy".to_string()];
         let ticket_id = handle_missing_rule_match(
@@ -110,7 +109,11 @@ mod tests {
             .expect("title");
         assert!(title.contains("missing-rule"));
 
-        let urn = EntityUrn::ticket("default", ticket_id.to_string()).expect("urn");
+        let urn = EntityUrn::ticket(
+            dir.path().to_string_lossy().into_owned(),
+            ticket_id.to_string(),
+        )
+        .expect("urn");
         let entries = feedback_store.entries_for(&urn).expect("entries");
         assert_eq!(entries.len(), 1);
         assert_eq!(entries[0].source, FeedbackSource::System);
@@ -120,8 +123,7 @@ mod tests {
     fn returns_none_when_rule_match_exists() {
         let dir = tempfile::tempdir().expect("tempdir");
         let ticket_store = TicketStore::open_or_init(dir.path()).expect("ticket store");
-        let feedback_store =
-            EntityFeedbackStore::new(dir.path(), "default").expect("feedback store");
+        let feedback_store = EntityFeedbackStore::new(dir.path().join(".feedback"));
         let tags = vec!["session".to_string()];
 
         let result = handle_missing_rule_match(
