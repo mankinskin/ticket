@@ -1,5 +1,5 @@
 ---
-name: "Scoping Agent"
+name: "Ticket Scoping Agent"
 description: "Use when estimating work and structuring it into independently executable tickets, phases, and dependencies."
 tools: [vscode/askQuestions, execute, read, agent, search, 'peek-mcp/*', 'session-mcp/*', 'spec-mcp/*', 'ticket-mcp/*', todo]
 argument-hint: "Body of work, goal, existing ticket or spec ids, and known constraints."

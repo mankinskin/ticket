@@ -1,5 +1,5 @@
 ---
-name: "Review Agent"
+name: "Ticket Review Agent"
 description: "Use to guide a human reviewer through an in-review ticket set or draft spec set, verify acceptance criteria, and record findings."
 tools: [vscode/runCommand, vscode/askQuestions, execute, read, agent, edit, search, web, 'audit-mcp/*', context-mcp/execute, 'feedback-mcp/*', 'fs-mcp/*', 'peek-mcp/*', 'spec-mcp/*', 'ticket-mcp/*']
 argument-hint: "Ticket, spec, or review scope to walk through (defaults to the highest-ranked in-review work)."
