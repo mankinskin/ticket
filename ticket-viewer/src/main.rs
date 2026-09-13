@@ -196,7 +196,6 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             &workspace_root,
             ".feedback",
         ),
-        workspace_slug: "default".to_string(),
     };
     let app = app.merge(feedback_http::app(feedback_state));
     let app = app.merge(client_log_router(ClientLogState::default()));
