@@ -25,7 +25,7 @@ impl TicketStore {
     ///
     /// Rejects with [`StorageError::FrozenPartWrite`] when `part_id`
     /// addresses an existing part currently `frozen` (i.e. a planning part
-    /// on a ticket that has entered `planned`). No-ops (returns `Ok(())`)
+    /// on a ticket that has entered `ready`). No-ops (returns `Ok(())`)
     /// for a `part_id` with no existing manifest entry (a fresh part being
     /// created) or an existing, unfrozen part.
     ///
@@ -53,7 +53,7 @@ impl TicketStore {
                     ticket: *id,
                     part_id,
                     kind: part.kind,
-                    freezing_state: "planned".to_string(),
+                    freezing_state: "ready".to_string(),
                 });
             }
         }

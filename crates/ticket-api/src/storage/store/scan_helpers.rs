@@ -76,9 +76,22 @@ pub(super) fn stale_reconciliation_diagnostic(
 
 pub(super) fn integrate_entry(
     index: &RedbIndexStore,
-    entry: TicketScanEntry,
+    mut entry: TicketScanEntry,
     reindex: bool,
 ) -> Result<Option<ScanIntegrationUpdate>, StorageError> {
+    let legacy_state = entry
+        .manifest
+        .extra
+        .get("state")
+        .and_then(|value| value.as_str())
+        .filter(|state| matches!(*state, "planned" | "open"));
+    if legacy_state.is_some() {
+        entry.manifest = TicketFs::update(
+            &entry.path,
+            &std::collections::BTreeMap::new(),
+            Some("planning"),
+        )?;
+    }
     let type_id = entry
         .manifest
         .extra

@@ -20,7 +20,7 @@ pub const CORE_PART_KINDS: &[&str] = &[
     "amendment",
 ];
 
-/// The planning-phase kinds frozen when a ticket enters `planned` (spec
+/// The planning-phase kinds frozen when a ticket enters `ready` (spec
 /// 24b3d22b, ticket f9e70385). `review`, `validation`, `notes`, `amendment`,
 /// and free-form kinds are never frozen — they stay writable in every state
 /// so recording progress never requires touching the plan.

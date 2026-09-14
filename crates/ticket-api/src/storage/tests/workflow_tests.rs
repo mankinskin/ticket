@@ -8,7 +8,7 @@ fn workflow_facts_set_became_actionable_at_when_blockers_resolve() {
             None,
             "tracker-improvement",
             Some("Blocking prerequisite"),
-            Some("planned"),
+            Some("planning"),
             Default::default(),
             None,
             None,
@@ -19,7 +19,7 @@ fn workflow_facts_set_became_actionable_at_when_blockers_resolve() {
             None,
             "tracker-improvement",
             Some("Blocked dependent"),
-            Some("planned"),
+            Some("planning"),
             Default::default(),
             None,
             None,
@@ -56,7 +56,7 @@ fn workflow_facts_set_last_blocker_progress_at_while_ticket_remains_blocked() {
             None,
             "tracker-improvement",
             Some("Progressing blocker"),
-            Some("open"),
+            Some("planning"),
             Default::default(),
             None,
             None,
@@ -67,7 +67,7 @@ fn workflow_facts_set_last_blocker_progress_at_while_ticket_remains_blocked() {
             None,
             "tracker-improvement",
             Some("Persistent blocker"),
-            Some("planned"),
+            Some("planning"),
             Default::default(),
             None,
             None,
@@ -78,7 +78,7 @@ fn workflow_facts_set_last_blocker_progress_at_while_ticket_remains_blocked() {
             None,
             "tracker-improvement",
             Some("Still blocked dependent"),
-            Some("planned"),
+            Some("planning"),
             Default::default(),
             None,
             None,
@@ -105,7 +105,7 @@ fn workflow_facts_set_last_blocker_progress_at_while_ticket_remains_blocked() {
             &progressing_blocker,
             BTreeMap::new(),
             Some(&[]),
-            Some("planned"),
+            Some("planning"),
             None,
             None,
         )
@@ -169,7 +169,7 @@ fn update_allows_reverse_transitions_from_terminal_states() {
             &cancelled_ticket,
             BTreeMap::new(),
             Some(&[]),
-            Some("open"),
+            Some("planning"),
             None,
             None,
         )
@@ -181,7 +181,7 @@ fn update_allows_reverse_transitions_from_terminal_states() {
             .unwrap()
             .state
             .as_deref(),
-        Some("open")
+        Some("planning")
     );
 }
 
@@ -194,7 +194,7 @@ fn workflow_facts_follow_depends_on_edge_removal() {
             None,
             "tracker-improvement",
             Some("Transient blocker"),
-            Some("planned"),
+            Some("planning"),
             Default::default(),
             None,
             None,
@@ -205,7 +205,7 @@ fn workflow_facts_follow_depends_on_edge_removal() {
             None,
             "tracker-improvement",
             Some("Edge-driven dependent"),
-            Some("planned"),
+            Some("planning"),
             Default::default(),
             None,
             None,
@@ -247,7 +247,7 @@ fn update_guards_transition_ahead_of_dependency_state() {
             None,
             "tracker-improvement",
             Some("Guard blocker"),
-            Some("planned"),
+            Some("planning"),
             Default::default(),
             None,
             None,
@@ -258,7 +258,7 @@ fn update_guards_transition_ahead_of_dependency_state() {
             None,
             "tracker-improvement",
             Some("Guard dependent"),
-            Some("planned"),
+            Some("planning"),
             Default::default(),
             None,
             None,
@@ -275,7 +275,7 @@ fn update_guards_transition_ahead_of_dependency_state() {
 
     // ready -> ready (equal rank) is allowed.
     store
-        .update(&dependent, BTreeMap::new(), Some(&[]), Some("planned"), None, None)
+        .update(&dependent, BTreeMap::new(), Some(&[]), Some("planning"), None, None)
         .unwrap();
 
     // Advancing the dependent past the blocker (still 'ready') is rejected.
@@ -335,7 +335,7 @@ fn update_guards_transition_ahead_of_dependency_state() {
             None,
             "tracker-improvement",
             Some("Cancel gate"),
-            Some("planned"),
+            Some("planning"),
             Default::default(),
             None,
             None,
@@ -346,7 +346,7 @@ fn update_guards_transition_ahead_of_dependency_state() {
             None,
             "tracker-improvement",
             Some("Abandoned dependent"),
-            Some("planned"),
+            Some("planning"),
             Default::default(),
             None,
             None,
@@ -381,7 +381,7 @@ fn update_allows_demotion_and_parking_despite_lagging_dependency() {
             None,
             "tracker-improvement",
             Some("Guard blocker"),
-            Some("open"),
+            Some("planning"),
             Default::default(),
             None,
             None,
@@ -410,7 +410,7 @@ fn update_allows_demotion_and_parking_despite_lagging_dependency() {
     // Demoting the dependent below its own current rank is allowed even though
     // the dependency (open) has not progressed.
     store
-        .update(&dependent, BTreeMap::new(), Some(&[]), Some("planned"), None, None)
+        .update(&dependent, BTreeMap::new(), Some(&[]), Some("planning"), None, None)
         .unwrap();
 
     // Parking a separate in-implementation ticket is also allowed.
@@ -449,7 +449,7 @@ fn update_still_guards_forward_transition_past_lagging_dependency() {
             None,
             "tracker-improvement",
             Some("Guard blocker"),
-            Some("open"),
+            Some("planning"),
             Default::default(),
             None,
             None,
@@ -495,7 +495,7 @@ fn release_lease_enforces_owner_and_stale_rules() {
             None,
             "tracker-improvement",
             Some("Leased ticket"),
-            Some("planned"),
+            Some("planning"),
             Default::default(),
             None,
             None,
@@ -536,7 +536,7 @@ fn board_check_out_releases_orphaned_lease_when_entry_is_missing() {
             None,
             "tracker-improvement",
             Some("Orphaned lease ticket"),
-            Some("planned"),
+            Some("planning"),
             Default::default(),
             None,
             None,
@@ -580,7 +580,7 @@ fn board_check_in_round_trips_session_and_worktree_metadata() {
             None,
             "tracker-improvement",
             Some("Metadata ticket"),
-            Some("planned"),
+            Some("planning"),
             Default::default(),
             None,
             None,
@@ -621,7 +621,7 @@ fn board_worktrees_groups_entries_by_path() {
                 None,
                 "tracker-improvement",
                 Some(title),
-                Some("planned"),
+                Some("planning"),
                 Default::default(),
                 None,
                 None,
@@ -668,10 +668,10 @@ fn board_check_in_rejects_worktree_owned_by_another_session() {
     let dir = tempdir().unwrap();
     let store = TicketStore::init(dir.path()).unwrap();
     let first = store
-        .create(None, "tracker-improvement", Some("First"), Some("planned"), Default::default(), None, None)
+        .create(None, "tracker-improvement", Some("First"), Some("planning"), Default::default(), None, None)
         .unwrap();
     let second = store
-        .create(None, "tracker-improvement", Some("Second"), Some("planned"), Default::default(), None, None)
+        .create(None, "tracker-improvement", Some("Second"), Some("planning"), Default::default(), None, None)
         .unwrap();
 
     store
@@ -700,7 +700,7 @@ fn board_check_in_rejects_worktree_owned_by_another_session() {
         .unwrap();
 
     let third = store
-        .create(None, "tracker-improvement", Some("Third"), Some("planned"), Default::default(), None, None)
+        .create(None, "tracker-improvement", Some("Third"), Some("planning"), Default::default(), None, None)
         .unwrap();
     let error = store
         .board_check_in(
@@ -724,7 +724,7 @@ fn board_check_in_requires_session_for_worktree_and_allows_unbound_entry() {
     let dir = tempdir().unwrap();
     let store = TicketStore::init(dir.path()).unwrap();
     let ticket = store
-        .create(None, "tracker-improvement", Some("Worktree binding"), Some("planned"), Default::default(), None, None)
+        .create(None, "tracker-improvement", Some("Worktree binding"), Some("planning"), Default::default(), None, None)
         .unwrap();
 
     let error = store

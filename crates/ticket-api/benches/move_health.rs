@@ -80,7 +80,7 @@ fn append_incremental_fixture_tickets(root_store: &Path, batch: usize, count: us
             root_store,
             &id,
             &format!("bench incremental perf ticket {batch}-{offset}"),
-            "planned",
+            "planning",
             "perf",
         )
         .expect("append fixture ticket");

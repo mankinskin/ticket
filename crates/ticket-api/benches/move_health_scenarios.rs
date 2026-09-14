@@ -72,7 +72,7 @@ fn build_move_scenario_fixture(
                 &source_root,
                 &id,
                 &format!("scenario moved ticket {offset}"),
-                "planned",
+                "planning",
                 "perf-scenario",
             )
             .expect("append moved fixture ticket");
@@ -87,7 +87,7 @@ fn build_move_scenario_fixture(
                     &source_root,
                     &id,
                     &format!("scenario external ticket {offset}"),
-                    "planned",
+                    "planning",
                     "perf-scenario-external",
                 )
                 .expect("append external fixture ticket");

@@ -1,6 +1,76 @@
 use super::*;
 
 #[test]
+fn create_defaults_to_planning_state() {
+    let dir = tempdir().unwrap();
+    let store = TicketStore::init(dir.path()).unwrap();
+
+    let id = store
+        .create(
+            None,
+            "tracker-improvement",
+            Some("Planning default"),
+            None,
+            Default::default(),
+            None,
+            None,
+        )
+        .unwrap();
+
+    let indexed = store.get_indexed(&id).unwrap().unwrap();
+    assert_eq!(indexed.state.as_deref(), Some("planning"));
+}
+
+#[test]
+fn scan_migrates_legacy_planned_and_open_states_to_planning() {
+    let dir = tempdir().unwrap();
+    let store = TicketStore::init(dir.path()).unwrap();
+
+    for legacy_state in ["planned", "open"] {
+        let id = store
+            .create(
+                None,
+                "tracker-improvement",
+                Some("Legacy state"),
+                Some("planning"),
+                Default::default(),
+                None,
+                None,
+            )
+            .unwrap();
+        let mut manifest = store.get(&id).unwrap();
+        manifest.extra.insert(
+            "state".to_string(),
+            Value::String(legacy_state.to_string()),
+        );
+        let path = store.get_indexed(&id).unwrap().unwrap().path;
+        let toml = memory_kernel::model::manifest_format::format_manifest_toml(
+            &manifest,
+        );
+        std::fs::write(
+            path.join(crate::model::filesystem::TICKET_MANIFEST_FILE),
+            toml,
+        )
+        .unwrap();
+    }
+
+    store.scan(true).unwrap();
+
+    for ticket in store.list(None, None, None).unwrap() {
+        assert_eq!(ticket.state.as_deref(), Some("planning"));
+        assert_eq!(
+            store
+                .get(&ticket.id)
+                .unwrap()
+                .extra
+                .get("state")
+                .and_then(Value::as_str),
+            Some("planning")
+        );
+    }
+}
+
+#[test]
 fn create_rejects_off_schema_state() {
     let dir = tempdir().unwrap();
     let store = TicketStore::init(dir.path()).unwrap();
@@ -22,7 +92,7 @@ fn create_rejects_off_schema_state() {
             crate::error::SchemaValidationError::OffSchemaState { state, allowed },
         ) => {
             assert_eq!(state, "archived");
-            assert!(allowed.contains(&"open".to_string()));
+            assert!(allowed.contains(&"planning".to_string()));
         },
         other => panic!("expected OffSchemaState, got {other:?}"),
     }
@@ -38,7 +108,7 @@ fn off_schema_state_recovers_only_to_entry_state_then_transitions_normally() {
             None,
             "tracker-improvement",
             Some("Legacy off-schema state"),
-            Some("open"),
+            Some("planning"),
             Default::default(),
             None,
             None,
@@ -60,19 +130,19 @@ fn off_schema_state_recovers_only_to_entry_state_then_transitions_normally() {
     store.scan(true).unwrap();
 
     let err = store
-        .update(&id, BTreeMap::new(), None, Some("planned"), None, None)
+        .update(&id, BTreeMap::new(), None, Some("ready"), None, None)
         .expect_err("recovery must not jump to a non-entry state");
-    assert!(err.to_string().contains("'archived' -> 'planned'"));
+    assert!(err.to_string().contains("'archived' -> 'ready'"));
 
     store
-        .update(&id, BTreeMap::new(), None, Some("open"), None, None)
+        .update(&id, BTreeMap::new(), None, Some("planning"), None, None)
         .expect("off-schema state should recover to the entry state");
     store
-        .update(&id, BTreeMap::new(), None, Some("planned"), None, None)
+        .update(&id, BTreeMap::new(), None, Some("planning"), None, None)
         .expect("recovered ticket should transition normally");
 
     let indexed = store.get_indexed(&id).unwrap().unwrap();
-    assert_eq!(indexed.state.as_deref(), Some("planned"));
+    assert_eq!(indexed.state.as_deref(), Some("planning"));
 }
 
 #[test]
@@ -85,7 +155,7 @@ fn ticket_29a56eef_state_in_field_patch_errors_instead_of_silently_dropping() {
             None,
             "tracker-improvement",
             Some("Test ticket"),
-            Some("open"),
+            Some("planning"),
             Default::default(),
             None,
             None,
@@ -96,7 +166,7 @@ fn ticket_29a56eef_state_in_field_patch_errors_instead_of_silently_dropping() {
     // `to_state`) must never be silently dropped: it must either apply or
     // return an explicit error naming the field.
     let mut patch = BTreeMap::new();
-    patch.insert("state".to_string(), Value::String("planned".to_string()));
+    patch.insert("state".to_string(), Value::String("planning".to_string()));
 
     let result = store.update(&id, patch, None, None, None, None);
 
@@ -105,7 +175,7 @@ fn ticket_29a56eef_state_in_field_patch_errors_instead_of_silently_dropping() {
             let indexed = store.get_indexed(&id).unwrap().unwrap();
             assert_eq!(
                 indexed.state.as_deref(),
-                Some("planned"),
+                Some("planning"),
                 "if the write is accepted, it must actually apply"
             );
         },
@@ -130,7 +200,7 @@ fn bug_7f4aaa05_state_preserved_on_field_patch_without_to_state() {
             None,
             "tracker-improvement",
             Some("Test ticket"),
-            Some("open"),
+            Some("planning"),
             Default::default(),
             None,
             None,
@@ -139,11 +209,11 @@ fn bug_7f4aaa05_state_preserved_on_field_patch_without_to_state() {
 
     // Advance to ready
     store
-        .update(&id, BTreeMap::new(), Some(&[]), Some("planned"), None, None)
+        .update(&id, BTreeMap::new(), Some(&[]), Some("ready"), None, None)
         .unwrap();
 
     let indexed = store.get_indexed(&id).unwrap().unwrap();
-    assert_eq!(indexed.state.as_deref(), Some("planned"));
+    assert_eq!(indexed.state.as_deref(), Some("ready"));
 
     // BUG: Update description WITHOUT to_state - state should be preserved
     let mut patch = BTreeMap::new();
@@ -157,7 +227,7 @@ fn bug_7f4aaa05_state_preserved_on_field_patch_without_to_state() {
     let indexed = store.get_indexed(&id).unwrap().unwrap();
     assert_eq!(
         indexed.state.as_deref(),
-        Some("planned"),
+        Some("ready"),
         "State should be preserved when patching fields without to_state"
     );
 }
@@ -173,7 +243,7 @@ fn bug_7f4aaa05_description_patch_with_to_state_transition() {
             None,
             "tracker-improvement",
             Some("Test ticket"),
-            Some("open"),
+            Some("planning"),
             Default::default(),
             None,
             None,
@@ -182,11 +252,11 @@ fn bug_7f4aaa05_description_patch_with_to_state_transition() {
 
     // Advance to ready
     store
-        .update(&id, BTreeMap::new(), Some(&[]), Some("planned"), None, None)
+        .update(&id, BTreeMap::new(), Some(&[]), Some("ready"), None, None)
         .unwrap();
 
     let indexed = store.get_indexed(&id).unwrap().unwrap();
-    assert_eq!(indexed.state.as_deref(), Some("planned"));
+    assert_eq!(indexed.state.as_deref(), Some("ready"));
 
     // Combined: patch fields AND transition in one call
     let mut patch = BTreeMap::new();
@@ -223,7 +293,7 @@ fn bug_7f4aaa05_transition_states_multi_step_path() {
             None,
             "tracker-improvement",
             Some("Test ticket"),
-            Some("open"),
+            Some("planning"),
             Default::default(),
             None,
             None,
@@ -231,7 +301,7 @@ fn bug_7f4aaa05_transition_states_multi_step_path() {
         .unwrap();
 
     // Multi-step transition: new -> ready
-    let transition_states = vec!["planned".to_string()];
+    let transition_states = vec!["ready".to_string()];
     store
         .update(
             &id,
@@ -246,7 +316,7 @@ fn bug_7f4aaa05_transition_states_multi_step_path() {
     let indexed = store.get_indexed(&id).unwrap().unwrap();
     assert_eq!(
         indexed.state.as_deref(),
-        Some("planned"),
+        Some("ready"),
         "transition_states should apply the final state from the path"
     );
 }
@@ -261,7 +331,7 @@ fn update_routes_depends_on_patch_to_canonical_edge_ops() {
             None,
             "tracker-improvement",
             Some("Source"),
-            Some("open"),
+            Some("planning"),
             Default::default(),
             None,
             None,
@@ -272,7 +342,7 @@ fn update_routes_depends_on_patch_to_canonical_edge_ops() {
             None,
             "tracker-improvement",
             Some("Target A"),
-            Some("open"),
+            Some("planning"),
             Default::default(),
             None,
             None,
@@ -283,7 +353,7 @@ fn update_routes_depends_on_patch_to_canonical_edge_ops() {
             None,
             "tracker-improvement",
             Some("Target B"),
-            Some("open"),
+            Some("planning"),
             Default::default(),
             None,
             None,
@@ -333,7 +403,7 @@ fn update_auto_walks_reachable_multi_step_by_default() {
             None,
             "tracker-improvement",
             Some("Reachable multi-step forward"),
-            Some("open"),
+            Some("planning"),
             Default::default(),
             None,
             None,
@@ -368,7 +438,7 @@ fn update_blocks_reachable_multi_step_under_single_hop_flag() {
             None,
             "tracker-improvement",
             Some("Reachable multi-step forward"),
-            Some("open"),
+            Some("planning"),
             Default::default(),
             None,
             None,
@@ -399,14 +469,14 @@ fn update_blocks_reachable_multi_step_under_single_hop_flag() {
                 intermediate,
             },
         ) => {
-            assert_eq!(from, "open");
+            assert_eq!(from, "planning");
             assert_eq!(to, "in-implementation");
             assert!(
-                allowed_next.contains(&"planned".to_string()),
+                allowed_next.contains(&"ready".to_string()),
                 "allowed next states should list the legal single-hop targets: {allowed_next:?}"
             );
             assert!(
-                intermediate.contains(&"planned".to_string()),
+                intermediate.contains(&"ready".to_string()),
                 "intermediate path should name the mandatory waypoint: {intermediate:?}"
             );
         },
@@ -415,7 +485,7 @@ fn update_blocks_reachable_multi_step_under_single_hop_flag() {
 
     // The blocked update must not have advanced the ticket.
     let indexed = store.get_indexed(&id).unwrap().unwrap();
-    assert_eq!(indexed.state.as_deref(), Some("open"));
+    assert_eq!(indexed.state.as_deref(), Some("planning"));
 }
 
 #[test]
@@ -436,11 +506,11 @@ fn update_auto_walks_reachable_reverse_multi_step_by_default() {
         .unwrap();
 
     store
-        .update(&id, BTreeMap::new(), None, Some("open"), None, None)
+        .update(&id, BTreeMap::new(), None, Some("planning"), None, None)
         .unwrap();
 
     let indexed = store.get_indexed(&id).unwrap().unwrap();
-    assert_eq!(indexed.state.as_deref(), Some("open"));
+    assert_eq!(indexed.state.as_deref(), Some("planning"));
 }
 
 #[test]
@@ -465,7 +535,7 @@ fn update_blocks_reachable_reverse_multi_step_under_single_hop_flag() {
             &id,
             BTreeMap::new(),
             None,
-            Some("open"),
+            Some("planning"),
             None,
             Some(DescriptionUpdateMode::Replace),
             None,
@@ -493,7 +563,7 @@ fn update_without_description_preserves_existing_description() {
             None,
             "tracker-improvement",
             Some("Test ticket"),
-            Some("open"),
+            Some("planning"),
             Default::default(),
             None,
             Some("Original description"),
@@ -528,7 +598,7 @@ fn update_with_replace_mode_overwrites_description() {
             None,
             "tracker-improvement",
             Some("Test ticket"),
-            Some("open"),
+            Some("planning"),
             Default::default(),
             None,
             Some("Original description"),
@@ -563,7 +633,7 @@ fn update_with_append_mode_concatenates_description() {
             None,
             "tracker-improvement",
             Some("Test ticket"),
-            Some("open"),
+            Some("planning"),
             Default::default(),
             None,
             Some("Original description"),
@@ -602,7 +672,7 @@ fn update_captures_previous_description_in_history_regardless_of_mode() {
             None,
             "tracker-improvement",
             Some("Test ticket"),
-            Some("open"),
+            Some("planning"),
             Default::default(),
             None,
             Some("Original description"),
@@ -641,7 +711,7 @@ fn undo_restores_previous_description() {
             None,
             "tracker-improvement",
             Some("Test ticket"),
-            Some("open"),
+            Some("planning"),
             Default::default(),
             None,
             Some("Original description"),
@@ -698,7 +768,7 @@ fn ticket_3d952036_omitted_description_mode_is_rejected() {
             None,
             "tracker-improvement",
             Some("Test ticket"),
-            Some("open"),
+            Some("planning"),
             Default::default(),
             None,
             Some("Original description"),
@@ -811,7 +881,7 @@ fn ticket_3d952036_review_part_write_leaves_objective_byte_identical() {
             None,
             "tracker-improvement",
             Some("Test ticket"),
-            Some("open"),
+            Some("planning"),
             Default::default(),
             None,
             Some("Original objective content, unchanged."),
@@ -856,7 +926,7 @@ fn ticket_3d952036_per_part_history_and_undo_restores_only_that_part() {
             None,
             "tracker-improvement",
             Some("Test ticket"),
-            Some("open"),
+            Some("planning"),
             Default::default(),
             None,
             None,
@@ -916,7 +986,7 @@ fn ticket_3d952036_legacy_ticket_with_no_parts_table_still_updatable() {
             None,
             "tracker-improvement",
             Some("Legacy ticket"),
-            Some("open"),
+            Some("planning"),
             Default::default(),
             None,
             Some("Legacy objective"),
@@ -964,7 +1034,7 @@ fn ticket_3d952036_legacy_ticket_with_no_parts_table_still_updatable() {
     );
 }
 
-// ── ticket f9e70385: plan freezing at `planned` (spec 24b3d22b) ─────────────
+// ── ticket f9e70385: plan freezing at `ready` (spec 24b3d22b) ────────────────
 
 const PLANNING_KINDS: &[&str] = &[
     "objective",
@@ -984,7 +1054,7 @@ fn f9e70385_planned_freezes_exactly_the_five_planning_parts() {
             None,
             "tracker-improvement",
             Some("Plan freeze"),
-            Some("open"),
+            Some("planning"),
             Default::default(),
             None,
             Some("Legacy objective content"),
@@ -999,7 +1069,7 @@ fn f9e70385_planned_freezes_exactly_the_five_planning_parts() {
         .unwrap();
 
     store
-        .update(&id, BTreeMap::new(), None, Some("planned"), None, None)
+        .update(&id, BTreeMap::new(), None, Some("ready"), None, None)
         .unwrap();
 
     let manifest = store.get(&id).unwrap();
@@ -1032,7 +1102,7 @@ fn f9e70385_write_to_frozen_part_is_rejected_and_file_byte_identical() {
             None,
             "tracker-improvement",
             Some("Plan freeze"),
-            Some("open"),
+            Some("planning"),
             Default::default(),
             None,
             Some("Stable objective"),
@@ -1040,7 +1110,7 @@ fn f9e70385_write_to_frozen_part_is_rejected_and_file_byte_identical() {
         .unwrap();
 
     store
-        .update(&id, BTreeMap::new(), None, Some("planned"), None, None)
+        .update(&id, BTreeMap::new(), None, Some("ready"), None, None)
         .unwrap();
 
     let path = store.get_indexed(&id).unwrap().unwrap().path;
@@ -1072,7 +1142,7 @@ fn f9e70385_write_to_frozen_part_is_rejected_and_file_byte_identical() {
         message.contains(&objective.id.to_string()),
         "must name the part id: {message}"
     );
-    assert!(message.contains("planned"), "must name the freezing state: {message}");
+    assert!(message.contains("ready"), "must name the freezing state: {message}");
     assert!(
         message.contains("amendment") && message.contains("supersedes"),
         "must name the amendment recovery path: {message}"
@@ -1093,7 +1163,7 @@ fn f9e70385_review_write_on_planned_ticket_succeeds() {
             None,
             "tracker-improvement",
             Some("Plan freeze"),
-            Some("open"),
+            Some("planning"),
             Default::default(),
             None,
             None,
@@ -1101,7 +1171,7 @@ fn f9e70385_review_write_on_planned_ticket_succeeds() {
         .unwrap();
 
     store
-        .update(&id, BTreeMap::new(), None, Some("planned"), None, None)
+        .update(&id, BTreeMap::new(), None, Some("ready"), None, None)
         .unwrap();
 
     // AC4: a write to `review` on a `planned` ticket succeeds.
@@ -1130,7 +1200,7 @@ fn f9e70385_unfreeze_refreeze_cycle_appends_plan_revision() {
             None,
             "tracker-improvement",
             Some("Plan freeze"),
-            Some("open"),
+            Some("planning"),
             Default::default(),
             None,
             Some("Objective v1"),
@@ -1138,7 +1208,7 @@ fn f9e70385_unfreeze_refreeze_cycle_appends_plan_revision() {
         .unwrap();
 
     store
-        .update(&id, BTreeMap::new(), None, Some("planned"), None, None)
+        .update(&id, BTreeMap::new(), None, Some("ready"), None, None)
         .unwrap();
     let manifest = store.get(&id).unwrap();
     assert!(manifest.parts().iter().all(|p| p.frozen == (PLANNING_KINDS.contains(&p.kind.as_str()))));
@@ -1149,10 +1219,10 @@ fn f9e70385_unfreeze_refreeze_cycle_appends_plan_revision() {
         .unwrap();
     assert_eq!(revision_1, 1);
 
-    // AC5: transitioning back to a pre-`planned` state clears every frozen
+    // AC5: transitioning back to a pre-`ready` state clears every frozen
     // flag.
     store
-        .update(&id, BTreeMap::new(), None, Some("open"), None, None)
+        .update(&id, BTreeMap::new(), None, Some("planning"), None, None)
         .unwrap();
     let manifest = store.get(&id).unwrap();
     assert!(
@@ -1170,9 +1240,9 @@ fn f9e70385_unfreeze_refreeze_cycle_appends_plan_revision() {
         .write_part(&id, objective.id, "objective", "Objective v2", None)
         .unwrap();
 
-    // Re-entering `planned` re-freezes and appends a plan revision.
+    // Re-entering `ready` re-freezes and appends a plan revision.
     store
-        .update(&id, BTreeMap::new(), None, Some("planned"), None, None)
+        .update(&id, BTreeMap::new(), None, Some("ready"), None, None)
         .unwrap();
     let manifest = store.get(&id).unwrap();
     assert!(manifest.parts().iter().all(|p| p.frozen == (PLANNING_KINDS.contains(&p.kind.as_str()))));
@@ -1194,7 +1264,7 @@ fn f9e70385_amendment_records_supersedes_and_is_retrievable_alongside_frozen_par
             None,
             "tracker-improvement",
             Some("Plan freeze"),
-            Some("open"),
+            Some("planning"),
             Default::default(),
             None,
             None,
@@ -1207,7 +1277,7 @@ fn f9e70385_amendment_records_supersedes_and_is_retrievable_alongside_frozen_par
         .unwrap();
 
     store
-        .update(&id, BTreeMap::new(), None, Some("planned"), None, None)
+        .update(&id, BTreeMap::new(), None, Some("ready"), None, None)
         .unwrap();
 
     let manifest = store.get(&id).unwrap();
@@ -1265,7 +1335,7 @@ fn f9e70385_undo_part_on_frozen_part_is_also_rejected() {
             None,
             "tracker-improvement",
             Some("Plan freeze"),
-            Some("open"),
+            Some("planning"),
             Default::default(),
             None,
             None,
@@ -1282,7 +1352,7 @@ fn f9e70385_undo_part_on_frozen_part_is_also_rejected() {
         .unwrap();
 
     store
-        .update(&id, BTreeMap::new(), None, Some("planned"), None, None)
+        .update(&id, BTreeMap::new(), None, Some("ready"), None, None)
         .unwrap();
 
     // AC7: undo is a write like any other and must not bypass the gate.
@@ -1309,7 +1379,7 @@ fn f9e70385_legacy_description_write_rejected_when_objective_frozen() {
             None,
             "tracker-improvement",
             Some("Plan freeze"),
-            Some("open"),
+            Some("planning"),
             Default::default(),
             None,
             Some("Frozen objective content"),
@@ -1317,7 +1387,7 @@ fn f9e70385_legacy_description_write_rejected_when_objective_frozen() {
         .unwrap();
 
     store
-        .update(&id, BTreeMap::new(), None, Some("planned"), None, None)
+        .update(&id, BTreeMap::new(), None, Some("ready"), None, None)
         .unwrap();
 
     let path = store.get_indexed(&id).unwrap().unwrap().path;
@@ -1371,7 +1441,7 @@ fn bc74e91f_combined_freeze_and_description_write_materializes_matching_objectiv
             None,
             "tracker-improvement",
             Some("Combined freeze + description write"),
-            Some("open"),
+            Some("planning"),
             Default::default(),
             None,
             None,
@@ -1380,7 +1450,7 @@ fn bc74e91f_combined_freeze_and_description_write_materializes_matching_objectiv
 
     let written = "combined write content";
 
-    // AC1/AC2: a single call that both transitions to `planned` and writes
+    // AC1/AC2: a single call that both transitions to `ready` and writes
     // the description must materialize the `objective` part from the new
     // description text, not from the pre-call (empty) description.
     store
@@ -1388,7 +1458,7 @@ fn bc74e91f_combined_freeze_and_description_write_materializes_matching_objectiv
             &id,
             BTreeMap::new(),
             None,
-            Some("planned"),
+            Some("ready"),
             Some(written),
             Some(DescriptionUpdateMode::Replace),
             None,
@@ -1405,7 +1475,7 @@ fn bc74e91f_combined_freeze_and_description_write_materializes_matching_objectiv
         .expect("objective part should be materialized by plan freeze");
     assert!(
         objective.frozen,
-        "objective should be frozen after entering planned"
+        "objective should be frozen after entering ready"
     );
 
     let objective_content = fs::read_to_string(path.join(&objective.path)).unwrap();
@@ -1425,7 +1495,7 @@ fn bc74e91f_combined_freeze_and_description_write_materializes_matching_objectiv
     );
 
     let indexed = store.get_indexed(&id).unwrap().unwrap();
-    assert_eq!(indexed.state.as_deref(), Some("planned"));
+    assert_eq!(indexed.state.as_deref(), Some("ready"));
 }
 
 

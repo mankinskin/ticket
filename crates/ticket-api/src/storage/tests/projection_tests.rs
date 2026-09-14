@@ -30,7 +30,7 @@ fn fixture_ticket_with_all_kinds() -> (tempfile::TempDir, TicketStore, Uuid) {
             None,
             "tracker-improvement",
             Some("Projection fixture"),
-            Some("open"),
+            Some("planning"),
             Default::default(),
             None,
             None,
@@ -183,7 +183,7 @@ fn explicit_parts_list_absent_kind_yields_empty_not_error() {
             None,
             "tracker-improvement",
             Some("No design part"),
-            Some("open"),
+            Some("planning"),
             Default::default(),
             None,
             Some("objective text"),
@@ -203,7 +203,7 @@ fn legacy_ticket_with_no_parts_table_projects_sanely_under_every_profile() {
             None,
             "tracker-improvement",
             Some("Legacy ticket"),
-            Some("open"),
+            Some("planning"),
             Default::default(),
             None,
             Some("Legacy description-only objective"),
@@ -273,7 +273,7 @@ fn plan_profile_inlines_frozen_requirements_amendments_oldest_first_newest_last(
             None,
             "tracker-improvement",
             Some("Amendment ordering"),
-            Some("open"),
+            Some("planning"),
             Default::default(),
             None,
             Some("objective text"),
@@ -285,9 +285,9 @@ fn plan_profile_inlines_frozen_requirements_amendments_oldest_first_newest_last(
         .write_part(&id, requirements_id, "requirements", "frozen requirements text", None)
         .unwrap();
 
-    // Freeze planning parts by entering `planned`.
+    // Freeze planning parts by entering `ready`.
     store
-        .update(&id, Default::default(), None, Some("planned"), None, None)
+        .update(&id, Default::default(), None, Some("ready"), None, None)
         .unwrap();
 
     store

@@ -191,7 +191,7 @@ impl TicketStore {
         let indexed =
             self.get_indexed(id)?.ok_or(StorageError::NotFound(*id))?;
 
-        let current_state = indexed.state.as_deref().unwrap_or("open");
+        let current_state = indexed.state.as_deref().unwrap_or("planning");
         if current_state == target_state {
             let manifest = TicketFs::read(&indexed.path)?;
             self.board_reconcile(id, false);

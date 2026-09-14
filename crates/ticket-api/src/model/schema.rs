@@ -10,7 +10,7 @@ impl TicketTypeSchemaExt for TicketTypeSchema {
 	fn entry_state(&self) -> Option<&str> {
 		self.states
 			.iter()
-			.find(|state| state.as_str() == "open")
+			.find(|state| state.as_str() == "planning")
 			.map(String::as_str)
 			.or_else(|| self.states.first().map(String::as_str))
 	}

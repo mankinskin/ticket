@@ -585,7 +585,7 @@ impl TicketFs {
 
     /// f9e70385, AC1/AC5), invoked exclusively from the state-transition
     /// path (`TicketStore::update_with_options`) whenever a ticket enters
-    /// or leaves `planned`. This is the sanctioned freeze/unfreeze
+    /// or leaves `ready`. This is the sanctioned freeze/unfreeze
     /// mechanism itself — not a content write — so it does not go through
     /// `TicketStore::enforce_part_write_gate`; there is no other privileged
     /// bypass.

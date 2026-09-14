@@ -337,7 +337,7 @@ impl TicketStore {
         }
         let state = initial_state
             .or_else(|| schema.entry_state())
-            .unwrap_or("open")
+            .unwrap_or("planning")
             .to_string();
         manifest
             .extra
@@ -451,8 +451,9 @@ impl TicketStore {
             target_root,
             workspace::TICKET_INDEX_DIR,
         );
-        if store_root.file_name().and_then(|name| name.to_str())
-            == Some(workspace::TICKET_INDEX_DIR)
+        if store_root.exists()
+            && store_root.file_name().and_then(|name| name.to_str())
+                == Some(workspace::TICKET_INDEX_DIR)
         {
             return Ok(self.resolve_scan_root_path(&store_root.join("tickets")));
         }
@@ -679,10 +680,12 @@ impl TicketStore {
                     &indexed.type_id,
                     previous_state.as_deref(),
                 );
-        if previous_state.as_deref() != new_state.as_deref() {
+        let workflow_progress = previous_state.as_deref() != new_state.as_deref()
+            || new_state.as_deref() == Some("planning");
+        if workflow_progress {
             self.refresh_workflow_facts_for_roots(
                 &[*id],
-                state_progressed,
+                state_progressed || new_state.as_deref() == Some("planning"),
                 now,
             )?;
         }
@@ -740,7 +743,7 @@ impl TicketStore {
     ) -> Result<(TicketManifest, Option<String>), StorageError> {
         // Gate on the ticket's state as of the start of this call, before
         // any transition below applies this same call's freeze/unfreeze.
-        // A single call that both transitions into `planned` and sets the
+        // A single call that both transitions into `ready` and sets the
         // description is the freeze taking effect, not a write to a part
         // already frozen by a prior call — AC7 targets the latter only
         // (proven by `f9e70385_legacy_description_write_rejected_when_objective_frozen`,
@@ -779,16 +782,28 @@ impl TicketStore {
         }
 
         let updated_manifest = if transition_path.is_empty() {
-            TicketFs::update(ticket_path, patch, new_state.as_deref())?
+            let mut manifest =
+                TicketFs::update(ticket_path, patch, new_state.as_deref())?;
+            let planned_rank = self.state_rank_for_type(type_id, Some("planning"));
+            if let Some(final_state) = new_state.as_deref() {
+                if final_state == "ready" {
+                    manifest = TicketFs::apply_plan_freeze(ticket_path, true)?;
+                } else if self.state_rank_for_type(type_id, Some(final_state))
+                    < planned_rank
+                {
+                    manifest = TicketFs::apply_plan_freeze(ticket_path, false)?;
+                }
+            }
+            manifest
         } else {
             // Plan freezing (spec 24b3d22b, ticket f9e70385, AC1/AC5): every
             // state visited along the transition path is evaluated. Entering
-            // `planned` freezes the five planning parts (materializing any
+            // `ready` freezes the five planning parts (materializing any
             // missing) and cuts a plan revision; landing on any state ranked
-            // below `planned` clears every frozen flag. States ranked at or
-            // above `planned` otherwise leave frozen flags untouched.
+            // below `ready` clears every frozen flag. States ranked at or
+            // above `ready` otherwise leave frozen flags untouched.
             let planned_rank =
-                self.state_rank_for_type(type_id, Some("planned"));
+                self.state_rank_for_type(type_id, Some("ready"));
             let mut manifest = None;
             for (index, state) in transition_path.iter().enumerate() {
                 let step_patch = if index + 1 == transition_path.len() {
@@ -801,7 +816,7 @@ impl TicketStore {
                     &step_patch,
                     Some(state.as_str()),
                 )?;
-                if state.as_str() == "planned" {
+                if state.as_str() == "ready" {
                     step_manifest =
                         TicketFs::apply_plan_freeze(ticket_path, true)?;
                 } else if self.state_rank_for_type(type_id, Some(state.as_str()))
@@ -873,7 +888,7 @@ impl TicketStore {
                     indexed.type_id
                 ))
             })?;
-        let current_state = indexed.state.as_deref().unwrap_or("open");
+        let current_state = indexed.state.as_deref().unwrap_or("planning");
         if current_state == target_state && transition_states.is_empty() {
             return Ok(vec![]);
         }
@@ -882,7 +897,7 @@ impl TicketStore {
         // recover directly to the schema entry state before normal transitions
         // resume.
         if !schema.states.iter().any(|state| state == current_state) {
-            let entry_state = schema.entry_state().unwrap_or("open");
+            let entry_state = schema.entry_state().unwrap_or("planning");
             if transition_states.is_empty() && target_state == entry_state {
                 return Ok(Vec::new());
             }
@@ -917,7 +932,12 @@ impl TicketStore {
                 // required intermediate state. Under the `single_hop` opt-out,
                 // a multi-hop path that would skip a required waypoint is
                 // rejected with recovery guidance instead of being walked.
-                Some(segment) => {
+                Some(mut segment) => {
+                    if segment.last().map(String::as_str)
+                        != Some(checkpoint.as_str())
+                    {
+                        segment.push(checkpoint.clone());
+                    }
                     if single_hop && segment.len() > 1 {
                         return Err(StorageError::Validation(
                             crate::error::SchemaValidationError::InvalidTransition {
@@ -1006,7 +1026,7 @@ impl TicketStore {
                     target_state: target_state.to_string(),
                     dependency: edge.to,
                     dependency_state: dependency_state
-                        .unwrap_or("open")
+                        .unwrap_or("planning")
                         .to_string(),
                 });
             }

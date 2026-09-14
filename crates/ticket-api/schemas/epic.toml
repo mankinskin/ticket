@@ -8,8 +8,8 @@
 type_id = "epic"
 
 states = [
-    "open",
-    "planned",
+    "planning",
+    "ready",
     "in-implementation",
     "in-review",
     "on-hold",
@@ -24,23 +24,19 @@ required_states = ["in-review"]
 # ── State machine transitions ──────────────────────────────────────────────────
 
 [[transitions]]
-from = "open"
-to = "planned"
+from = "planning"
+to = "ready"
 
 [[transitions]]
-from = "open"
-to = "cancelled"
-
-[[transitions]]
-from = "planned"
+from = "ready"
 to = "in-implementation"
 
 [[transitions]]
-from = "planned"
+from = "planning"
 to = "cancelled"
 
 [[transitions]]
-from = "planned"
+from = "planning"
 to = "on-hold"
 
 [[transitions]]

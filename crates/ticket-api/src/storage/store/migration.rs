@@ -259,9 +259,9 @@ impl TicketStore {
     /// order in the manifest so concatenating parts in manifest order
     /// reproduces the original description exactly (AC1).
     ///
-    /// A ticket currently `planned` is deferred (see
+    /// A ticket currently `planning` is deferred (see
     /// [`MigrationApplyReport::skipped_planned`]) rather than stepped back
-    /// and forth, since re-entering `planned` can be rejected by an
+    /// and forth, since re-entering `planning` can be rejected by an
     /// unrelated workflow gate with no safe automatic recovery.
     pub fn migration_apply(
         &self,
@@ -284,11 +284,11 @@ impl TicketStore {
                 continue;
             }
 
-            let was_planned = indexed.state.as_deref() == Some("planned");
-            if was_planned {
+            let was_planning = indexed.state.as_deref() == Some("planning");
+            if was_planning {
                 // Deferred rather than stepped back and forth (see
                 // `MigrationApplyReport::skipped_planned`): re-entering
-                // `planned` can be rejected by an unrelated dependency
+                // `planning` can be rejected by an unrelated dependency
                 // gate, which would leave the ticket stuck unfrozen with
                 // no safe automatic recovery. Left completely untouched.
                 report.skipped_planned.push(id);
