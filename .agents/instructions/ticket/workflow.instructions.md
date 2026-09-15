@@ -21,8 +21,8 @@ ticket board show --toon
 # Check for stale in-implementation tickets that may conflict with your work
 ./target/debug/ticket.exe list --where state=in-implementation --toon
 
-# Survey all open tickets
-./target/debug/ticket.exe list --where state=open --toon
+# Survey tickets still in planning
+./target/debug/ticket.exe list --where state=planning --toon
 
 # Check overall graph health
 ./target/debug/ticket.exe health --all --toon
@@ -88,7 +88,7 @@ An unknown profile or unknown kind is rejected, not silently returned empty.
 
 Write to a specific part with `write-part`/`write_part` (`--kind <KIND>`), not
 by replacing the whole description. See
-[lifecycle.instructions.md](lifecycle.instructions.md) for the `planned`-state
+[lifecycle.instructions.md](lifecycle.instructions.md) for the `ready`-state
 freeze contract that governs which kinds are writable when.
 
 ### Typed References (`[[refs]]`)
@@ -181,7 +181,7 @@ and update those links:
 ```bash
 # Find what a completed ticket blocks
 ./target/debug/ticket.exe topgraph <id> --json \
-  | jq -r '.payload.nodes[] | select(.state=="open" or .state=="planned") | .id'
+  | jq -r '.payload.nodes[] | select(.state=="planning") | .id'
 ```
 
 Add missing `depends_on` edges when you discover undocumented dependencies. Use
@@ -258,7 +258,7 @@ ticket health <ticket-id> --where type=tracker-improvement --toon
 ticket health --all --toon
 
 # Health-check all open tickets (--where filter)
-ticket health --all --where state=open --toon
+ticket health --all --where state=planning --toon
 ```
 
 ### Command Chaining (pipe via --stdin)
@@ -269,9 +269,9 @@ ticket list --where priority=high --json \
   | jq -r '.payload.items[].id' \
   | ticket health --stdin --toon
 
-# Subgraph → filter open tickets → health check
+# Subgraph → filter planning tickets → health check
 ticket subgraph <ticket-id> --json \
-  | jq -r '.payload.nodes[] | select(.state=="open") | .id' \
+  | jq -r '.payload.nodes[] | select(.state=="planning") | .id' \
   | ticket health --stdin --toon
 
 # Topgraph → health check all reverse dependencies

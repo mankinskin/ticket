@@ -84,7 +84,7 @@ pub(super) fn integrate_entry(
         .extra
         .get("state")
         .and_then(|value| value.as_str())
-        .filter(|state| matches!(*state, "planned" | "open"));
+        .filter(|state| matches!(*state, "new" | "planned" | "open"));
     if legacy_state.is_some() {
         entry.manifest = TicketFs::update(
             &entry.path,

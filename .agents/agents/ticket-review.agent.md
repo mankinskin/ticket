@@ -84,7 +84,7 @@ For each item, work in ranked order.
    - Any criterion fails or the reviewer requests changes → report `fail` and recommend the ticket return to `in-implementation`, with the findings that justify it.
    - Spec approved → report `reviewed` as the recommended state; otherwise report `changes-requested`.
    In every case record the verdict on the reviewed entity (ticket field patches without `to_state`, spec sections, or feedback via `feedback-mcp`) so the recommendation is durable. The caller performs the state change.
-8. Attach findings and create follow-ups: record findings as a `review` part on the ticket (`write_part` with `kind: review`, never a description field-patch or replace) or as spec sections/feedback via `feedback-mcp`, and create a follow-up ticket for each open gap with `create_ticket`, linking it back to the reviewed item with `add_edge` so the gap is actionable and traceable. A `review` part is never frozen, so this works on a `planned` ticket without triggering the freeze rejection.
+8. Attach findings and create follow-ups: record findings as a `review` part on the ticket (`write_part` with `kind: review`, never a description field-patch or replace) or as spec sections/feedback via `feedback-mcp`, and create a follow-up ticket for each open gap with `create_ticket`, linking it back to the reviewed item with `add_edge` so the gap is actionable and traceable. A `review` part is never frozen, so this works on a `planning` or `ready` ticket without triggering the freeze rejection.
 9. Persist a handoff and point to the next item in the queue.
 
 ## Output Format

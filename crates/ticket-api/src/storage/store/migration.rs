@@ -187,13 +187,13 @@ pub struct MigrationApplyReport {
     /// Tickets the dry-run flagged as migratable but that were no longer
     /// eligible at apply time (already migrated since the dry-run ran).
     pub skipped_stale: Vec<Uuid>,
-    /// Tickets currently `planned`, deliberately deferred rather than
-    /// stepped back and forth: re-entering `planned` can be rejected by an
+    /// Tickets currently `ready`, deliberately deferred rather than
+    /// stepped back and forth: re-entering `ready` can be rejected by an
     /// unrelated workflow gate (e.g. a dependency that regressed after the
-    /// ticket first entered `planned`), which would otherwise leave the
-    /// ticket stuck unfrozen outside `planned` with no safe automatic
+    /// ticket first entered `ready`), which would otherwise leave the
+    /// ticket stuck unfrozen outside `ready` with no safe automatic
     /// recovery. Skipping keeps every write reversible with no bypass.
-    pub skipped_planned: Vec<Uuid>,
+    pub skipped_planning: Vec<Uuid>,
     pub parts_created: usize,
 }
 
@@ -260,7 +260,7 @@ impl TicketStore {
     /// reproduces the original description exactly (AC1).
     ///
     /// A ticket currently `planning` is deferred (see
-    /// [`MigrationApplyReport::skipped_planned`]) rather than stepped back
+    /// [`MigrationApplyReport::skipped_planning`]) rather than stepped back
     /// and forth, since re-entering `planning` can be rejected by an
     /// unrelated workflow gate with no safe automatic recovery.
     pub fn migration_apply(
@@ -287,11 +287,11 @@ impl TicketStore {
             let was_planning = indexed.state.as_deref() == Some("planning");
             if was_planning {
                 // Deferred rather than stepped back and forth (see
-                // `MigrationApplyReport::skipped_planned`): re-entering
+                // `MigrationApplyReport::skipped_planning`): re-entering
                 // `planning` can be rejected by an unrelated dependency
                 // gate, which would leave the ticket stuck unfrozen with
                 // no safe automatic recovery. Left completely untouched.
-                report.skipped_planned.push(id);
+                report.skipped_planning.push(id);
                 continue;
             }
 

@@ -17,14 +17,15 @@ fn ticket_store_reads_seeded_root_ticket_from_materialized_fixture() {
 
     // Fixture data is sourced from the external `memory-fixtures` git
     // dependency (github.com/mankinskin/memory-fixtures), which is out of
-    // this repo's control and still seeds the pre-rename state literal.
+    // this repo's control and still seeds the legacy state literal. Scanning
+    // migrates the current manifest to the canonical lifecycle.
     let id = Uuid::parse_str("00000000-0000-0000-0000-000000000001").unwrap();
     let manifest = store
         .get(&id)
         .expect("seeded root ticket should be readable");
     assert_eq!(
         manifest.extra.get("state").and_then(|v| v.as_str()),
-        Some("new")
+        Some("planning")
     );
     assert_eq!(
         manifest.extra.get("title").and_then(|v| v.as_str()),

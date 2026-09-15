@@ -50,7 +50,7 @@ Steps 1-2 apply the shared [evidence-grounded refinement loop](../../../.agents/
 
 4. Settle architecture before planning
 - Decide and record the external-dependency policy and type/trait ownership in the ticket or linked spec.
-- An unresolved architectural decision blocks the implementation plan and any transition to `planned`, because `planned` freezes the planning parts.
+- An unresolved architectural decision blocks the implementation plan and any transition to `ready`, because `ready` freezes the planning parts.
 
 5. Plan execution
 - Produce an implementation plan directly in the ticket body when scope is manageable.

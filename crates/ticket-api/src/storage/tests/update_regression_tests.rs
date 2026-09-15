@@ -22,11 +22,11 @@ fn create_defaults_to_planning_state() {
 }
 
 #[test]
-fn scan_migrates_legacy_planned_and_open_states_to_planning() {
+fn scan_migrates_legacy_new_planned_and_open_states_to_planning() {
     let dir = tempdir().unwrap();
     let store = TicketStore::init(dir.path()).unwrap();
 
-    for legacy_state in ["planned", "open"] {
+    for legacy_state in ["new", "planned", "open"] {
         let id = store
             .create(
                 None,
@@ -1045,7 +1045,7 @@ const PLANNING_KINDS: &[&str] = &[
 ];
 
 #[test]
-fn f9e70385_planned_freezes_exactly_the_five_planning_parts() {
+fn f9e70385_ready_freezes_exactly_the_five_planning_parts() {
     let dir = tempdir().unwrap();
     let store = TicketStore::init(dir.path()).unwrap();
 
@@ -1135,7 +1135,7 @@ fn f9e70385_write_to_frozen_part_is_rejected_and_file_byte_identical() {
 
     // AC3: the error names the part (kind + id), the freezing state, and
     // both recovery paths (amendment w/ supersedes; transition back to a
-    // pre-planned state).
+    // pre-ready state).
     let message = err.to_string();
     assert!(message.contains("objective"), "must name the kind: {message}");
     assert!(
@@ -1154,7 +1154,7 @@ fn f9e70385_write_to_frozen_part_is_rejected_and_file_byte_identical() {
 }
 
 #[test]
-fn f9e70385_review_write_on_planned_ticket_succeeds() {
+fn f9e70385_review_write_on_ready_ticket_succeeds() {
     let dir = tempdir().unwrap();
     let store = TicketStore::init(dir.path()).unwrap();
 
@@ -1174,7 +1174,7 @@ fn f9e70385_review_write_on_planned_ticket_succeeds() {
         .update(&id, BTreeMap::new(), None, Some("ready"), None, None)
         .unwrap();
 
-    // AC4: a write to `review` on a `planned` ticket succeeds.
+    // AC4: a write to `review` on a `ready` ticket succeeds.
     let review_id = Uuid::new_v4();
     store
         .write_part(&id, review_id, "review", "Reviewed, looks good.", None)
@@ -1251,7 +1251,7 @@ fn f9e70385_unfreeze_refreeze_cycle_appends_plan_revision() {
         .get("plan_revision")
         .and_then(Value::as_u64)
         .unwrap();
-    assert_eq!(revision_2, 2, "re-entering planned must append a plan revision");
+    assert_eq!(revision_2, 2, "re-entering ready must append a plan revision");
 }
 
 #[test]

@@ -94,7 +94,7 @@ fn main() -> ExitCode {
     println!("=== APPLY: {} ===", index_root.display());
     println!("migrated:       {}", apply_report.migrated.len());
     println!("skipped_stale:  {}", apply_report.skipped_stale.len());
-    println!("skipped_planned: {}", apply_report.skipped_planned.len());
+    println!("skipped_planning: {}", apply_report.skipped_planning.len());
     println!("parts_created:  {}", apply_report.parts_created);
 
     ExitCode::SUCCESS

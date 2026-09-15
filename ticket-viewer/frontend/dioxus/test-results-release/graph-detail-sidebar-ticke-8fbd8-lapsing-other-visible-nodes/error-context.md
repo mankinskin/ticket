@@ -30,7 +30,7 @@ Received:   0
         - img [ref=e9]
       - generic [ref=e10]: 🎫
       - generic [ref=e11]: e2e-release-store
-      - generic [ref=e12]: e2e-release-store--a5d633fb
+      - generic [ref=e12]: e2e-release-store--344e8f42
     - button "Theme settings" [ref=e15] [cursor=pointer]:
       - img [ref=e16]
   - generic [ref=e18]:
@@ -48,114 +48,134 @@ Received:   0
           - button "Unblocked" [ref=e33] [cursor=pointer]
         - generic [ref=e34]:
           - generic [ref=e35]:
-            - textbox "Search titles/descriptions or use id:, title:, state:, type:" [ref=e36]: id:c5e001f1-dd1f-4bd0-a334-213fc17e1fdb
+            - textbox "Search titles/descriptions or use id:, title:, state:, type:" [ref=e36]: id:b3a60766-ec18-41c1-8430-dcd108165c5e
             - generic [ref=e37]: "Free text searches titles, descriptions, and ticket IDs (including partial-UUID substrings). Patterns: id:<value>, title:<value>, state:<value>/status:<value>, type:<value>/ticket_type:<value>. Terms are ANDed; quote phrases."
           - generic [ref=e38]:
             - button "All" [pressed] [ref=e39] [cursor=pointer]
-            - button "open" [ref=e40] [cursor=pointer]
-            - button "planned" [ref=e41] [cursor=pointer]
+            - button "planning" [ref=e40] [cursor=pointer]
+            - button "ready" [ref=e41] [cursor=pointer]
             - button "impl" [ref=e42] [cursor=pointer]
             - button "review" [ref=e43] [cursor=pointer]
-            - button "done" [ref=e44] [cursor=pointer]
-            - button "cancelled" [ref=e45] [cursor=pointer]
-            - button "Toggle batch selection" [ref=e46] [cursor=pointer]: ☑
-            - button "Create new ticket" [ref=e47] [cursor=pointer]: + New
-          - generic [ref=e51]:
-            - button "Expand ticket files" [ref=e52] [cursor=pointer]: ▸
-            - button "Release E2E graph root open" [ref=e53] [cursor=pointer]:
-              - generic [ref=e55]: Release E2E graph root
-              - generic [ref=e56]: open
-      - separator "Resize panel" [ref=e57]
-    - generic [ref=e58]:
-      - generic [ref=e59]:
-        - generic [ref=e60]: "View:"
-        - button "Graph" [active] [ref=e61] [cursor=pointer]
-        - button "Split" [ref=e62] [cursor=pointer]
-        - button "Content" [ref=e63] [cursor=pointer]
-      - generic [ref=e66]:
+            - button "on-hold" [ref=e44] [cursor=pointer]
+            - button "done" [ref=e45] [cursor=pointer]
+            - button "cancelled" [ref=e46] [cursor=pointer]
+            - button "Toggle batch selection" [ref=e47] [cursor=pointer]: ☑
+            - button "Create new ticket" [ref=e48] [cursor=pointer]: + New
+          - generic [ref=e52]:
+            - button "Expand ticket files" [ref=e53] [cursor=pointer]: ▸
+            - button "Release E2E graph root planning" [ref=e54] [cursor=pointer]:
+              - generic [ref=e56]: Release E2E graph root
+              - generic [ref=e57]: planning
+      - separator "Resize panel" [ref=e58]
+    - generic [ref=e59]:
+      - generic [ref=e60]:
+        - generic [ref=e61]: "View:"
+        - button "Graph" [active] [ref=e62] [cursor=pointer]
+        - button "Split" [ref=e63] [cursor=pointer]
+        - button "Content" [ref=e64] [cursor=pointer]
+      - generic [ref=e67]:
         - img
         - generic:
           - generic:
-            - generic [ref=e68] [cursor=pointer]:
-              - generic [ref=e70]: open
-              - generic [ref=e71]: Release E2E navigation fixture
-              - generic [ref=e72]:
-                - generic [ref=e73]: Ticket
-                - generic [ref=e74]: 189a8dc5
-            - generic [ref=e76] [cursor=pointer]:
-              - generic [ref=e78]: open
-              - generic [ref=e79]: Release E2E search fixture beta
-              - generic [ref=e80]:
-                - generic [ref=e81]: Ticket
-                - generic [ref=e82]: 7995a4bf
-            - generic [ref=e84] [cursor=pointer]:
-              - generic [ref=e86]: open
-              - generic [ref=e87]: Release E2E graph root
-              - generic [ref=e88]:
-                - generic [ref=e89]: Ticket
-                - generic [ref=e90]: c5e001f1
-            - generic [ref=e92] [cursor=pointer]:
-              - generic [ref=e94]: open
-              - generic [ref=e95]: Release E2E legacy description fixture
-              - generic [ref=e96]:
-                - generic [ref=e97]: Ticket
-                - generic [ref=e98]: 3a1ec9f8
-            - generic [ref=e100] [cursor=pointer]:
-              - generic [ref=e102]: open
-              - generic [ref=e103]: Release E2E search fixture epsilon
-              - generic [ref=e104]:
-                - generic [ref=e105]: Ticket
-                - generic [ref=e106]: 42cd09bf
-            - generic [ref=e108] [cursor=pointer]:
-              - generic [ref=e110]: open
-              - generic [ref=e111]: Release E2E search fixture delta
-              - generic [ref=e112]:
-                - generic [ref=e113]: Ticket
-                - generic [ref=e114]: 4a8bac34
-            - generic [ref=e116] [cursor=pointer]:
-              - generic [ref=e118]: open
-              - generic [ref=e119]: Release E2E search fixture gamma
-              - generic [ref=e120]:
-                - generic [ref=e121]: Ticket
-                - generic [ref=e122]: "1e891896"
-            - generic [ref=e124] [cursor=pointer]:
-              - generic [ref=e126]: open
-              - generic [ref=e127]: Release E2E search fixture alpha
-              - generic [ref=e128]:
-                - generic [ref=e129]: Ticket
-                - generic [ref=e130]: d15253b2
-            - generic [ref=e132] [cursor=pointer]:
-              - generic [ref=e134]: planned
-              - generic [ref=e135]: Release E2E ready prerequisite
-              - generic [ref=e136]:
-                - generic [ref=e137]: Ticket
-                - generic [ref=e138]: 1ee5dc7b
-            - generic [ref=e140] [cursor=pointer]:
-              - generic [ref=e142]: in-implementation
-              - generic [ref=e143]: Release E2E implementation prerequisite
-              - generic [ref=e144]:
-                - generic [ref=e145]: Ticket
-                - generic [ref=e146]: 5419662d
-            - generic [ref=e148] [cursor=pointer]:
-              - generic [ref=e150]: in-review
-              - generic [ref=e151]: Release E2E review prerequisite
-              - generic [ref=e152]:
-                - generic [ref=e153]: Ticket
-                - generic [ref=e154]: e5d14cdc
-            - generic [ref=e156] [cursor=pointer]:
-              - generic [ref=e158]: done
-              - generic [ref=e159]: Release E2E completed prerequisite
-              - generic [ref=e160]:
-                - generic [ref=e161]: Ticket
-                - generic [ref=e162]: 32f99a29
+            - generic [ref=e69] [cursor=pointer]:
+              - generic [ref=e71]: planning
+              - generic [ref=e72]: Release E2E search fixture alpha
+              - generic [ref=e73]:
+                - generic [ref=e74]: Ticket
+                - generic [ref=e75]: f32e9df7
+            - generic [ref=e77] [cursor=pointer]:
+              - generic [ref=e79]: planning
+              - generic [ref=e80]: Release E2E search fixture gamma
+              - generic [ref=e81]:
+                - generic [ref=e82]: Ticket
+                - generic [ref=e83]: 0b4337f6
+            - generic [ref=e85] [cursor=pointer]:
+              - generic [ref=e87]: planning
+              - generic [ref=e88]: Release E2E legacy description fixture
+              - generic [ref=e89]:
+                - generic [ref=e90]: Ticket
+                - generic [ref=e91]: 3a1ec9f8
+            - generic [ref=e93] [cursor=pointer]:
+              - generic [ref=e95]: planning
+              - generic [ref=e96]: Release E2E search fixture epsilon
+              - generic [ref=e97]:
+                - generic [ref=e98]: Ticket
+                - generic [ref=e99]: 0e7da84e
+            - generic [ref=e101] [cursor=pointer]:
+              - generic [ref=e103]: planning
+              - generic [ref=e104]: Release E2E search fixture beta
+              - generic [ref=e105]:
+                - generic [ref=e106]: Ticket
+                - generic [ref=e107]: cbf4d945
+            - generic [ref=e109] [cursor=pointer]:
+              - generic [ref=e111]: planning
+              - generic [ref=e112]: Release E2E search fixture delta
+              - generic [ref=e113]:
+                - generic [ref=e114]: Ticket
+                - generic [ref=e115]: 5ea85741
+            - generic [ref=e117] [cursor=pointer]:
+              - generic [ref=e119]: planning
+              - generic [ref=e120]: Release E2E navigation fixture
+              - generic [ref=e121]:
+                - generic [ref=e122]: Ticket
+                - generic [ref=e123]: e7a9252f
+            - generic [ref=e125] [cursor=pointer]:
+              - generic [ref=e127]: planning
+              - generic [ref=e128]: Release E2E graph root
+              - generic [ref=e129]:
+                - generic [ref=e130]: Ticket
+                - generic [ref=e131]: b3a60766
+            - generic [ref=e133] [cursor=pointer]:
+              - generic [ref=e135]: ready
+              - generic [ref=e136]: Release E2E ready prerequisite
+              - generic [ref=e137]:
+                - generic [ref=e138]: Ticket
+                - generic [ref=e139]: 070c8972
+            - generic [ref=e141] [cursor=pointer]:
+              - generic [ref=e143]: done
+              - generic [ref=e144]: Release E2E completed prerequisite
+              - generic [ref=e145]:
+                - generic [ref=e146]: Ticket
+                - generic [ref=e147]: e108982f
+            - generic [ref=e149] [cursor=pointer]:
+              - generic [ref=e151]: in-review
+              - generic [ref=e152]: Release E2E review prerequisite
+              - generic [ref=e153]:
+                - generic [ref=e154]: Ticket
+                - generic [ref=e155]: 68e2a319
+            - generic [ref=e157] [cursor=pointer]:
+              - generic [ref=e159]: in-implementation
+              - generic [ref=e160]: Release E2E implementation prerequisite
+              - generic [ref=e161]:
+                - generic [ref=e162]: Ticket
+                - generic [ref=e163]: 4dfa31b5
           - generic: "Left-drag: orbit · Right-drag: pan · Scroll: zoom · Click card: open"
           - generic: 12 nodes
-        - button "⚙" [ref=e164] [cursor=pointer]
+        - button "⚙" [ref=e165] [cursor=pointer]
 ```
 
 # Test source
 
 ```ts
+  672 |       const visibleNodes = Array.from(container.querySelectorAll('[data-node-id]')).filter((node) => {
+  673 |         const element = node as HTMLElement;
+  674 |         return element.style.display !== 'none';
+  675 |       }) as HTMLElement[];
+  676 |       const child = visibleNodes.find((node) => node.dataset.nodeId === childId);
+  677 |       if (!child) {
+  678 |         return false;
+  679 |       }
+  680 | 
+  681 |       const containerRect = container.getBoundingClientRect();
+  682 |       const childRect = child.getBoundingClientRect();
+  683 |       const containerCx = containerRect.left + containerRect.width / 2;
+  684 |       const containerCy = containerRect.top + containerRect.height / 2;
+  685 |       const childCx = childRect.left + childRect.width / 2;
+  686 |       const childCy = childRect.top + childRect.height / 2;
+  687 |       const dimmedCount = visibleNodes.filter((node) => {
+  688 |         if (node.dataset.nodeId === childId) {
+  689 |           return false;
+  690 |         }
   691 |         return Number.parseFloat(getComputedStyle(node).opacity || '1') < 0.5;
   692 |       }).length;
   693 |       const childDistance = Math.hypot(childCx - containerCx, childCy - containerCy);
@@ -233,129 +253,110 @@ Received:   0
   765 |     });
   766 | 
   767 |     const initialMetrics = await graphLodMetrics(page, candidate.rootId);
-  768 |     console.info('LOD baseline', await page.evaluate(() => {
-  769 |       const container = document.getElementById('graph3d-container');
-  770 |       return {
-  771 |         cameraDistance: container?.getAttribute('data-camera-distance'),
-  772 |         cameraTarget: container?.getAttribute('data-camera-target'),
-  773 |         nodes: Array.from(container?.querySelectorAll('[data-node-id]') ?? []).map((node) => {
-  774 |           const element = node as HTMLElement;
-  775 |           const rect = element.getBoundingClientRect();
-  776 |           return {
-  777 |             id: element.dataset.nodeId,
-  778 |             lod: element.getAttribute('data-node-lod'),
-  779 |             display: element.style.display,
-  780 |             width: rect.width,
-  781 |             height: rect.height,
-  782 |             transform: element.style.transform,
-  783 |           };
-  784 |         }),
-  785 |       };
-  786 |     }));
-  787 |     expect(initialMetrics, 'root graph node should expose LOD metrics').not.toBeNull();
-  788 |     expect(
-  789 |       initialMetrics!.collapsedNodes,
-  790 |       'workspace graph should collapse at least one non-selected visible node to a smaller LOD tier',
-> 791 |     ).toBeGreaterThan(0);
+  768 |     expect(initialMetrics, 'root graph node should expose LOD metrics').not.toBeNull();
+  769 |     expect(
+  770 |       initialMetrics!.collapsedNodes,
+  771 |       'workspace graph should collapse at least one non-selected visible node to a smaller LOD tier',
+> 772 |     ).toBeGreaterThan(0);
       |       ^ Error: workspace graph should collapse at least one non-selected visible node to a smaller LOD tier
+  773 | 
+  774 |     await zoomGraph(page, 480, 6);
+  775 | 
+  776 |     await expect.poll(() => graphLodMetrics(page, candidate.rootId), {
+  777 |       timeout: 20_000,
+  778 |     }).toMatchObject({
+  779 |       selectedLod: 'rich',
+  780 |       visibleNodeCount: expect.any(Number),
+  781 |     });
+  782 | 
+  783 |     const zoomedOutMetrics = await graphLodMetrics(page, candidate.rootId);
+  784 |     expect(zoomedOutMetrics, 'zoomed-out root graph node should expose LOD metrics').not.toBeNull();
+  785 |     expect(
+  786 |       zoomedOutMetrics!.collapsedNodes,
+  787 |       'zooming out should keep at least one non-selected visible node in a smaller LOD tier',
+  788 |     ).toBeGreaterThan(0);
+  789 | 
+  790 |     const childNode = page.locator(`#graph3d-container [data-node-id="${candidate.childId}"]`).first();
+  791 |     await expect(childNode).toBeVisible();
   792 | 
-  793 |     await zoomGraph(page, 480, 6);
-  794 | 
-  795 |     await expect.poll(() => graphLodMetrics(page, candidate.rootId), {
-  796 |       timeout: 20_000,
-  797 |     }).toMatchObject({
-  798 |       selectedLod: 'rich',
-  799 |       visibleNodeCount: expect.any(Number),
-  800 |     });
-  801 | 
-  802 |     const zoomedOutMetrics = await graphLodMetrics(page, candidate.rootId);
-  803 |     expect(zoomedOutMetrics, 'zoomed-out root graph node should expose LOD metrics').not.toBeNull();
-  804 |     expect(
-  805 |       zoomedOutMetrics!.collapsedNodes,
-  806 |       'zooming out should keep at least one non-selected visible node in a smaller LOD tier',
-  807 |     ).toBeGreaterThan(0);
-  808 | 
-  809 |     const childNode = page.locator(`#graph3d-container [data-node-id="${candidate.childId}"]`).first();
-  810 |     await expect(childNode).toBeVisible();
-  811 | 
-  812 |     const zoomedOutChildLod = await graphNodeLod(page, candidate.childId);
-  813 |     expect(
-  814 |       zoomedOutChildLod === 'compact' || zoomedOutChildLod === 'minimal',
-  815 |       'zoomed-out child node should remain interactive while rendered in a smaller LOD tier',
-  816 |     ).toBe(true);
-  817 | 
-  818 |     await childNode.click();
-  819 | 
-  820 |     await expect.poll(() => graphLodMetrics(page, candidate.childId), {
-  821 |       timeout: 20_000,
-  822 |     }).toMatchObject({
-  823 |       selectedLod: 'rich',
-  824 |       visibleNodeCount: expect.any(Number),
-  825 |     });
-  826 | 
-  827 |     const childMetrics = await graphLodMetrics(page, candidate.childId);
-  828 |     expect(childMetrics, 'selected child node should expose LOD metrics').not.toBeNull();
-  829 |     expect(
-  830 |       childMetrics!.collapsedNodes,
-  831 |       'after selection, other visible nodes should still use smaller compact or minimal tiers',
-  832 |     ).toBeGreaterThan(0);
+  793 |     const zoomedOutChildLod = await graphNodeLod(page, candidate.childId);
+  794 |     expect(
+  795 |       zoomedOutChildLod === 'compact' || zoomedOutChildLod === 'minimal',
+  796 |       'zoomed-out child node should remain interactive while rendered in a smaller LOD tier',
+  797 |     ).toBe(true);
+  798 | 
+  799 |     await childNode.click();
+  800 | 
+  801 |     await expect.poll(() => graphLodMetrics(page, candidate.childId), {
+  802 |       timeout: 20_000,
+  803 |     }).toMatchObject({
+  804 |       selectedLod: 'rich',
+  805 |       visibleNodeCount: expect.any(Number),
+  806 |     });
+  807 | 
+  808 |     const childMetrics = await graphLodMetrics(page, candidate.childId);
+  809 |     expect(childMetrics, 'selected child node should expose LOD metrics').not.toBeNull();
+  810 |     expect(
+  811 |       childMetrics!.collapsedNodes,
+  812 |       'after selection, other visible nodes should still use smaller compact or minimal tiers',
+  813 |     ).toBeGreaterThan(0);
+  814 | 
+  815 |     await zoomGraph(page, -480, 4);
+  816 | 
+  817 |     await expect.poll(() => graphLodMetrics(page, candidate.childId), {
+  818 |       timeout: 20_000,
+  819 |     }).toMatchObject({
+  820 |       selectedLod: 'rich',
+  821 |       visibleNodeCount: expect.any(Number),
+  822 |     });
+  823 | 
+  824 |     const zoomedInMetrics = await graphLodMetrics(page, candidate.childId);
+  825 |     expect(zoomedInMetrics, 'zoomed-in child graph node should expose LOD metrics').not.toBeNull();
+  826 |     expect(
+  827 |       zoomedInMetrics!.minimalNodes,
+  828 |       'zooming back in should not increase the number of minimal visible nodes',
+  829 |     ).toBeLessThanOrEqual(zoomedOutMetrics!.minimalNodes);
+  830 | 
+  831 |     await attachScreenshot(page, testInfo, 'graph-node-lod-tiers');
+  832 |   });
   833 | 
-  834 |     await zoomGraph(page, -480, 4);
-  835 | 
-  836 |     await expect.poll(() => graphLodMetrics(page, candidate.childId), {
-  837 |       timeout: 20_000,
-  838 |     }).toMatchObject({
-  839 |       selectedLod: 'rich',
-  840 |       visibleNodeCount: expect.any(Number),
-  841 |     });
-  842 | 
-  843 |     const zoomedInMetrics = await graphLodMetrics(page, candidate.childId);
-  844 |     expect(zoomedInMetrics, 'zoomed-in child graph node should expose LOD metrics').not.toBeNull();
-  845 |     expect(
-  846 |       zoomedInMetrics!.minimalNodes,
-  847 |       'zooming back in should not increase the number of minimal visible nodes',
-  848 |     ).toBeLessThanOrEqual(zoomedOutMetrics!.minimalNodes);
-  849 | 
-  850 |     await attachScreenshot(page, testInfo, 'graph-node-lod-tiers');
-  851 |   });
-  852 | 
-  853 |   test('dragged graph layout and camera zoom persist when focus changes inside the same graph', async ({ page }, testInfo) => {
-  854 |     test.setTimeout(120_000);
+  834 |   test('dragged graph layout and camera zoom persist when focus changes inside the same graph', async ({ page }, testInfo) => {
+  835 |     test.setTimeout(120_000);
+  836 | 
+  837 |     const candidate = await findGraphSelectionCandidate(page);
+  838 | 
+  839 |     await openCandidateTicket(page, candidate);
+  840 | 
+  841 |     await page.getByRole('button', { name: /^Graph$/ }).first().click();
+  842 |     await expect(page.locator('#graph3d-container')).toBeVisible({ timeout: 30_000 });
+  843 | 
+  844 |     await expect.poll(() => graphNodeMetrics(page, candidate.rootId), {
+  845 |       timeout: 30_000,
+  846 |     }).not.toBeNull();
+  847 |     await expect.poll(() => graphNodeMetrics(page, candidate.childId), {
+  848 |       timeout: 30_000,
+  849 |     }).not.toBeNull();
+  850 | 
+  851 |     const childBeforeDrag = await graphNodeMetrics(page, candidate.childId);
+  852 |     expect(childBeforeDrag, 'child graph node should expose drag metrics before movement').not.toBeNull();
+  853 | 
+  854 |     await dragGraphNode(page, candidate.childId, 120, 60);
   855 | 
-  856 |     const candidate = await findGraphSelectionCandidate(page);
-  857 | 
-  858 |     await openCandidateTicket(page, candidate);
-  859 | 
-  860 |     await page.getByRole('button', { name: /^Graph$/ }).first().click();
-  861 |     await expect(page.locator('#graph3d-container')).toBeVisible({ timeout: 30_000 });
-  862 | 
-  863 |     await expect.poll(() => graphNodeMetrics(page, candidate.rootId), {
-  864 |       timeout: 30_000,
-  865 |     }).not.toBeNull();
-  866 |     await expect.poll(() => graphNodeMetrics(page, candidate.childId), {
-  867 |       timeout: 30_000,
-  868 |     }).not.toBeNull();
-  869 | 
-  870 |     const childBeforeDrag = await graphNodeMetrics(page, candidate.childId);
-  871 |     expect(childBeforeDrag, 'child graph node should expose drag metrics before movement').not.toBeNull();
-  872 | 
-  873 |     await dragGraphNode(page, candidate.childId, 120, 60);
-  874 | 
-  875 |     await expect.poll(async () => {
-  876 |       const metrics = await graphNodeMetrics(page, candidate.childId);
-  877 |       if (!metrics || !childBeforeDrag) {
-  878 |         return 0;
-  879 |       }
-  880 |       return Math.hypot(
-  881 |         metrics.centerX - childBeforeDrag.centerX,
-  882 |         metrics.centerY - childBeforeDrag.centerY,
-  883 |       );
-  884 |     }, {
-  885 |       timeout: 20_000,
-  886 |     }).toBeGreaterThan(40);
-  887 | 
-  888 |     await zoomGraph(page, 480, 4);
-  889 | 
-  890 |     const rootBeforeFocus = await graphNodeMetrics(page, candidate.rootId);
-  891 |     const childBeforeFocus = await graphNodeMetrics(page, candidate.childId);
+  856 |     await expect.poll(async () => {
+  857 |       const metrics = await graphNodeMetrics(page, candidate.childId);
+  858 |       if (!metrics || !childBeforeDrag) {
+  859 |         return 0;
+  860 |       }
+  861 |       return Math.hypot(
+  862 |         metrics.centerX - childBeforeDrag.centerX,
+  863 |         metrics.centerY - childBeforeDrag.centerY,
+  864 |       );
+  865 |     }, {
+  866 |       timeout: 20_000,
+  867 |     }).toBeGreaterThan(40);
+  868 | 
+  869 |     await zoomGraph(page, 480, 4);
+  870 | 
+  871 |     const rootBeforeFocus = await graphNodeMetrics(page, candidate.rootId);
+  872 |     const childBeforeFocus = await graphNodeMetrics(page, candidate.childId);
 ```

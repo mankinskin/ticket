@@ -13,7 +13,7 @@ Applies to:
 
 ## Design Constraints
 
-- Respect ticket lifecycle/state machine invariants — see [lifecycle.instructions.md](lifecycle.instructions.md) for the state machine and its `planned`-freeze/review-gate rules.
+- Respect ticket lifecycle/state machine invariants — see [lifecycle.instructions.md](lifecycle.instructions.md) for the state machine and its `ready`-freeze/review-gate rules.
 - Keep storage/index behavior backward compatible unless explicitly requested.
 - Preserve clear separation between API, storage, transport, and UI layers.
 
