@@ -122,7 +122,9 @@ fn render_part(
                     span {
                         "data-testid": "ticket-part-frozen-badge",
                         style: "padding: 3px 9px; border-radius: 999px; background: color-mix(in srgb, #f59e0b 20%, transparent); border: 1px solid #f59e0b; color: #fbbf24; font-size: 10px; white-space: nowrap;",
-                        "🔒 Frozen at `planned`"
+                        // Parts freeze once a ticket enters `ready` (see
+                        // ticket-api::storage::store::parts freezing_state).
+                        "🔒 Frozen at `ready`"
                     }
                 }
             }

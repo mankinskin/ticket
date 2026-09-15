@@ -243,7 +243,7 @@ async function seedFilterFixture(): Promise<FilterFixture> {
     'update',
     readyTicket.id,
     '--to-state',
-    'planned',
+    'ready',
   ]);
   await runTicketCli<unknown>([
     '--json',
@@ -252,7 +252,7 @@ async function seedFilterFixture(): Promise<FilterFixture> {
     'update',
     secondReadyTicket.id,
     '--to-state',
-    'planned',
+    'ready',
   ]);
 
   const { url, viewer } = await startSeededViewer(indexRoot);
@@ -356,7 +356,7 @@ test.describe('ticket-viewer — live refresh authority', () => {
         timeout: TICKET_VIEWER.readyTimeout,
       });
 
-      const readyChip = page.getByTestId('ticket-tree-state-chip-planned');
+      const readyChip = page.getByTestId('ticket-tree-state-chip-ready');
       await expect(readyChip).toBeVisible();
       await readyChip.click();
 
@@ -411,7 +411,7 @@ test.describe('ticket-viewer — live refresh authority', () => {
         timeout: TICKET_VIEWER.readyTimeout,
       });
 
-      const readyChip = page.getByTestId('ticket-tree-state-chip-planned');
+      const readyChip = page.getByTestId('ticket-tree-state-chip-ready');
       await expect(readyChip).toBeVisible();
       await readyChip.click();
 

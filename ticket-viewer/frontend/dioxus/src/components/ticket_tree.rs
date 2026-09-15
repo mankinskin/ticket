@@ -76,13 +76,15 @@ pub struct TicketTreeProps {
 }
 
 // ── State filter chip definitions ──────────────────────────────────────────
+// Must track the lifecycle states in ticket-api/schemas/*.toml.
 
 const STATE_CHIPS: &[(&str, &str)] = &[
     ("All", ""),
-    ("open", "open"),
-    ("planned", "planned"),
+    ("planning", "planning"),
+    ("ready", "ready"),
     ("impl", "in-implementation"),
     ("review", "in-review"),
+    ("on-hold", "on-hold"),
     ("done", "done"),
     ("cancelled", "cancelled"),
 ];

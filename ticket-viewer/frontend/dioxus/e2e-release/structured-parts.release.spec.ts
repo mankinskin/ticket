@@ -54,7 +54,7 @@ async function writePart(
 }
 
 /** Creates a fresh ticket with every planning part kind, freezes it via the
- * `planned` transition, and writes an amendment superseding `objective`. */
+ * `ready` transition, and writes an amendment superseding `objective`. */
 async function createStructuredFixtureTicket(
   request: APIRequestContext,
   workspace: string,
@@ -74,9 +74,9 @@ async function createStructuredFixtureTicket(
   await writePart(request, workspace, id, 'review', 'Fixture review content.');
 
   const planResp = await request.patch(`${TICKET_VIEWER.url}/api/tickets/${id}?workspace=${workspace}`, {
-    data: { state: 'planned' },
+    data: { state: 'ready' },
   });
-  expect(planResp.ok(), 'transition to planned (freezes planning parts) must succeed').toBe(true);
+  expect(planResp.ok(), 'transition to ready (freezes planning parts) must succeed').toBe(true);
 
   const amendResp = await request.post(
     `${TICKET_VIEWER.url}/api/tickets/${id}/parts/amendment?workspace=${workspace}`,
@@ -107,7 +107,7 @@ test.describe('ticket-viewer — structured parts rendering', () => {
 
     const frozenBadges = page.locator('[data-testid="ticket-part-frozen-badge"]');
     await expect(frozenBadges.first()).toBeVisible();
-    await expect(frozenBadges.first()).toContainText('planned');
+    await expect(frozenBadges.first()).toContainText('ready');
 
     const amendment = page.locator('[data-testid="ticket-part-amendment"]');
     await expect(amendment).toHaveCount(1);

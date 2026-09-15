@@ -297,9 +297,9 @@ async function seedWorkflowFixture(page: Page): Promise<WorkflowFixture> {
     await createDependsOnEdge(page, url, workspace, fromId, toId);
   }
 
-  await patchTicketState(page, url, workspace, directLeafId, 'planned');
-  await patchTicketState(page, url, workspace, nestedLeafId, 'planned');
-  await patchTicketState(page, url, workspace, unblockedByRootId, 'planned');
+  await patchTicketState(page, url, workspace, directLeafId, 'ready');
+  await patchTicketState(page, url, workspace, nestedLeafId, 'ready');
+  await patchTicketState(page, url, workspace, unblockedByRootId, 'ready');
 
   return {
     tempDir,

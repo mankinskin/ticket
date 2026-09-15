@@ -5,12 +5,17 @@ import { fileURLToPath } from 'node:url';
 
 const here = dirname(fileURLToPath(import.meta.url));
 const repoRoot = resolve(here, '../../..');
+// The Cargo workspace root is one level above `repoRoot` (workflow-tools/),
+// so the compiled binary lands in workflow-tools/target, not
+// workflow-tools/ticket/target, regardless of the cwd used to invoke cargo.
+const workspaceRoot = resolve(repoRoot, '..');
 const targetDir = join(repoRoot, 'target');
 const fixtureRoot = join(targetDir, 'e2e-release-store');
 const storeRoot = resolve(fixtureRoot, '.ticket');
 const logPath = join(targetDir, 'e2e-release-ticket-viewer.log');
 const viewerBinary = join(
-  targetDir,
+  workspaceRoot,
+  'target',
   'release',
   `ticket-viewer${process.platform === 'win32' ? '.exe' : ''}`,
 );
@@ -92,7 +97,7 @@ const doneChildId = createFixtureTicket({
   fields: ['component=graph-done'],
 });
 
-transitionFixtureTicket(readyChildId, 'planned');
+transitionFixtureTicket(readyChildId, 'ready');
 transitionFixtureTicket(implementationChildId, 'in-implementation');
 transitionFixtureTicket(reviewChildId, 'in-review');
 transitionFixtureTicket(doneChildId, 'done');
@@ -126,6 +131,19 @@ createFixtureTicket({
 });
 
 runTicket(['scan']);
+
+// The release ticket-viewer binary serves pre-built static assets; it never
+// builds them itself. Without this step main.rs falls back to a nonexistent
+// `static/` dir and every navigation to `/` 404s.
+const trunkResult = spawnSync('trunk', ['build', '--release'], {
+  cwd: join(repoRoot, 'ticket-viewer', 'frontend', 'dioxus'),
+  stdio: 'inherit',
+  shell: false,
+});
+if (trunkResult.status !== 0) {
+  process.exit(trunkResult.status ?? 1);
+}
+
 runCargo(['build', '--manifest-path', 'ticket-viewer/Cargo.toml', '--release']);
 
 const log = createWriteStream(logPath, { flags: 'w' });
