@@ -458,7 +458,7 @@ fn resolve_workspace_root(
     workspace_root_override: Option<&Path>,
 ) -> PathBuf {
     if let Some(path) = workspace_root_override {
-        let store_root = ticket_api::workspace::resolve_store_root_from(
+        let store_root = ticket_api::workspace::resolve_store_root_at_fixed_workspace(
             path,
             ticket_api::workspace::TICKET_INDEX_DIR,
         );

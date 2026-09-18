@@ -130,18 +130,7 @@ pub(crate) fn cmd_move(
             ))
         })?;
 
-    let target_store_root = workspace::resolve_store_root_from(
-        &requested_workspace_root,
-        workspace::TICKET_INDEX_DIR,
-    );
-    let target_workspace_root =
-        workspace::resolve_workspace_root_from_store_root(
-            &target_store_root,
-            workspace::TICKET_INDEX_DIR,
-        );
-
-    let report =
-        store.plan_move_preflight(&ticket_id, &target_workspace_root)?;
+    let report = store.plan_move_preflight(&ticket_id, &requested_workspace_root)?;
     let dry_run = global_dry_run || args.dry_run;
 
     if dry_run || !report.supported() {

@@ -210,6 +210,19 @@ fn resolve_index_root_prefers_explicit_workspace_root() {
 }
 
 #[test]
+fn resolve_workspace_root_keeps_explicit_nested_workspace_bounded() {
+    let dir = tempdir().unwrap();
+    let repo = dir.path().join("repo");
+    let child = repo.join("file-combiner");
+    std::fs::create_dir_all(repo.join(".ticket")).unwrap();
+    std::fs::create_dir_all(&child).unwrap();
+
+    let resolved = resolve_workspace_root(&repo.join(".ticket"), Some(&child));
+
+    assert_eq!(resolved, child);
+}
+
+#[test]
 fn resolve_index_root_prefers_explicit_index_root_over_workspace_root() {
     let dir = tempdir().unwrap();
     let repo = dir.path().join("repo");
