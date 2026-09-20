@@ -117,8 +117,6 @@ pub(crate) fn cmd_move(
             )
         })?;
 
-    let ticket_id = super::resolve_uuid_prefix(id, store)?;
-    tracing::Span::current().record("ticket_id", ticket_id.to_string());
     let requested_workspace_root =
         workspace::canonicalize_workspace_root_strict(std::path::Path::new(
             to_workspace_root,
@@ -130,8 +128,50 @@ pub(crate) fn cmd_move(
             ))
         })?;
 
-    let report = store.plan_move_preflight(&ticket_id, &requested_workspace_root)?;
     let dry_run = global_dry_run || args.dry_run;
+
+    let requested_ids = id
+        .split(',')
+        .map(str::trim)
+        .filter(|value| !value.is_empty())
+        .map(|value| super::resolve_uuid_prefix(value, store))
+        .collect::<Result<Vec<_>, _>>()?;
+    if requested_ids.is_empty() {
+        return Err(CliRunError::BadRequest(
+            "move requires at least one non-empty ticket id".to_string(),
+        ));
+    }
+
+    if requested_ids.len() > 1 {
+        let report = store.plan_move_set(&requested_ids, &requested_workspace_root)?;
+        if dry_run || !report.supported() {
+            return Ok(json!({
+                "command": "move",
+                "status": if report.supported() { "ok" } else { "blocked" },
+                "mode": "plan",
+                "dry_run": true,
+                "ticket_ids": report.entity_ids,
+                "plan": serde_json::to_value(&report)?,
+                "recovery": recovery_hint(),
+            }));
+        }
+
+        let outcome = store.execute_move_set(&report)?;
+        return Ok(json!({
+            "command": "move",
+            "status": "ok",
+            "mode": "execute",
+            "ticket_ids": outcome.entity_ids,
+            "journal_id": outcome.journal.id,
+            "phase": outcome.journal.phase,
+            "entity_journal_ids": outcome.journal.entity_journal_ids,
+            "recovery": recovery_hint(),
+        }));
+    }
+
+    let ticket_id = requested_ids[0];
+    tracing::Span::current().record("ticket_id", ticket_id.to_string());
+    let report = store.plan_move_preflight(&ticket_id, &requested_workspace_root)?;
 
     if dry_run || !report.supported() {
         tracing::debug!(
@@ -494,5 +534,45 @@ mod tests {
         assert_eq!(payload["dry_run"], true);
         assert!(payload["plan"]["source_ticket_path"].is_string());
         assert!(payload["plan"]["destination_ticket_path"].is_string());
+    }
+
+    #[test]
+    fn cmd_move_dry_run_returns_preflight_plan_for_ticket_set() {
+        let temp = tempdir().unwrap();
+        let repo = temp.path().join("repo");
+        std::fs::create_dir_all(&repo).unwrap();
+        run_git(&repo, &["init"]);
+
+        let source_workspace = repo.join("source");
+        let target_workspace = repo.join("target");
+        std::fs::create_dir_all(&source_workspace).unwrap();
+        std::fs::create_dir_all(&target_workspace).unwrap();
+
+        let source_store = TicketStore::init(&source_workspace).unwrap();
+        let _target_store = TicketStore::init(&target_workspace).unwrap();
+        let first_id = source_store
+            .create(None, "tracker-improvement", Some("first ticket"), Some("planned"), Default::default(), None, None)
+            .unwrap();
+        let second_id = source_store
+            .create(None, "tracker-improvement", Some("second ticket"), Some("planned"), Default::default(), None, None)
+            .unwrap();
+
+        let payload = cmd_move(
+            MoveArgs {
+                id: Some(format!("{first_id},{second_id}")),
+                to_workspace_root: Some(target_workspace),
+                resume: None,
+                rollback: None,
+                dry_run: true,
+            },
+            &source_store,
+            false,
+        )
+        .unwrap();
+
+        assert_eq!(payload["command"], "move");
+        assert_eq!(payload["mode"], "plan");
+        assert_eq!(payload["ticket_ids"].as_array().unwrap().len(), 2);
+        assert_eq!(payload["plan"]["entity_plans"].as_array().unwrap().len(), 2);
     }
 }
