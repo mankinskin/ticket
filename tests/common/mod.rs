@@ -7,9 +7,9 @@
 //! - [`FlatTicketSetup`] — `index_root` == `workspace_root` (the tempdir
 //!   itself acts as the index root).  Used by every test except those that
 //!   exercise the `store-index` command.
-//! - [`WorkspaceTicketSetup`] — `index_root` == `workspace_root/.ticket/`.
-//!   Used by `store-index` tests that need the conventional project-root /
-//!   `.ticket/` layout.
+//! - [`WorkspaceTicketSetup`] — `index_root` == `workspace_root/.workflow-tools/ticket/`.
+//!   Used by `store-index` tests that need the conventional canonical
+//!   `.workflow-tools/ticket/` layout.
 //!
 //! Domain-specific CLI helpers (`ticket_json`, `ticket_fail`, …) are added
 //! via the [`TicketCommands`] extension trait, which is implemented for any
@@ -75,15 +75,15 @@ impl SandboxSetup for FlatTicketSetup {
     }
 }
 
-/// Workspace layout: `index_root == workspace_root/.ticket/`.
+/// Workspace layout: `index_root == workspace_root/.workflow-tools/ticket/`.
 ///
-/// Used by `store-index` tests that verify the conventional project-root /
-/// `.ticket/` directory structure.
+/// Used by `store-index` tests that verify the conventional canonical
+/// `.workflow-tools/ticket/` directory structure.
 pub struct WorkspaceTicketSetup;
 
 impl SandboxSetup for WorkspaceTicketSetup {
     fn setup(workspace_root: &Path) -> SandboxPaths {
-        let index_root = workspace_root.join(".ticket");
+        let index_root = workspace_root.join(".workflow-tools").join("ticket");
         let out = Command::new(TICKET)
             .arg("--index-root")
             .arg(&index_root)
@@ -112,8 +112,8 @@ impl SandboxSetup for WorkspaceTicketSetup {
 /// Default sandbox for ticket-cli tests (flat layout).
 pub type TicketSandbox = Sandbox<FlatTicketSetup>;
 
-/// Workspace-layout sandbox for tests that need a real project-root /
-/// `.ticket/` directory structure (e.g. `store-index` tests).
+/// Workspace-layout sandbox for tests that need a real project-root
+/// canonical `.workflow-tools/ticket/` directory structure (e.g. `store-index` tests).
 pub type WorkspaceSandbox = Sandbox<WorkspaceTicketSetup>;
 
 // ---------------------------------------------------------------------------

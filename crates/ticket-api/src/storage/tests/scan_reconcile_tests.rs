@@ -8,7 +8,8 @@ fn add_scan_root_rejects_sibling_worktree_root() {
     let sibling_root = repo
         .join(".worktrees")
         .join("sibling")
-        .join(".ticket")
+        .join(".workflow-tools")
+        .join("ticket")
         .join("tickets");
 
     let error = store
@@ -29,7 +30,8 @@ fn add_scan_root_allows_own_worktree_root() {
         .join("repo")
         .join(".worktrees")
         .join("own")
-        .join(".ticket");
+        .join(".workflow-tools")
+        .join("ticket");
     let store = TicketStore::init(&worktree_store).unwrap();
     let root = worktree_store.join("additional-tickets");
 
@@ -70,7 +72,8 @@ fn open_reconciles_deleted_worktree_indexed_ticket_to_main_store() {
     let stale_root = repo
         .join(".worktrees")
         .join("deleted-worktree")
-        .join(".ticket")
+        .join(".workflow-tools")
+        .join("ticket")
         .join("tickets");
     stale_indexed.path = stale_root.join(ticket_id.to_string());
     drop(store);

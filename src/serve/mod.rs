@@ -248,7 +248,7 @@ mod tests {
     #[test]
     fn reapply_workspace_scan_policy_skips_restricted_descendants() {
         let root = tempfile::tempdir().expect("tempdir");
-        let index_root = root.path().join(".ticket");
+        let index_root = root.path().join(".workflow-tools").join("ticket");
         let store = TicketStore::init(&index_root).expect("open root store");
         std::fs::write(
             index_root.join("workspace-policy.toml"),
@@ -259,9 +259,8 @@ mod tests {
             .path()
             .join("memory-viewers")
             .join("memory-api")
-            .join(".ticket");
-        std::fs::create_dir_all(child_store_root.join("tickets"))
-            .expect("create child store dirs");
+            .join(".workflow-tools")
+            .join("ticket");
         TicketStore::init(&child_store_root).expect("open child store");
         reapply_workspace_scan_policy(&store, root.path())
             .expect("apply workspace scan policy");

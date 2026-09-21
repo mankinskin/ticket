@@ -44,8 +44,11 @@ fn workspace_policy_show_set_ignore_rescan_flow() {
     assert_eq!(shown["policy"]["deny_external_paths"], true);
 
     // Create a descendant fixture store with its own ticket.
-    let fixture_index =
-        sandbox.workspace_root().join("fixtures").join(".ticket");
+    let fixture_index = sandbox
+        .workspace_root()
+        .join("fixtures")
+        .join(".workflow-tools")
+        .join("ticket");
     run_ticket(&[
         "--index-root",
         fixture_index.to_str().unwrap(),

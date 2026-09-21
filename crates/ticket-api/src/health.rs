@@ -938,15 +938,13 @@ mod tests {
         fs::create_dir_all(&child_repo).unwrap();
 
         let parent_store =
-            TicketStore::init(&root_repo.join(".ticket")).unwrap();
+            TicketStore::init(&root_repo).unwrap();
         let child_store =
-            TicketStore::init(&child_repo.join(".ticket")).unwrap();
+            TicketStore::init(&child_repo).unwrap();
 
-        fs::create_dir_all(child_repo.join(".ticket")).unwrap();
+        fs::create_dir_all(&child_store.index_root).unwrap();
         fs::write(
-            child_repo
-                .join(".ticket")
-                .join(WORKSPACE_POLICY_FILE),
+            child_store.index_root.join(WORKSPACE_POLICY_FILE),
             "include_descendants = true\ninclude_ancestors = true\ndeny_external_paths = true\n",
         )
         .unwrap();

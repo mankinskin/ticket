@@ -50,8 +50,8 @@ fn store_index_writes_expected_artifacts_and_check_passes() {
     assert_eq!(write_payload["check"], false);
     assert!(write_payload["tickets"].as_u64().unwrap() >= 2);
 
-    let readme = s.workspace_root().join(".ticket").join("README.md");
-    let sidecar = s.workspace_root().join(".ticket").join("index.toon");
+    let readme = s.workspace_root().join(".workflow-tools").join("ticket").join("README.md");
+    let sidecar = s.workspace_root().join(".workflow-tools").join("ticket").join("index.toon");
     let hook = s.workspace_root().join(".agents").join("ticket-catalog.md");
 
     assert!(readme.exists(), "README should be generated");
@@ -89,7 +89,7 @@ fn store_index_check_detects_readme_drift() {
 
     let _ = s.ticket_json(&["store-index"]);
 
-    let readme = s.workspace_root().join(".ticket").join("README.md");
+    let readme = s.workspace_root().join(".workflow-tools").join("ticket").join("README.md");
     let mut tampered = fs::read_to_string(&readme).unwrap();
     tampered.push_str("\n<!-- tampered -->\n");
     fs::write(&readme, tampered).unwrap();

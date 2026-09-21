@@ -13,7 +13,8 @@ fn open_prunes_persisted_sibling_worktree_scan_root() {
     let stale_root = repo
         .join(".worktrees")
         .join("stale")
-        .join(".ticket")
+        .join(".workflow-tools")
+        .join("ticket")
         .join("tickets");
     let index = RedbIndexStore::open(&index_root.join("tickets.db")).unwrap();
     index
@@ -275,7 +276,7 @@ fn add_edge_rejects_targets_under_policy_ignored_roots() {
 //
 // These exercise the full discovery -> scan -> query contract through
 // `TicketStore::reapply_workspace_policy`, which loads the on-disk
-// `.ticket/workspace-policy.toml`, discovers descendant/ancestor stores under
+// `.workflow-tools/ticket/workspace-policy.toml`, discovers descendant/ancestor stores under
 // the policy, re-registers scan roots with `policy_decision` metadata, rescans,
 // and thereby makes the query-time guard authoritative.
 // ---------------------------------------------------------------------------
@@ -304,7 +305,7 @@ fn write_policy(
     workspace_root: &Path,
     contents: &str,
 ) {
-    let ticket_dir = workspace_root.join(".ticket");
+    let ticket_dir = workspace_root.join(".workflow-tools").join("ticket");
     fs::create_dir_all(&ticket_dir).unwrap();
     fs::write(ticket_dir.join("workspace-policy.toml"), contents).unwrap();
 }
@@ -315,9 +316,9 @@ fn policy_e2e_child_included_by_default() {
     // and queryable.
     let dir = tempdir().unwrap();
     let repo = dir.path();
-    let (main, _root) = init_store_with_ticket(&repo.join(".ticket"), "Root");
+    let (main, _root) = init_store_with_ticket(repo, "Root");
     let (child, child_id) =
-        init_store_with_ticket(&repo.join("child").join(".ticket"), "Child");
+        init_store_with_ticket(&repo.join("child"), "Child");
     drop(child);
 
     let report = main.reapply_workspace_policy(repo).unwrap();
@@ -340,9 +341,9 @@ fn policy_e2e_child_included_by_default() {
 fn policy_e2e_child_ignored_via_marker() {
     let dir = tempdir().unwrap();
     let repo = dir.path();
-    let (main, _root) = init_store_with_ticket(&repo.join(".ticket"), "Root");
+    let (main, _root) = init_store_with_ticket(repo, "Root");
     let (child, child_id) =
-        init_store_with_ticket(&repo.join("child").join(".ticket"), "Child");
+        init_store_with_ticket(&repo.join("child"), "Child");
     drop(child);
 
     // Default policy present (ignore_markers includes `.ticket-ignore`).
@@ -368,9 +369,9 @@ fn policy_e2e_child_ignored_via_marker() {
 fn policy_e2e_child_ignored_via_glob() {
     let dir = tempdir().unwrap();
     let repo = dir.path();
-    let (main, _root) = init_store_with_ticket(&repo.join(".ticket"), "Root");
+    let (main, _root) = init_store_with_ticket(repo, "Root");
     let (fixture, fixture_id) = init_store_with_ticket(
-        &repo.join("fixtures").join(".ticket"),
+        &repo.join("fixtures"),
         "Fixture",
     );
     drop(fixture);
@@ -396,9 +397,9 @@ fn policy_e2e_child_ignored_via_glob() {
 fn policy_e2e_include_override_wins() {
     let dir = tempdir().unwrap();
     let repo = dir.path();
-    let (main, _root) = init_store_with_ticket(&repo.join(".ticket"), "Root");
+    let (main, _root) = init_store_with_ticket(repo, "Root");
     let (fixture, fixture_id) = init_store_with_ticket(
-        &repo.join("fixtures").join(".ticket"),
+        &repo.join("fixtures"),
         "Fixture",
     );
     drop(fixture);
@@ -430,11 +431,11 @@ fn policy_e2e_external_path_denied() {
     let dir = tempdir().unwrap();
     let repo = dir.path();
     let (ancestor, ancestor_id) =
-        init_store_with_ticket(&repo.join(".ticket"), "Ancestor");
+        init_store_with_ticket(repo, "Ancestor");
     drop(ancestor);
     let child_root = repo.join("child");
     let (main, _child_ticket) =
-        init_store_with_ticket(&child_root.join(".ticket"), "Child");
+        init_store_with_ticket(&child_root, "Child");
 
     // Request ancestors but deny external paths -> ancestor suppressed.
     write_policy(

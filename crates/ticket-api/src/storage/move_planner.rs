@@ -663,7 +663,7 @@ mod tests {
         let target_store = TicketStore::init(&nested_repo).unwrap();
         source_store
             .add_scan_root(ScanRoot {
-                path: nested_repo.join(".ticket").join("tickets"),
+                path: nested_repo.join(".workflow-tools").join("ticket").join("tickets"),
                 label: "nested-tickets".to_string(),
             })
             .unwrap();

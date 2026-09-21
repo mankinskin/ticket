@@ -322,7 +322,7 @@ mod tests {
     async fn get_ticket_tool_reads_an_indexed_descendant_from_parent_workspace() {
         let dir = tempfile::tempdir().expect("tempdir");
         let parent = TicketStore::init(dir.path()).expect("parent store");
-        let child_root = dir.path().join("child").join(".ticket");
+        let child_root = dir.path().join("child").join(".workflow-tools").join("ticket");
         let child = TicketStore::init(&child_root).expect("child store");
         let id = child
             .create(

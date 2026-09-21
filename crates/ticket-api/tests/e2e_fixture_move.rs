@@ -47,9 +47,20 @@ fn cross_worktree_move_from_submodule_to_root_is_clean_and_reversible() {
     let source_store =
         TicketStore::open_or_init(&source_root).expect("open source store");
     source_store.scan(true).expect("scan source");
-    let target_store = TicketStore::open_or_init(&target_workspace)
-        .expect("open target store");
+    let target_store = TicketStore::init(&target_workspace)
+        .expect("initialize canonical target store");
     target_store.scan(true).expect("scan target");
+    let expected_target_store = target_workspace.join(".workflow-tools/ticket");
+    assert_eq!(
+        target_store.index_root, expected_target_store,
+        "target initialization must resolve to the canonical ticket store"
+    );
+    assert!(
+        expected_target_store.join("tickets.db").is_file(),
+        "canonical target store must exist before move preflight"
+    );
+    TicketStore::open(&expected_target_store)
+        .expect("canonical target store must reopen by exact store path");
 
     let id = "00000000-0000-0000-0000-00000000000a"
         .parse()

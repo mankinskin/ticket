@@ -164,8 +164,8 @@ mod tests {
             })
             .expect("add parent scan root");
 
-        let left_dir = root.path().join("alpha").join("shared").join(".ticket");
-        let right_dir = root.path().join("beta").join("shared").join(".ticket");
+        let left_dir = root.path().join("alpha").join("shared").join(".workflow-tools").join("ticket");
+        let right_dir = root.path().join("beta").join("shared").join(".workflow-tools").join("ticket");
         std::fs::create_dir_all(left_dir.join("tickets"))
             .expect("create left dir");
         std::fs::create_dir_all(right_dir.join("tickets"))

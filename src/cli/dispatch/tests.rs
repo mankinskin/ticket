@@ -43,7 +43,7 @@ fn create_worktree_fixture() -> (tempfile::TempDir, PathBuf, PathBuf, String) {
     run_git(&main, &["add", "README.md"]);
     run_git(&main, &["commit", "-m", "fixture"]);
 
-    let store = TicketStore::init(&main.join(".ticket")).unwrap();
+    let store = TicketStore::init(&main.join(".workflow-tools").join("ticket")).unwrap();
     let ticket_id = store
         .create(
             None,
@@ -69,9 +69,9 @@ fn create_worktree_fixture() -> (tempfile::TempDir, PathBuf, PathBuf, String) {
             "HEAD",
         ],
     );
-    std::fs::create_dir_all(worktree.join(".ticket").join("tickets")).unwrap();
+    std::fs::create_dir_all(worktree.join(".workflow-tools").join("ticket").join("tickets")).unwrap();
     std::fs::write(
-        worktree.join(".ticket").join("tickets").join("copied.txt"),
+        worktree.join(".workflow-tools").join("ticket").join("tickets").join("copied.txt"),
         "populated but indexless\n",
     )
     .unwrap();
@@ -109,8 +109,8 @@ fn dispatch_board_check_in_uses_main_store_for_managed_worktree() {
     .unwrap();
 
     assert_eq!(payload["ticket_id"], ticket_id);
-    assert!(!worktree.join(".ticket").join("tickets.db").exists());
-    assert!(main.join(".ticket").join("tickets.db").is_file());
+    assert!(!worktree.join(".workflow-tools").join("ticket").join("tickets.db").exists());
+    assert!(main.join(".workflow-tools").join("ticket").join("tickets.db").is_file());
     let store = TicketStore::open(&main).unwrap();
     assert_eq!(store.board_show(None).unwrap().entries.len(), 1);
 }
@@ -160,8 +160,8 @@ fn create_nested_ticket_fixture()
     let child = repo.join("memory-api");
     std::fs::create_dir_all(&child).unwrap();
 
-    let _root_store = TicketStore::init(&repo.join(".ticket")).unwrap();
-    let child_store = TicketStore::init(&child.join(".ticket")).unwrap();
+    let _root_store = TicketStore::init(&repo).unwrap();
+    let child_store = TicketStore::init(&child).unwrap();
     let ticket_id = child_store
         .create(
             None,
@@ -200,13 +200,13 @@ fn resolve_index_root_prefers_explicit_workspace_root() {
     let dir = tempdir().unwrap();
     let repo = dir.path().join("repo");
     let child = repo.join("memory-api");
-    std::fs::create_dir_all(repo.join(".ticket")).unwrap();
-    std::fs::create_dir_all(child.join(".ticket")).unwrap();
+    std::fs::create_dir_all(repo.join(".workflow-tools").join("ticket")).unwrap();
+    std::fs::create_dir_all(child.join(".workflow-tools").join("ticket")).unwrap();
 
     let resolved =
         resolve_index_root_from(None, Some(&child), None, Some(&repo)).unwrap();
 
-    assert_eq!(resolved, child.join(".ticket"));
+    assert_eq!(resolved, child.join(".workflow-tools").join("ticket"));
 }
 
 #[test]
@@ -214,10 +214,10 @@ fn resolve_workspace_root_keeps_explicit_nested_workspace_bounded() {
     let dir = tempdir().unwrap();
     let repo = dir.path().join("repo");
     let child = repo.join("file-combiner");
-    std::fs::create_dir_all(repo.join(".ticket")).unwrap();
+    std::fs::create_dir_all(repo.join(".workflow-tools").join("ticket")).unwrap();
     std::fs::create_dir_all(&child).unwrap();
 
-    let resolved = resolve_workspace_root(&repo.join(".ticket"), Some(&child));
+    let resolved = resolve_workspace_root(&repo.join(".workflow-tools").join("ticket"), Some(&child));
 
     assert_eq!(resolved, child);
 }
@@ -227,18 +227,18 @@ fn resolve_index_root_prefers_explicit_index_root_over_workspace_root() {
     let dir = tempdir().unwrap();
     let repo = dir.path().join("repo");
     let child = repo.join("memory-api");
-    std::fs::create_dir_all(repo.join(".ticket")).unwrap();
-    std::fs::create_dir_all(child.join(".ticket")).unwrap();
+    std::fs::create_dir_all(repo.join(".workflow-tools").join("ticket")).unwrap();
+    std::fs::create_dir_all(child.join(".workflow-tools").join("ticket")).unwrap();
 
     let resolved = resolve_index_root_from(
-        Some(&repo.join(".ticket")),
+        Some(&repo.join(".workflow-tools").join("ticket")),
         Some(&child),
         None,
         Some(&repo),
     )
     .unwrap();
 
-    assert_eq!(resolved, repo.join(".ticket"));
+    assert_eq!(resolved, repo.join(".workflow-tools").join("ticket"));
 }
 
 #[test]
@@ -325,18 +325,18 @@ fn resolve_index_root_preserves_relative_explicit_index_root() {
     let dir = tempdir().unwrap();
     let repo = dir.path().join("repo");
     let child = repo.join("memory-api");
-    std::fs::create_dir_all(repo.join(".ticket")).unwrap();
-    std::fs::create_dir_all(child.join(".ticket")).unwrap();
+    std::fs::create_dir_all(repo.join(".workflow-tools").join("ticket")).unwrap();
+    std::fs::create_dir_all(child.join(".workflow-tools").join("ticket")).unwrap();
 
     let resolved = resolve_index_root_from(
-        Some(Path::new(".ticket")),
+        Some(Path::new(".workflow-tools/ticket")),
         Some(&child),
         None,
         Some(&repo),
     )
     .unwrap();
 
-    assert_eq!(resolved, repo.join(".ticket"));
+    assert_eq!(resolved, repo.join(".workflow-tools").join("ticket"));
 }
 
 #[test]
@@ -480,7 +480,7 @@ fn dispatch_scan_registers_child_ticket_from_explicit_workspace_root() {
 
     assert_eq!(payload["command"], "scan");
 
-    let root_store = TicketStore::open(&repo.join(".ticket")).unwrap();
+    let root_store = TicketStore::open(&repo.join(".workflow-tools").join("ticket")).unwrap();
     let search_payload = dispatch_store_command(
         TicketCommandCli::Search(TextArgs {
             expression: "Nested workspace ticket".to_string(),
@@ -499,7 +499,7 @@ fn dispatch_scan_registers_child_ticket_from_explicit_workspace_root() {
 #[test]
 fn dispatch_get_reads_child_ticket_after_scan_root_augmentation() {
     let (_dir, repo, _child, ticket_id) = create_nested_ticket_fixture();
-    let root_store = TicketStore::open(&repo.join(".ticket")).unwrap();
+    let root_store = TicketStore::open(&repo.join(".workflow-tools").join("ticket")).unwrap();
 
     let reindex = register_descendant_scan_roots(&root_store, &repo).unwrap();
     assert!(reindex);
@@ -523,7 +523,7 @@ fn dispatch_get_reads_child_ticket_after_scan_root_augmentation() {
 #[test]
 fn dispatch_search_reads_child_ticket_after_scan_root_augmentation() {
     let (_dir, repo, _child, ticket_id) = create_nested_ticket_fixture();
-    let root_store = TicketStore::open(&repo.join(".ticket")).unwrap();
+    let root_store = TicketStore::open(&repo.join(".workflow-tools").join("ticket")).unwrap();
 
     let reindex = register_descendant_scan_roots(&root_store, &repo).unwrap();
     assert!(reindex);

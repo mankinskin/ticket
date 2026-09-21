@@ -127,7 +127,7 @@ fn entity_indexed_in_requires_path_ownership_not_aggregate_visibility() {
     let target_store = TicketStore::init(&nested_repo).unwrap();
     source_store
         .add_scan_root(ScanRoot {
-            path: nested_repo.join(".ticket").join("tickets"),
+            path: nested_repo.join(".workflow-tools").join("ticket").join("tickets"),
             label: "nested-tickets".to_string(),
         })
         .unwrap();
@@ -298,7 +298,7 @@ fn resume_move_normalizes_journal_paths_before_validation() {
     let target_store = TicketStore::init(&nested_repo).unwrap();
     source_store
         .add_scan_root(ScanRoot {
-            path: nested_repo.join(".ticket").join("tickets"),
+            path: nested_repo.join(".workflow-tools").join("ticket").join("tickets"),
             label: "nested-tickets".to_string(),
         })
         .unwrap();
@@ -423,8 +423,8 @@ fn move_rewrites_skip_generated_store_indexes_and_journals() {
         .replace('\\', "/");
     let source_abs = plan.source_entity_path.to_string_lossy().replace('\\', "/");
 
-    let persistent_doc = repo
-        .join(".ticket")
+    let persistent_doc = source_store
+        .index_root
         .join("tickets")
         .join(related.to_string())
         .join("description.md");
@@ -435,15 +435,15 @@ fn move_rewrites_skip_generated_store_indexes_and_journals() {
     )
     .unwrap();
 
-    let generated_readme = repo.join(".ticket").join("README.md");
+    let generated_readme = source_store.index_root.join("README.md");
     std::fs::create_dir_all(generated_readme.parent().unwrap()).unwrap();
     std::fs::write(&generated_readme, format!("generated ref: {source_rel}\n")).unwrap();
 
-    let generated_index = repo.join(".ticket").join("index.toon");
+    let generated_index = source_store.index_root.join("index.toon");
     std::fs::write(&generated_index, format!("source_path: \"{source_rel}\"\n")).unwrap();
 
-    let generated_journal = repo
-        .join(".ticket")
+    let generated_journal = source_store
+        .index_root
         .join("move-journals")
         .join("existing.json");
     std::fs::create_dir_all(generated_journal.parent().unwrap()).unwrap();
@@ -460,10 +460,10 @@ fn move_rewrites_skip_generated_store_indexes_and_journals() {
         &[
             "add",
             "--",
-            &format!(".ticket/tickets/{}/description.md", related),
-            ".ticket/README.md",
-            ".ticket/index.toon",
-            ".ticket/move-journals/existing.json",
+            &format!(".workflow-tools/ticket/tickets/{}/description.md", related),
+            ".workflow-tools/ticket/README.md",
+            ".workflow-tools/ticket/index.toon",
+            ".workflow-tools/ticket/move-journals/existing.json",
         ],
     );
     run_git(

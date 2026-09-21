@@ -9,10 +9,10 @@ use crate::model::filesystem::ScanRoot;
 fn recovers_ticket_paths_from_relative_index_entries() {
     let tmp = tempdir().unwrap();
     let repo = tmp.path().join("repo");
-    let store_root = repo.join("viewer").join(".ticket");
-    std::fs::create_dir_all(&store_root).unwrap();
+    let workspace_root = repo.join("viewer");
+    std::fs::create_dir_all(&workspace_root).unwrap();
 
-    let store = TicketStore::init(&store_root).unwrap();
+    let store = TicketStore::init(&workspace_root).unwrap();
     let ticket_id = store
         .create(
             None,
@@ -27,7 +27,7 @@ fn recovers_ticket_paths_from_relative_index_entries() {
 
     let absolute_scan_root = store.index_root.join("tickets");
     let absolute_ticket_path = absolute_scan_root.join(ticket_id.to_string());
-    let relative_scan_root = PathBuf::from("viewer/.ticket/tickets");
+    let relative_scan_root = PathBuf::from("viewer/.workflow-tools/ticket/tickets");
 
     store
         .index
@@ -63,9 +63,7 @@ fn recovers_ticket_paths_from_relative_index_entries() {
 #[test]
 fn create_rejects_unregistered_type_naming_offender_and_registered_types() {
     let tmp = tempdir().unwrap();
-    let store_root = tmp.path().join(".ticket");
-    std::fs::create_dir_all(&store_root).unwrap();
-    let store = TicketStore::init(&store_root).unwrap();
+    let store = TicketStore::init(tmp.path()).unwrap();
 
     let err = store
         .create(
@@ -93,9 +91,7 @@ fn create_rejects_unregistered_type_naming_offender_and_registered_types() {
 #[test]
 fn create_still_succeeds_for_registered_type() {
     let tmp = tempdir().unwrap();
-    let store_root = tmp.path().join(".ticket");
-    std::fs::create_dir_all(&store_root).unwrap();
-    let store = TicketStore::init(&store_root).unwrap();
+    let store = TicketStore::init(tmp.path()).unwrap();
 
     let ticket_id = store
         .create(

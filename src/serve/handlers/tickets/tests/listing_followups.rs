@@ -47,9 +47,9 @@ async fn duplicate_basename_workspaces_keep_followups_distinct() {
         .expect("add parent scan root");
 
     let left_index_root =
-        root.path().join("alpha").join("shared").join(".ticket");
+        root.path().join("alpha").join("shared").join(".workflow-tools").join("ticket");
     let right_index_root =
-        root.path().join("beta").join("shared").join(".ticket");
+        root.path().join("beta").join("shared").join(".workflow-tools").join("ticket");
     std::fs::create_dir_all(left_index_root.join("tickets"))
         .expect("mkdir left store");
     std::fs::create_dir_all(right_index_root.join("tickets"))

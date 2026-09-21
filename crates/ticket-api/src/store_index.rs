@@ -282,7 +282,7 @@ fn render_catalog_markdown(
     out.push_str(TICKET_INDEX_FILE_COMMENT);
     out.push_str("\n\n# Ticket Catalog\n\n");
     out.push_str(
-        "Generated ticket index grouped by state and component. Use this before scanning raw `.ticket/tickets/` folders.\n",
+        "Generated ticket index grouped by state and component. Use this before scanning raw `.workflow-tools/ticket/tickets/` folders.\n",
     );
 
     let mut current_state = String::new();
@@ -427,7 +427,7 @@ mod tests {
         let sources = vec![
             source(
                 id_a,
-                ".ticket/tickets/a/ticket.toml",
+                ".workflow-tools/ticket/tickets/a/ticket.toml",
                 "Fix bug",
                 "in-review",
                 Some("high"),
@@ -436,7 +436,7 @@ mod tests {
             ),
             source(
                 id_b,
-                ".ticket/tickets/b/ticket.toml",
+                ".workflow-tools/ticket/tickets/b/ticket.toml",
                 "Write docs",
                 "planning",
                 Some("low"),
@@ -445,7 +445,7 @@ mod tests {
             ),
         ];
 
-        let artifacts = generate_ticket_catalog(&sources, ".ticket");
+        let artifacts = generate_ticket_catalog(&sources, ".workflow-tools/ticket");
         assert!(artifacts.readme_markdown.contains("## State: in-review"));
         assert!(artifacts.readme_markdown.contains("## State: planning"));
         assert!(
@@ -462,7 +462,7 @@ mod tests {
             .unwrap();
         let sources = vec![source(
             id,
-            ".ticket/tickets/c/ticket.toml",
+            ".workflow-tools/ticket/tickets/c/ticket.toml",
             "Implement command",
             "in-implementation",
             Some("high"),
@@ -470,12 +470,12 @@ mod tests {
             "Command summary.",
         )];
 
-        let artifacts = generate_ticket_catalog(&sources, ".ticket");
+        let artifacts = generate_ticket_catalog(&sources, ".workflow-tools/ticket");
         let entry = &artifacts.sidecar.entries[0];
         assert_eq!(entry.relations.related.len(), 1);
         assert_eq!(
             entry.relations.related[0].canonical_path,
-            ".ticket/tickets/c/ticket.toml"
+            ".workflow-tools/ticket/tickets/c/ticket.toml"
         );
         assert_eq!(entry.relations.related[0].entry_id, id);
         assert!(entry.is_digest_valid());
@@ -487,7 +487,7 @@ mod tests {
             .unwrap();
         let sources = vec![source(
             id,
-            ".ticket/tickets/d/ticket.toml",
+            ".workflow-tools/ticket/tickets/d/ticket.toml",
             "Stable output",
             "planning",
             Some("medium"),
@@ -495,8 +495,8 @@ mod tests {
             "Deterministic summary text.",
         )];
 
-        let a = generate_ticket_catalog(&sources, ".ticket");
-        let b = generate_ticket_catalog(&sources, ".ticket");
+        let a = generate_ticket_catalog(&sources, ".workflow-tools/ticket");
+        let b = generate_ticket_catalog(&sources, ".workflow-tools/ticket");
 
         assert_eq!(a.readme_markdown, b.readme_markdown);
         assert_eq!(a.agent_hook_markdown, b.agent_hook_markdown);

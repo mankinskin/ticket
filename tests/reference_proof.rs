@@ -25,7 +25,7 @@ mod fixture {
         /// Creates a temporary ticket store with one known test ticket.
         pub fn setup() -> Self {
             let temp_dir = tempfile::tempdir().expect("temp dir");
-            let store_path = temp_dir.path().join(".ticket");
+            let store_path = temp_dir.path().join(".workflow-tools").join("ticket");
             
             // Initialize the ticket store
             ticket::storage::TicketStore::init(&store_path).expect("init store");

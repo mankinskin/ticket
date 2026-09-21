@@ -212,9 +212,9 @@ fn scan_reconciliation_visibility_agreement_with_reindex() {
 fn open_creates_gitignore_for_local_ticket_artifacts() {
     let dir = tempdir().unwrap();
 
-    TicketStore::init(dir.path()).unwrap();
+    let store = TicketStore::init(dir.path()).unwrap();
 
-    let gitignore = fs::read_to_string(dir.path().join(".ticket").join(".gitignore")).unwrap();
+    let gitignore = fs::read_to_string(store.index_root.join(".gitignore")).unwrap();
     assert!(gitignore.contains("tickets.db"));
     assert!(gitignore.contains("tickets.db-shm"));
     assert!(gitignore.contains("tickets.db-wal"));
@@ -234,26 +234,11 @@ fn open_registers_default_tickets_scan_root() {
 }
 
 #[test]
-fn open_uses_existing_hidden_ticket_store_from_repo_root() {
-    let dir = tempdir().unwrap();
-    let repo = dir.path().join("repo");
-    let store_root = repo.join(".ticket");
-    fs::create_dir_all(&store_root).unwrap();
-
-    let store = TicketStore::init(&repo).unwrap();
-
-    assert_eq!(
-        canonical_existing_path(&store.index_root),
-        canonical_existing_path(&store_root)
-    );
-}
-
-#[test]
 fn create_with_repo_root_target_places_ticket_under_hidden_store() {
     let dir = tempdir().unwrap();
     let repo = dir.path().join("repo");
-    let store_root = repo.join(".ticket");
-    fs::create_dir_all(&store_root).unwrap();
+    let store_root = repo.join(".workflow-tools").join("ticket");
+    std::fs::create_dir_all(&store_root).unwrap();
     let store = TicketStore::init(&store_root).unwrap();
 
     let ticket_id = store
@@ -278,9 +263,9 @@ fn create_with_repo_root_target_places_ticket_under_hidden_store() {
 fn create_rejects_non_workspace_target_root() {
     let dir = tempdir().unwrap();
     let outside = tempdir().unwrap();
-    let store_root = dir.path().join(".ticket");
+    let store_root = dir.path().join(".workflow-tools").join("ticket");
     let invalid_root = outside.path().join("stray-root");
-    fs::create_dir_all(&store_root).unwrap();
+    std::fs::create_dir_all(&store_root).unwrap();
     fs::create_dir_all(&invalid_root).unwrap();
     let store = TicketStore::init(&store_root).unwrap();
 

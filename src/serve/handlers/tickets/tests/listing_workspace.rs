@@ -97,7 +97,7 @@ async fn search_list_prefers_authoritative_mixed_workspace_hit() {
         })
         .expect("add parent scan root");
 
-    let child_index_root = root.path().join("child").join(".ticket");
+    let child_index_root = root.path().join("child").join(".workflow-tools").join("ticket");
     std::fs::create_dir_all(child_index_root.join("tickets"))
         .expect("mkdir child store");
     let child_store = Arc::new(
@@ -287,7 +287,7 @@ async fn mixed_workspace_search_followups_remain_reversible() {
         })
         .expect("add parent scan root");
 
-    let child_index_root = root.path().join("child").join(".ticket");
+    let child_index_root = root.path().join("child").join(".workflow-tools").join("ticket");
     std::fs::create_dir_all(child_index_root.join("tickets"))
         .expect("mkdir child store");
     let child_store = Arc::new(
@@ -535,9 +535,9 @@ async fn legacy_workspace_label_collision_returns_typed_bad_request() {
         .expect("add parent scan root");
 
     let left_index_root =
-        root.path().join("alpha").join("shared").join(".ticket");
+        root.path().join("alpha").join("shared").join(".workflow-tools").join("ticket");
     let right_index_root =
-        root.path().join("beta").join("shared").join(".ticket");
+        root.path().join("beta").join("shared").join(".workflow-tools").join("ticket");
     std::fs::create_dir_all(left_index_root.join("tickets"))
         .expect("mkdir left store");
     std::fs::create_dir_all(right_index_root.join("tickets"))
@@ -634,7 +634,7 @@ async fn unique_display_workspace_label_returns_typed_bad_request() {
         })
         .expect("add parent scan root");
 
-    let child_index_root = root.path().join("child").join(".ticket");
+    let child_index_root = root.path().join("child").join(".workflow-tools").join("ticket");
     std::fs::create_dir_all(child_index_root.join("tickets"))
         .expect("mkdir child store");
     let child_store = Arc::new(

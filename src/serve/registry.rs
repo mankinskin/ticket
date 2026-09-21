@@ -482,9 +482,10 @@ fn detect_store_root(dir: &std::path::Path) -> Option<PathBuf> {
         return Some(dir.to_path_buf());
     }
 
-    let hidden = dir.join(".ticket");
-    if hidden.join("tickets.db").is_file() || has_ticket_manifest(&hidden) {
-        return Some(hidden);
+    let canonical =
+        memory_kernel::workspace::canonical_store_root(dir, ".ticket");
+    if canonical.join("tickets.db").is_file() || has_ticket_manifest(&canonical) {
+        return Some(canonical);
     }
 
     None

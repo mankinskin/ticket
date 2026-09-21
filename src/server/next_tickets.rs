@@ -275,9 +275,9 @@ mod tests {
     async fn next_tickets_startup_policy_discovers_child_tickets() {
         let temp = tempfile::tempdir().expect("tempdir");
         let workspace_root = temp.path().join("workspace");
-        let parent_root = workspace_root.join(".ticket");
+        let parent_root = workspace_root.join(".workflow-tools").join("ticket");
         let parent = TicketStore::init(&parent_root).expect("parent store");
-        let child_root = workspace_root.join("child").join(".ticket");
+        let child_root = workspace_root.join("child").join(".workflow-tools").join("ticket");
         let child = TicketStore::init(&child_root).expect("child store");
         let blocker_id = child
             .create(
@@ -342,7 +342,7 @@ mod tests {
     async fn next_tickets_missing_root_reports_all_scanned_workspaces() {
         let temp = tempfile::tempdir().expect("tempdir");
         let parent = TicketStore::init(temp.path()).expect("parent store");
-        let child_root = temp.path().join("child").join(".ticket");
+        let child_root = temp.path().join("child").join(".workflow-tools").join("ticket");
         TicketStore::init(&child_root).expect("child store");
         parent
             .add_scan_root(ScanRoot {

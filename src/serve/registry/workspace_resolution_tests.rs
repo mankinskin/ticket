@@ -24,7 +24,7 @@ fn descendant_workspaces_use_workspace_root_name() {
         })
         .expect("add parent scan root");
 
-    let child_index_root = root.path().join("child").join(".ticket");
+    let child_index_root = root.path().join("child").join(".workflow-tools").join("ticket");
     std::fs::create_dir_all(child_index_root.join("tickets"))
         .expect("mkdir child store");
     let child_store = Arc::new(
@@ -91,9 +91,9 @@ fn duplicate_basename_workspaces_receive_distinct_public_ids() {
         .expect("add parent scan root");
 
     let left_index_root =
-        root.path().join("alpha").join("shared").join(".ticket");
+        root.path().join("alpha").join("shared").join(".workflow-tools").join("ticket");
     let right_index_root =
-        root.path().join("beta").join("shared").join(".ticket");
+        root.path().join("beta").join("shared").join(".workflow-tools").join("ticket");
     std::fs::create_dir_all(left_index_root.join("tickets"))
         .expect("mkdir left store");
     std::fs::create_dir_all(right_index_root.join("tickets"))
@@ -160,7 +160,8 @@ fn nested_workspace_path_alias_resolves_to_canonical_workspace_id() {
         .path()
         .join("memory-viewers")
         .join("memory-api")
-        .join(".ticket");
+        .join(".workflow-tools")
+        .join("ticket");
     std::fs::create_dir_all(child_index_root.join("tickets"))
         .expect("mkdir child store");
     TicketStore::init(&child_index_root).expect("open child store");
@@ -204,7 +205,8 @@ fn manifest_only_hidden_child_store_is_discovered() {
         .path()
         .join("memory-viewers")
         .join("memory-api")
-        .join(".ticket");
+        .join(".workflow-tools")
+        .join("ticket");
     std::fs::create_dir_all(child_index_root.join("tickets"))
         .expect("mkdir child store");
     let hidden_ticket_dir = child_index_root.join("tickets").join("hidden");
@@ -242,7 +244,7 @@ fn resolve_indexed_many_prefers_deepest_existing_workspace() {
         })
         .expect("add parent scan root");
 
-    let child_index_root = root.path().join("child").join(".ticket");
+    let child_index_root = root.path().join("child").join(".workflow-tools").join("ticket");
     std::fs::create_dir_all(child_index_root.join("tickets"))
         .expect("mkdir child store");
     let child_store = Arc::new(

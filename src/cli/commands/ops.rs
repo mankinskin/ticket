@@ -370,7 +370,10 @@ pub(crate) fn cmd_validate_links(
         &store.index_root,
         workspace::TICKET_INDEX_DIR,
     );
-    let canonical_spec_root = workspace_root.join(".spec");
+    let canonical_spec_root = memory_kernel::workspace::canonical_store_root(
+        &workspace_root,
+        ".spec",
+    );
 
     let all = store.list(None, None, None)?;
     let mut findings: Vec<Value> = Vec::new();
@@ -484,10 +487,8 @@ mod validate_links_tests {
         let workspace = TempDir::new().unwrap();
         let workspace_root = workspace.path();
 
-        let ticket_store =
-            TicketStore::init(&workspace_root.join(".ticket")).unwrap();
-        let mut spec_store =
-            SpecStore::init(&workspace_root.join(".spec")).unwrap();
+        let ticket_store = TicketStore::init(workspace_root).unwrap();
+        let mut spec_store = SpecStore::init(workspace_root).unwrap();
 
         let spec_manifest = SpecManifest::new(
             "traceability/nested-store-bug",
@@ -540,9 +541,8 @@ mod validate_links_tests {
         let workspace = TempDir::new().unwrap();
         let workspace_root = workspace.path();
 
-        let ticket_store =
-            TicketStore::init(&workspace_root.join(".ticket")).unwrap();
-        SpecStore::init(&workspace_root.join(".spec")).unwrap();
+        let ticket_store = TicketStore::init(workspace_root).unwrap();
+        SpecStore::init(workspace_root).unwrap();
 
         let ticket_id = ticket_store
             .create(
@@ -583,10 +583,9 @@ mod validate_links_tests {
         let workspace = TempDir::new().unwrap();
         let workspace_root = workspace.path();
 
-        let ticket_store =
-            TicketStore::init(&workspace_root.join(".ticket")).unwrap();
+        let ticket_store = TicketStore::init(workspace_root).unwrap();
         let mut spec_store =
-            SpecStore::init(&workspace_root.join(".spec")).unwrap();
+            SpecStore::init(workspace_root).unwrap();
 
         let spec_manifest = SpecManifest::new(
             "traceability/no-back-ref",
@@ -636,10 +635,9 @@ mod validate_links_tests {
         let workspace = TempDir::new().unwrap();
         let workspace_root = workspace.path();
 
-        let ticket_store =
-            TicketStore::init(&workspace_root.join(".ticket")).unwrap();
+        let ticket_store = TicketStore::init(workspace_root).unwrap();
         let mut spec_store =
-            SpecStore::init(&workspace_root.join(".spec")).unwrap();
+            SpecStore::init(workspace_root).unwrap();
 
         let mut spec_manifest = SpecManifest::new(
             "traceability/consistent-link",

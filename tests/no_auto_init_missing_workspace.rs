@@ -39,10 +39,10 @@ async fn get_json(
 #[tokio::test]
 async fn read_probes_do_not_create_missing_ticket_store_root() {
     let repo = tempfile::tempdir().expect("tempdir");
-    let missing_store_root = repo.path().join(".ticket");
+    let missing_store_root = repo.path().join(".workflow-tools").join("ticket");
     assert!(
         !missing_store_root.exists(),
-        "fixture should start without .ticket"
+        "fixture should start without .workflow-tools/ticket"
     );
 
     let registry =
@@ -60,7 +60,7 @@ async fn read_probes_do_not_create_missing_ticket_store_root() {
     );
     assert!(
         !missing_store_root.exists(),
-        "/api/workspaces must not create a missing .ticket root"
+        "/api/workspaces must not create a missing .workflow-tools/ticket root"
     );
 
     let (tickets_status, _tickets_payload) =
@@ -73,6 +73,6 @@ async fn read_probes_do_not_create_missing_ticket_store_root() {
     );
     assert!(
         !missing_store_root.exists(),
-        "/api/tickets probe must not create a missing .ticket root"
+        "/api/tickets probe must not create a missing .workflow-tools/ticket root"
     );
 }

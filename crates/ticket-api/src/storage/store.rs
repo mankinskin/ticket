@@ -423,7 +423,7 @@ impl TicketStore {
         target_root: Option<&Path>,
     ) -> Result<PathBuf, StorageError> {
         let Some(target_root) = target_root else {
-            // Canonical: write into the workspace's own .ticket/tickets/
+            // Canonical: write into the workspace's own .workflow-tools/ticket/tickets/
             // directory (resolved via the index_root), ignoring any registered
             // scan roots. Callers that want to place tickets elsewhere must
             // pass an explicit `target_root`.
@@ -451,15 +451,12 @@ impl TicketStore {
             target_root,
             workspace::TICKET_INDEX_DIR,
         );
-        if store_root.exists()
-            && store_root.file_name().and_then(|name| name.to_str())
-                == Some(workspace::TICKET_INDEX_DIR)
-        {
+        if store_root.exists() {
             return Ok(self.resolve_scan_root_path(&store_root.join("tickets")));
         }
 
         Err(StorageError::Other(format!(
-            "invalid ticket root '{}': expected a registered scan root, a workspace root containing .ticket, the .ticket store itself, or a path inside that store",
+            "invalid ticket root '{}': expected a registered scan root, a workspace root containing .workflow-tools/ticket, the canonical ticket store itself, or a path inside that store",
             target_root.display()
         )))
     }

@@ -242,7 +242,13 @@ mod tests {
         };
 
         assert!(error.to_string().contains("workspace not initialized"));
-        assert!(!dir.path().join(".ticket").exists());
+        assert!(
+            !dir
+                .path()
+                .join(".workflow-tools")
+                .join("ticket")
+                .exists()
+        );
     }
 
     #[test]
