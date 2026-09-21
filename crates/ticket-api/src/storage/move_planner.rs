@@ -65,7 +65,18 @@ fn map_board_error(error: crate::storage::BoardError) -> MoveError {
 }
 
 fn ticket_entity_root(store_root: &Path) -> PathBuf {
-    workspace::resolve_store_root_from(store_root, workspace::TICKET_INDEX_DIR).join("tickets")
+    store_root.join("tickets")
+}
+
+fn ticket_path_belongs_to_store(
+    store_root: &Path,
+    ticket_path: &Path,
+) -> bool {
+    let entity_root = std::fs::canonicalize(ticket_entity_root(store_root))
+        .unwrap_or_else(|_| ticket_entity_root(store_root));
+    let ticket_path = std::fs::canonicalize(ticket_path)
+        .unwrap_or_else(|_| ticket_path.to_path_buf());
+    ticket_path.starts_with(entity_root)
 }
 
 /// Ticket-domain implementation of the move kernel's [`MoveDomain`] trait.
@@ -98,19 +109,20 @@ impl MoveDomain for TicketMoveDomain<'_> {
     }
 
     fn source_entity_path(&self, entity_id: &Uuid) -> MoveResult<Option<PathBuf>> {
-        let entity_root = ticket_entity_root(&self.store.index_root);
         Ok(self
             .store
             .get_indexed(entity_id)
             .map_err(to_move_error)?
-            .and_then(|ticket| ticket.path.starts_with(&entity_root).then_some(ticket.path)))
+            .and_then(|ticket| {
+                ticket_path_belongs_to_store(&self.store.index_root, &ticket.path)
+                    .then_some(ticket.path)
+            }))
     }
 
     fn source_entity_paths_for_set(
         &self,
         entity_ids: &[Uuid],
     ) -> MoveResult<BTreeMap<Uuid, PathBuf>> {
-        let entity_root = ticket_entity_root(&self.store.index_root);
         let indexed = self
             .store
             .get_indexed_many(entity_ids)
@@ -120,7 +132,12 @@ impl MoveDomain for TicketMoveDomain<'_> {
             .filter_map(|entity_id| {
                 indexed
                     .get(entity_id)
-                    .filter(|ticket| ticket.path.starts_with(&entity_root))
+                    .filter(|ticket| {
+                        ticket_path_belongs_to_store(
+                            &self.store.index_root,
+                            &ticket.path,
+                        )
+                    })
                     .map(|ticket| (*entity_id, ticket.path.clone()))
             })
             .collect())
@@ -168,11 +185,10 @@ impl MoveDomain for TicketMoveDomain<'_> {
 
     fn entity_indexed_in(&self, store_root: &Path, entity_id: &Uuid) -> MoveResult<bool> {
         let store = self.open(store_root)?;
-        let entity_root = ticket_entity_root(store_root);
         Ok(store
             .get_indexed(entity_id)
             .map_err(to_move_error)?
-            .map(|ticket| ticket.path.starts_with(&entity_root))
+            .map(|ticket| ticket_path_belongs_to_store(store_root, &ticket.path))
             .unwrap_or(false))
     }
 
@@ -182,7 +198,6 @@ impl MoveDomain for TicketMoveDomain<'_> {
         entity_ids: &[Uuid],
     ) -> MoveResult<BTreeMap<Uuid, bool>> {
         let store = self.open(store_root)?;
-        let entity_root = ticket_entity_root(store_root);
         let indexed = store.get_indexed_many(entity_ids).map_err(to_move_error)?;
         Ok(entity_ids
             .iter()
@@ -191,7 +206,9 @@ impl MoveDomain for TicketMoveDomain<'_> {
                     *entity_id,
                     indexed
                         .get(entity_id)
-                        .map(|ticket| ticket.path.starts_with(&entity_root))
+                        .map(|ticket| {
+                            ticket_path_belongs_to_store(store_root, &ticket.path)
+                        })
                         .unwrap_or(false),
                 )
             })
