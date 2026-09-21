@@ -65,7 +65,19 @@ fn map_board_error(error: crate::storage::BoardError) -> MoveError {
 }
 
 fn ticket_entity_root(store_root: &Path) -> PathBuf {
-    store_root.join("tickets")
+    let index_root = if store_root.file_name().and_then(|name| name.to_str()) == Some("ticket")
+        && store_root
+            .parent()
+            .and_then(|parent| parent.file_name())
+            .and_then(|name| name.to_str())
+            == Some(".workflow-tools")
+    {
+        store_root.to_path_buf()
+    } else {
+        workspace::canonical_store_root(store_root, workspace::TICKET_INDEX_DIR)
+    };
+
+    index_root.join("tickets")
 }
 
 fn ticket_path_belongs_to_store(
