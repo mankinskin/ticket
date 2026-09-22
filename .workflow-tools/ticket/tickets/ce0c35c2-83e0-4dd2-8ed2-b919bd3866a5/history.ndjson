@@ -1,0 +1,2 @@
+{"rev":1,"ts":"2026-08-14T15:40:03.770592700+00:00","fields":{"component":"ticket","state":"open","title":"Decide file-contention execution-order tie-break policy","type":"task"}}
+{"rev":2,"ts":"2026-08-14T15:44:13.572741+00:00","fields":{"__previous_part_content__":null,"__previous_part_id__":"432b2697-be0c-5d39-9a18-8b2318b4001a","component":"ticket","state":"open","title":"Decide file-contention execution-order tie-break policy","type":"task"}}

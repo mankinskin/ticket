@@ -1,0 +1,8 @@
+id = "e507818f-2e19-4156-9ec0-f6b6c881cbf2"
+created_at = "2026-08-05T14:07:40.022046+00:00"
+title = "ticket-cli batch hangs indefinitely during link creation"
+state = "planning"
+component = "ticket"
+effort = "4000"
+priority = "high"
+type = "tracker-improvement"

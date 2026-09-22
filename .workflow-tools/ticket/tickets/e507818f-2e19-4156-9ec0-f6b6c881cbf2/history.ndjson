@@ -1,0 +1,2 @@
+{"rev":1,"ts":"2026-08-05T14:07:40.081805400+00:00","fields":{"component":"ticket-cli","effort":"4000","priority":"high","state":"open","title":"ticket-cli batch hangs indefinitely during link creation","type":"tracker-improvement"}}
+{"rev":2,"ts":"2026-08-05T14:19:30.876525300+00:00","fields":{"component":"ticket-cli","effort":"4000","priority":"high","state":"open","title":"ticket-cli batch hangs indefinitely during link creation","type":"tracker-improvement"}}

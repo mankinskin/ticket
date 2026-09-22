@@ -1,0 +1,9 @@
+id = "c320708d-8dc1-46e2-ab5d-9903460ae27a"
+created_at = "2026-07-31T19:57:10.082760+00:00"
+title = "Remove the stale duplicate board module in memory-kernel"
+state = "planning"
+component = "ticket"
+depends_on = ["c060bf94-2435-4cc5-8016-ca1d2c8264f5"]
+parts = [{ id = "723b102c-94a1-4c47-8089-b252365cb5c9", kind = "notes", path = "parts/723b102c-94a1-4c47-8089-b252365cb5c9.md", frozen = false, created_at = "2026-08-02T22:30:08.849129600Z" }, { id = "7120bad0-91bd-469a-b9c1-54c20b77ce7f", kind = "notes", path = "parts/7120bad0-91bd-469a-b9c1-54c20b77ce7f.md", frozen = false, created_at = "2026-08-02T22:30:32.629417700Z" }]
+priority = "medium"
+type = "refactor"

@@ -1,0 +1,6 @@
+id = "ce0c35c2-83e0-4dd2-8ed2-b919bd3866a5"
+created_at = "2026-08-14T15:40:03.701964600+00:00"
+title = "Decide file-contention execution-order tie-break policy"
+state = "planning"
+component = "ticket"
+type = "task"

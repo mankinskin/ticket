@@ -1,0 +1,12 @@
+id = "c33419c2-3fff-4ce2-9b53-8882d6918e53"
+created_at = "2026-05-18T20:50:36.672451400+00:00"
+title = "[ticket-viewer] Tracker: complete mixed-workspace regression coverage"
+state = "planning"
+component = "ticket"
+effort = "1200"
+parts = [{ id = "a29e1967-ca3e-43af-ac98-b81f4b9fdc44", kind = "objective", path = "parts/a29e1967-ca3e-43af-ac98-b81f4b9fdc44.md", frozen = false, created_at = "2026-07-30T21:02:30.078603500Z" }, { id = "d1bdeb22-0521-4b6b-80a8-82190cd0ad97", kind = "review", path = "parts/d1bdeb22-0521-4b6b-80a8-82190cd0ad97.md", frozen = false, created_at = "2026-07-30T21:02:30.082607800Z" }, { id = "0f499049-b94a-4fc8-a066-9001d390298e", kind = "objective", path = "parts/0f499049-b94a-4fc8-a066-9001d390298e.md", frozen = false, created_at = "2026-07-30T21:02:30.085973200Z" }]
+priority = "high"
+risk_level = "high"
+tags = "ticket-viewer,workspaces,regression,playwright"
+type = "tracker-improvement"
+workflow_stage = "plan"

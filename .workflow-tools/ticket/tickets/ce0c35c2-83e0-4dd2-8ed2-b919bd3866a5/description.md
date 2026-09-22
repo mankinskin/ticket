@@ -1,0 +1,1 @@
+Define the canonical deterministic tie-break for independent tickets that contend on the same normalized target path, including the evidence used to order the pair and the execution-order edge reason emitted by the derived graph query.

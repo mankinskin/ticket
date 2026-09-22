@@ -1,0 +1,11 @@
+id = "e42d8e0a-c210-4efe-a22c-2565079e67b8"
+created_at = "2026-04-08T14:20:34.581696700+00:00"
+title = "Feature: History timeline — revision viewer with field diffs"
+state = "cancelled"
+acceptance_criteria = "History panel showing revision timeline; each revision shows timestamp, changed fields, state transition; diff highlighting between revisions; revert button per revision with confirmation; loads from GET /api/tickets/{id}/history"
+component = "ticket"
+deleted = true
+effort = "1200"
+priority = "medium"
+risk_level = "medium"
+type = "tracker-improvement"

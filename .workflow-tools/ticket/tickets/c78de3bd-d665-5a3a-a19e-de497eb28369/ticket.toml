@@ -1,0 +1,7 @@
+id = "c78de3bd-d665-5a3a-a19e-de497eb28369"
+created_at = "2026-08-06T02:10:47.258838200+00:00"
+title = "[feedback-followup][ticket] Address not-helpful feedback on ce://default/ticket/8fdfe135-e3b1-4876-b638-24154edcd78d"
+state = "planning"
+component = "ticket"
+priority = "medium"
+type = "tracker-improvement"

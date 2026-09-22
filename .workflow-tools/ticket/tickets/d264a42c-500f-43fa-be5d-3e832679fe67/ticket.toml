@@ -1,0 +1,11 @@
+id = "d264a42c-500f-43fa-be5d-3e832679fe67"
+created_at = "2026-04-08T14:20:31.802326800+00:00"
+title = "Port: SSE integration for real-time ticket updates"
+state = "planning"
+acceptance_criteria = "EventSource client via web-sys connecting to /api/stream; handles ticket.upsert, ticket.delete, edge.upsert, edge.delete events; updates ticket list and graph reactively; reconnection on disconnect; snapshot.ready baseline"
+component = "ticket"
+deleted = true
+effort = "1200"
+priority = "high"
+risk_level = "medium"
+type = "tracker-improvement"

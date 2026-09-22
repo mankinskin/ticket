@@ -1,0 +1,12 @@
+id = "d7a27192-6c67-4446-9450-c946bf58747e"
+created_at = "2026-05-28T20:49:49.761543500+00:00"
+title = "[ticket-viewer] Bootstrap the local ticket store on server startup"
+state = "done"
+acceptance_criteria = "Starting ticket-viewer against a checkout with .ticket/tickets content but no tickets.db rebuilds the local index and serves routes without panicking."
+component = "ticket"
+implementation_summary = "ticket-viewer startup now uses an idempotent local-store bootstrap helper that initializes and force-scans the repo-local .ticket store before building the single-workspace registry, so manifest-only workspaces rebuild tickets.db instead of panicking with WorkspaceNotFound."
+parts = [{ id = "f547f454-ff40-4ff2-92ea-badfa6d8275c", kind = "objective", path = "parts/f547f454-ff40-4ff2-92ea-badfa6d8275c.md", frozen = false, created_at = "2026-07-30T21:05:26.176057200Z" }, { id = "8ec8f883-fa6e-4175-bcc9-721018a1db60", kind = "validation", path = "parts/8ec8f883-fa6e-4175-bcc9-721018a1db60.md", frozen = false, created_at = "2026-07-30T21:05:26.180408900Z" }]
+priority = "high"
+spec_refs = "5650b307-8408-4ca0-922f-c515dd0bfa27"
+type = "tracker-improvement"
+validation_summary = "Passed: cargo test -p ticket-viewer --bin ticket-viewer startup_bootstraps_manifest_only_ticket_store -- --nocapture. Revalidated 2026-05-31: the focused startup regression passed again, and ./target/debug/ticket-viewer.exe --port 0 started successfully and printed TICKET_VIEWER_PORT=61161 before shutdown. Broader cargo test -p ticket-viewer remains blocked by the unrelated workspace_resolution.rs import failure noted during implementation."

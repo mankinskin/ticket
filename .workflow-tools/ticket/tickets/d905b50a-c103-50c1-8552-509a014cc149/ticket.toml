@@ -1,0 +1,7 @@
+id = "d905b50a-c103-50c1-8552-509a014cc149"
+created_at = "2026-07-25T18:56:20.303413300+00:00"
+title = "[feedback-followup][ticket] Address mixed feedback on ce://default/ticket/3c6da958-f494-408f-b7dd-cc43997b8ead"
+state = "planning"
+component = "ticket"
+priority = "medium"
+type = "tracker-improvement"
