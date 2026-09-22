@@ -1,0 +1,5 @@
+{"rev":1,"ts":"2026-05-17T18:45:45.240069+00:00","fields":{"state":"open","title":"[ticket-viewer] Avoid click panic when backend is offline","type":"bug"}}
+{"rev":2,"ts":"2026-05-17T18:45:58.436933300+00:00","fields":{"state":"in-implementation","title":"[ticket-viewer] Avoid click panic when backend is offline","type":"bug"}}
+{"rev":3,"ts":"2026-05-17T20:28:34.325705400+00:00","fields":{"state":"in-review","title":"[ticket-viewer] Avoid click panic when backend is offline","type":"bug"}}
+{"rev":4,"ts":"2026-05-17T20:29:00.134002300+00:00","fields":{"state":"in-review","title":"[ticket-viewer] Avoid click panic when backend is offline","type":"tracker-improvement"}}
+{"rev":5,"ts":"2026-05-17T20:29:21.535172900+00:00","fields":{"state":"done","title":"[ticket-viewer] Avoid click panic when backend is offline","type":"tracker-improvement"}}

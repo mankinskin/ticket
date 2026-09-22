@@ -1,0 +1,6 @@
+id = "884ad295-9b75-4ad6-938d-6ab73c8efa6b"
+created_at = "2026-05-17T18:45:45.142265200+00:00"
+title = "[ticket-viewer] Avoid click panic when backend is offline"
+state = "done"
+type = "tracker-improvement"
+component = "ticket"

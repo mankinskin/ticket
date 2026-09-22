@@ -1,0 +1,10 @@
+id = "8672684c-da0a-4e45-9b7d-0ce6c6d4182a"
+created_at = "2026-04-08T14:20:47.560085200+00:00"
+title = "Port: SSE integration for real-time ticket updates"
+state = "done"
+acceptance_criteria = "EventSource client via web-sys connecting to /api/stream; handles ticket.upsert, ticket.delete, edge.upsert, edge.delete events; reconnects on disconnect with exponential backoff; updates ticket list and graph reactively via Dioxus signals; NOTE: EventSource API cannot send Authorization headers — auth token must be passed as a query parameter (e.g. /api/stream?token=...) or the implementation must switch to fetch+ReadableStream; document chosen approach in implementation notes"
+component = "ticket"
+depends_on = ["44d22e8f-bdc5-4268-b678-023dc0154c0f"]
+priority = "high"
+risk_level = "medium"
+type = "tracker-improvement"

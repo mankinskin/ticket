@@ -1,0 +1,10 @@
+id = "80b4b77f-3fd6-4fab-98ab-028c6f6d6ef6"
+created_at = "2026-04-08T14:20:46.504727300+00:00"
+title = "Port: WorkspacePicker with auth token management"
+state = "done"
+acceptance_criteria = "Workspace dropdown populated from GET /api/workspaces; manual auth token paste field (input type=password) stored in sessionStorage; token injected as Bearer header on all API calls; zero-selection and invalid-token handling with error message; workspace switch triggers full state reload; validated against viewer-api auth backend endpoint (same backend as other viewer tools use)"
+component = "ticket"
+depends_on = ["44d22e8f-bdc5-4268-b678-023dc0154c0f"]
+priority = "high"
+risk_level = "medium"
+type = "tracker-improvement"

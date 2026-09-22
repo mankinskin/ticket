@@ -1,0 +1,15 @@
+id = "929bc26a-5296-4d64-b1b2-2ec580c0659c"
+created_at = "2026-06-05T00:27:05.807250100+00:00"
+title = "[ticket-viewer][viewer-api] Make graph framing panel-aware and keep nodes behind UI panels"
+state = "planning"
+acceptance_criteria = "1. Graph nodes remain visually behind sidebar and in-viewport panels at all times. 2. Camera focus shifts into the remaining visible graph region outside active panels. 3. Dense clusters are biased away from panel edges. 4. Panel-safe layering and framing expose stable validation hooks or reproducible screenshots. 5. Release Playwright coverage proves nodes stay behind panels while panel-aware framing and repulsion remain stable under changing panel states."
+component = "ticket"
+effort = "1200"
+parts = [{ id = "2b43a8f4-b8f3-4872-9d3e-79d9a65e0368", kind = "objective", path = "parts/2b43a8f4-b8f3-4872-9d3e-79d9a65e0368.md", frozen = true, created_at = "2026-07-31T07:35:07.267418200Z" }, { id = "85842fc1-81ea-444e-a2b4-e311a46e933e", kind = "requirements", path = "parts/85842fc1-81ea-444e-a2b4-e311a46e933e.md", frozen = true, created_at = "2026-07-31T07:35:07.267812800Z" }, { id = "de4f6763-2a56-44b8-aa57-e6a97b5464a3", kind = "design", path = "parts/de4f6763-2a56-44b8-aa57-e6a97b5464a3.md", frozen = true, created_at = "2026-07-31T07:35:07.268368600Z" }, { id = "aaab9589-d58e-4bd6-8a34-f0c8d6d1594e", kind = "examples", path = "parts/aaab9589-d58e-4bd6-8a34-f0c8d6d1594e.md", frozen = true, created_at = "2026-07-31T07:35:07.269077100Z" }, { id = "b2f9c4c6-781d-4ee2-93f6-afffd48dd1e2", kind = "acceptance_criteria", path = "parts/b2f9c4c6-781d-4ee2-93f6-afffd48dd1e2.md", frozen = true, created_at = "2026-07-31T07:35:07.269482200Z" }]
+plan_revision = 1
+priority = "high"
+risk_level = "high"
+spec_refs = "98b4f75d-3628-470d-a5cc-c91b6cc9811a"
+status_summary = "Triage 2026-07-31: no implementation work landed; returned to planned for re-scoping."
+tags = "ticket-viewer,viewer-api,graph,layout,camera,panels"
+type = "tracker-improvement"

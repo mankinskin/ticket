@@ -1,0 +1,12 @@
+id = "80631f3c-4a75-491e-876a-8bf2a5e0ab4f"
+created_at = "2026-05-12T11:18:17.582656700+00:00"
+title = "[ticket-viewer] Move Playwright E2E ownership into memory-viewers"
+state = "done"
+component = "ticket"
+parts = [{ id = "79ad65ea-a2c9-4d00-a5f2-d88156b93199", kind = "objective", path = "parts/79ad65ea-a2c9-4d00-a5f2-d88156b93199.md", frozen = false, created_at = "2026-07-30T21:05:26.199023200Z" }, { id = "89d8dd96-7586-415b-9e78-4f89451d386b", kind = "validation", path = "parts/89d8dd96-7586-415b-9e78-4f89451d386b.md", frozen = false, created_at = "2026-07-30T21:05:26.202812900Z" }, { id = "438a83c9-4354-4489-844c-d9476e497d6a", kind = "objective", path = "parts/438a83c9-4354-4489-844c-d9476e497d6a.md", frozen = false, created_at = "2026-07-30T21:05:26.206665900Z" }]
+priority = "medium"
+risk_level = "medium"
+tags = "e2e,playwright,memory-viewers"
+type = "tracker-improvement"
+validation_status = "passed"
+validator_id = "copilot"

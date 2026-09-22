@@ -1,0 +1,47 @@
+## Problem
+
+Ticket-viewer browser coverage is split across two ownership boundaries.
+
+- `tools/viewer/e2e/tests/viewers/ticket-viewer.spec.ts` still registers ticket-viewer in the centralized main-repo Playwright suite.
+- `memory-viewers/ticket-viewer/frontend/dioxus/e2e/workspace-picker-page.spec.ts` already contains ticket-viewer-owned Playwright coverage inside the `memory-viewers` repository.
+
+That split makes ownership, maintenance, and validation inconsistent. The ticket-viewer crate lives in `memory-viewers`, but part of its E2E source of truth is still under the main repo's `tools/viewer/e2e` harness.
+
+## Evidence
+
+- `tools/viewer/e2e/playwright.config.ts` starts managed viewer servers from the main repo and includes `ticket-viewer` on port `3002`.
+- `tools/viewer/e2e/tests/viewers/ticket-viewer.spec.ts` is only a thin wrapper that registers shared suites: `registerCommonViewerSuite(TICKET_VIEWER)` and `registerDioxusThemeSuite(TICKET_VIEWER)`.
+- `tools/viewer/e2e/tests/shared/suites/common-viewer-suite.ts` already imports shared smoke helpers from `viewer-api/.../e2e/test_apis`, so the centralized ticket-viewer suite already depends on memory-viewers-owned code.
+- `memory-viewers/ticket-viewer/frontend/dioxus/playwright.config.ts` already defines a local Playwright setup and `npm run test:e2e` entrypoint for ticket-viewer-owned browser tests.
+- `Makefile.toml` still routes `cargo make test-e2e` through `tools/viewer/e2e`.
+- `memory-viewers/AGENTS.md` still says viewer E2E tests live under `tools/viewer/e2e`.
+
+## Goal
+
+Make `memory-viewers` the source of truth for ticket-viewer Playwright coverage, including the release-smoke coverage that is currently registered from `tools/viewer/e2e`.
+
+## Scope
+
+- Move ticket-viewer-owned E2E tests out of `tools/viewer/e2e` and into a ticket-viewer-owned location inside `memory-viewers`.
+- Preserve the current release-binary smoke coverage for ticket-viewer after the move.
+- Remove or replace the centralized ticket-viewer registration file once the new location is wired.
+- Update docs and task wiring so ticket-viewer validation is run from `memory-viewers`, not from the main repo's centralized viewer test directory.
+- Keep non-ticket viewers working without forcing unrelated relocations in the same change.
+
+## Acceptance Criteria
+
+1. Ticket-viewer E2E tests that currently live under `tools/viewer/e2e` are owned from `memory-viewers` instead.
+2. The moved suite still covers the current release-smoke contract for ticket-viewer: load without JS errors, no missing static assets, ready-selector visible, and Dioxus theme/settings smoke behavior.
+3. There is a documented validation entrypoint that can be invoked from `memory-viewers` to run ticket-viewer browser validation end-to-end.
+4. Main-repo docs/task wiring no longer claim that ticket-viewer E2E lives only under `tools/viewer/e2e`; if the centralized suite remains for other viewers, it explicitly excludes ticket-viewer.
+5. Validation is executed from the memory-viewers side and recorded in the implementation notes.
+
+## Validation Plan
+
+- Run the moved Playwright suite from its new `memory-viewers` location.
+- Exercise the chosen server mode for the migrated tests so the release-binary smoke checks still execute against ticket-viewer.
+- Confirm docs/task entrypoints no longer direct ticket-viewer validation through `tools/viewer/e2e`.
+
+## Notes for Implementation
+
+The main design choice is where the migrated release-smoke harness should live inside `memory-viewers` and how much of the shared helper code should stay centralized vs. move into a reusable viewer-api-owned package. The implementation does not need to relocate `log-viewer`, `doc-viewer`, or `spec-viewer` in the same change.
