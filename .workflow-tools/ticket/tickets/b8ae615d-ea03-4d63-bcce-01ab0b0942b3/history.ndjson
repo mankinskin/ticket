@@ -1,0 +1,2 @@
+{"rev":1,"ts":"2026-03-21T17:12:54.532464400+00:00","fields":{"component":"ticket-viewer","risk_level":"low","state":"done","title":"Bug: WorkspacesResponse field mismatch items vs workspaces","type":"tracker-improvement"}}
+{"rev":2,"ts":"2026-03-23T13:56:03.494224700+00:00","fields":{"bug_validity":"confirmed","component":"ticket-viewer","doc_category":"bug-report","risk_level":"low","state":"done","title":"Bug: WorkspacesResponse field mismatch items vs workspaces","type":"tracker-improvement"}}

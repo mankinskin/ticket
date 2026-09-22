@@ -1,0 +1,8 @@
+id = "a3cc8e3e-7cb9-413c-a4df-966df77859d5"
+created_at = "2026-03-28T19:26:49.822044+00:00"
+title = "[ticket-system] Undo support: revert last update via --undo flag"
+state = "done"
+acceptance_criteria = "1. `ticket update <id> --undo` reverts the most recent history step by calling apply_revert with the previous revision's fields. 2. --undo is the default behavior for resolving invalid state transitions: if a forward state transition fails, the system suggests --undo automatically. 3. --undo creates a new forward-only history revision (no erasure). 4. Works via CLI and MCP. 5. Existing revert command continues to work for arbitrary revision targets."
+component = "ticket"
+priority = "high"
+type = "tracker-improvement"

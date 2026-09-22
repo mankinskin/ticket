@@ -1,0 +1,15 @@
+id = "b594864a-008c-423d-bf86-df940ed9dc54"
+created_at = "2026-03-21T04:38:43.692623100+00:00"
+title = "Impl: state styling baseline and per-workspace UI state persistence"
+state = "done"
+acceptance_criteria = "Distinct styles for open/in-progress/review/validating/blocked/done and persisted filters/layout per workspace"
+component = "ticket"
+depends_on = ["02dea1fa-828e-4173-aed3-7a0e654e9d81", "08e3f042-f690-4d0e-907a-b4ffb9508e50"]
+execution_wave = "2"
+interview_file_type = "interview"
+interview_files = { answers = "assets/interviews/answers.md", questions = "assets/interviews/questions.md" }
+parallel_track = "H"
+risk_level = "medium"
+type = "tracker-improvement"
+validation_summary = "State styling and per-workspace UI persistence are implemented in ticket-viewer; full e2e suite passes (11/11) and type-check passes."
+workflow_stage = "implementation"

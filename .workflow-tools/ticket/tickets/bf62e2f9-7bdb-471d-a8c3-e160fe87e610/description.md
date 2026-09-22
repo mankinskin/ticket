@@ -1,0 +1,1 @@
+Closing evidence: Governing spec 1f77f652-f883-4782-940a-39874dfe1382 (ticket-api/storage/description-update-modes, state=reviewed, links this ticket). Validation: `rtk cargo test -p ticket-api` → 135 passed, 0 failed. Landed in memory-api submodule commit 143ea13.

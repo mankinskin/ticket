@@ -1,0 +1,8 @@
+id = "a98ea0e1-d3e8-47e4-aa28-b6a39296cd45"
+created_at = "2026-03-28T19:26:50.333571400+00:00"
+title = "[ticket-system] Force sync: reconcile index from disk ticket.toml"
+state = "done"
+acceptance_criteria = "1. `ticket scan --force` re-reads every ticket.toml from disk and updates the redb index + Tantivy index to match, overwriting stale entries. 2. Detects manually-edited ticket.toml files (state changes, field updates) and reconciles them. 3. Reports which tickets were updated during force sync. 4. Safe: never deletes ticket.toml files. 5. Existing scan (without --force) behavior unchanged."
+component = "ticket"
+priority = "medium"
+type = "tracker-improvement"

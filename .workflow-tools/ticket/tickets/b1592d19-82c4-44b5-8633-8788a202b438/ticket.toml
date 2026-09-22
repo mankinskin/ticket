@@ -1,0 +1,6 @@
+id = "b1592d19-82c4-44b5-8633-8788a202b438"
+created_at = "2026-05-25T11:48:10.293692+00:00"
+title = "[probe] ticket root target"
+state = "cancelled"
+component = "ticket"
+type = "tracker-improvement"
