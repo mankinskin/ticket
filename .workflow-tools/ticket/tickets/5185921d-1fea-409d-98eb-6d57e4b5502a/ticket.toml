@@ -1,0 +1,11 @@
+id = "5185921d-1fea-409d-98eb-6d57e4b5502a"
+created_at = "2026-04-08T14:20:48.996167200+00:00"
+title = "Feature: Ticket creation form with type selection and required fields"
+state = "planning"
+acceptance_criteria = "New ticket dialog/panel with type selector from schema; dynamic required field inputs based on type schema; title, description (markdown), priority, component fields; POST to /api/tickets; success creates and selects new ticket; validation errors shown inline"
+component = "ticket"
+deleted = true
+effort = "1200"
+priority = "critical"
+risk_level = "medium"
+type = "tracker-improvement"

@@ -1,0 +1,7 @@
+id = "2df2a9e7-5755-43e3-b143-3b4d19c8a5e7"
+created_at = "2026-05-17T19:23:36.992503200+00:00"
+title = "Expand board next-up and remove duplicate next board summary"
+state = "done"
+priority = "high"
+type = "tracker-improvement"
+component = "ticket"

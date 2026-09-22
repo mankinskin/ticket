@@ -1,0 +1,11 @@
+id = "29a56eef-d1ac-4bae-8c1f-817b33a232b5"
+created_at = "2026-07-28T20:49:25.424633500+00:00"
+title = "[ticket-api] create_ticket accepts off-schema state values, and health_check does not detect the resulting frozen tickets"
+state = "in-review"
+acceptance_criteria = "create_ticket rejects (or normalizes) a state argument that is not a member of the resolved ticket type schema's states list, with a clear error naming the invalid value and legal set; a unit/integration test asserts create_ticket cannot produce a ticket whose state is absent from its type schema; health_check (and health_check --all) flags any ticket whose current state is not a member of its resolved type schema's states list as a distinct finding kind (e.g. off_schema_state); a regression test reproduces this exact scenario (create/patch a ticket into an off-schema state, then assert health_check reports it); existing store data is unaffected by the fix landing, no bulk migration required"
+component = "ticket"
+effort = "1500"
+parts = [{ id = "22832fea-a755-4da3-b42a-1159e3902260", kind = "objective", path = "parts/22832fea-a755-4da3-b42a-1159e3902260.md", frozen = false, created_at = "2026-07-30T21:02:31.446270700Z" }, { id = "804239a1-5307-42a6-82a7-e17be5d88c81", kind = "validation", path = "parts/804239a1-5307-42a6-82a7-e17be5d88c81.md", frozen = false, created_at = "2026-07-30T21:02:31.450921800Z" }, { id = "3a59b3bc-ce58-46f1-ad16-968e27854799", kind = "objective", path = "parts/3a59b3bc-ce58-46f1-ad16-968e27854799.md", frozen = false, created_at = "2026-07-30T21:02:31.455020500Z" }]
+priority = "high"
+risk_level = "medium"
+type = "bug"

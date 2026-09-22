@@ -1,0 +1,10 @@
+id = "2e07430b-5ade-4384-8b4f-93dd6de73203"
+created_at = "2026-08-13T19:05:34.544617200+00:00"
+title = "Ticket CLI panics when stdout is closed early"
+state = "in-review"
+component = "ticket"
+parts = [{ id = "1980e700-cbfb-40e1-9c18-b08b08bc7e98", kind = "acceptance_criteria", path = "parts/1980e700-cbfb-40e1-9c18-b08b08bc7e98.md", frozen = true, created_at = "2026-08-13T19:05:41.771314200Z" }, { id = "a65e3eb7-994e-4734-98b1-9d9dccf0df83", kind = "validation", path = "parts/a65e3eb7-994e-4734-98b1-9d9dccf0df83.md", frozen = false, created_at = "2026-08-14T15:55:07.874741200Z" }, { id = "46acb578-2bb0-4109-90b3-985c3034115e", kind = "validation", path = "parts/46acb578-2bb0-4109-90b3-985c3034115e.md", frozen = false, created_at = "2026-08-14T16:10:05.631182Z" }, { id = "258f4549-bc2e-47bb-9db3-fc52c5d0aa00", kind = "objective", path = "parts/258f4549-bc2e-47bb-9db3-fc52c5d0aa00.md", frozen = true, created_at = "2026-08-14T16:11:04.967749300Z" }, { id = "40318493-36e7-4137-a51b-f62af3e5930b", kind = "requirements", path = "parts/40318493-36e7-4137-a51b-f62af3e5930b.md", frozen = true, created_at = "2026-08-14T16:11:04.967970200Z" }, { id = "af96854a-ab9d-4385-9575-9e67cd7d30cd", kind = "design", path = "parts/af96854a-ab9d-4385-9575-9e67cd7d30cd.md", frozen = true, created_at = "2026-08-14T16:11:04.968172100Z" }, { id = "3b6e5def-a191-4db8-a9ed-f0f57a50e952", kind = "examples", path = "parts/3b6e5def-a191-4db8-a9ed-f0f57a50e952.md", frozen = true, created_at = "2026-08-14T16:11:04.968461700Z" }]
+plan_revision = 1
+priority = "medium"
+risk_level = "low"
+type = "bug"

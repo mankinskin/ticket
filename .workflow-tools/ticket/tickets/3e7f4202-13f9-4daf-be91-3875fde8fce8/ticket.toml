@@ -1,0 +1,11 @@
+id = "3e7f4202-13f9-4daf-be91-3875fde8fce8"
+created_at = "2026-04-08T14:20:49.257217200+00:00"
+title = "Feature: Ticket inline editing — title, priority, component, custom fields"
+state = "planning"
+acceptance_criteria = "Click-to-edit fields in ticket detail view; editable: title, priority, component, risk_level, tags, custom fields; PATCH to /api/tickets/{id}; optimistic update with rollback on error; edit mode toggle"
+component = "ticket"
+deleted = true
+effort = "1200"
+priority = "high"
+risk_level = "medium"
+type = "tracker-improvement"

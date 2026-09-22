@@ -1,0 +1,9 @@
+id = "3a5df74c-2192-4187-b048-3f6285f20db4"
+created_at = "2026-06-24T11:33:01.999795200+00:00"
+title = "[memory-index] Ticket index: one-line entries, state-ordered, collapsible state headers, clickable manifest links"
+state = "planning"
+component = "ticket"
+depends_on = ["c5e9bb39-d784-4d0c-8de1-3885013cddce"]
+effort = "3200"
+priority = "high"
+type = "tracker-improvement"

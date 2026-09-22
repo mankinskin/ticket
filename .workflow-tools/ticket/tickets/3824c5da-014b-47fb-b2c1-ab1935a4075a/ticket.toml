@@ -1,0 +1,8 @@
+id = "3824c5da-014b-47fb-b2c1-ab1935a4075a"
+created_at = "2026-08-05T13:49:19.020080700+00:00"
+title = "Define transport parity matrix for spec 9074b2ef"
+state = "planning"
+component = "ticket"
+effort = "4000"
+priority = "high"
+type = "task"
