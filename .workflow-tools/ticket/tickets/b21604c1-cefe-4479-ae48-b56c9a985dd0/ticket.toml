@@ -1,0 +1,10 @@
+id = "b21604c1-cefe-4479-ae48-b56c9a985dd0"
+created_at = "2026-04-08T15:23:40.880650900+00:00"
+title = "Feature: Batch operations — multi-select, queue, bulk apply, filter-based updates"
+state = "done"
+acceptance_criteria = "Multi-select via checkboxes in TicketTree; batch action bar with bulk state transition, field update, close/cancel; queue model with sequential apply and progress indicator; filter-result bulk updates; transactional batch via ticket-api batch command; optimistic UI with per-ticket status feedback"
+component = "ticket"
+depends_on = ["3e79be12-cf02-4976-9d66-23cafb3276eb", "8034efd8-e165-4798-afe1-3445026345d9"]
+priority = "high"
+risk_level = "medium"
+type = "tracker-improvement"

@@ -1,0 +1,10 @@
+id = "15ee34c6-60d9-487a-aba0-cffeb435c031"
+created_at = "2026-04-08T14:20:33.612708200+00:00"
+title = "Feature: Ticket inline editing — title, priority, component, custom fields"
+state = "done"
+acceptance_criteria = "Click-to-edit fields in ticket detail view; editable schema fields: title, priority, component, risk_level, tags, workflow_stage, phase, doc_category, release_target, release_version, rollout_stage (all optional string fields per tracker-improvement schema); PATCH to /api/tickets/{id}; optimistic update with gate (block further edits until server confirms); rollback on server error; field validation (required fields cannot be blanked, enum-style fields like priority/risk_level validated against known values from schema endpoint); concurrent edit conflict handling: if SSE delivers a conflicting server update while a field is being edited, show conflict dialog with local vs server values; bootstrap_blocker boolean field rendered as checkbox"
+component = "ticket"
+depends_on = ["69abd1c7-15a9-4d56-8156-0f09ff90783f"]
+priority = "high"
+risk_level = "medium"
+type = "tracker-improvement"

@@ -1,0 +1,11 @@
+id = "dd80a182-8d0d-4439-bb59-668b9e6a5672"
+created_at = "2026-04-08T14:20:50.223451500+00:00"
+title = "Feature: History timeline — revision viewer with field diffs"
+state = "planning"
+acceptance_criteria = "History panel showing revision timeline from GET /api/tickets/{id}/history; each revision shows: timestamp, author (requires 261e7567 ticket-api author tracking), changed fields with before/after diff, state transitions highlighted; diff highlighting between consecutive revisions; revert button per revision with confirmation dialog (calls POST /api/tickets/{id}/revert); depends on 261e7567 being complete first for author display"
+component = "ticket"
+depends_on = ["261e7567-e234-43d5-881b-c481e34131f8", "3fda11c3-978b-4f7c-9ee1-934a97debb12"]
+effort = "1200"
+priority = "medium"
+risk_level = "medium"
+type = "tracker-improvement"

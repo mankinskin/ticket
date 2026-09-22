@@ -1,0 +1,10 @@
+id = "9d0c7931-3fab-4176-a209-d1b4dafc904c"
+created_at = "2026-04-08T14:20:49.983181500+00:00"
+title = "Feature: Description editor — Markdown textarea with live preview"
+state = "done"
+acceptance_criteria = "Split view: raw markdown textarea on left/top, live preview panel on right/bottom rendered by pulldown-cmark+syntect; debounced live preview (not every keystroke); save button PATCHes description via /api/tickets/{id}; unsaved changes indicator; Ctrl+S keyboard shortcut; browser beforeunload guard to prevent navigating away with unsaved changes; this textarea+preview component is reused by the creation form (3e069173)"
+component = "ticket"
+depends_on = ["69abd1c7-15a9-4d56-8156-0f09ff90783f", "af19b0f6-b6b4-48fb-8b70-09a70f4868f8"]
+priority = "high"
+risk_level = "medium"
+type = "tracker-improvement"
