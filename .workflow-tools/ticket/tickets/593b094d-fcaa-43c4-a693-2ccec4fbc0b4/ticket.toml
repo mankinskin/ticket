@@ -1,0 +1,11 @@
+id = "593b094d-fcaa-43c4-a693-2ccec4fbc0b4"
+created_at = "2026-04-08T14:20:35.058455400+00:00"
+title = "Feature: GPU 3D dependency graph via WebGPU"
+state = "planning"
+acceptance_criteria = "WebGPU-accelerated 3D graph rendering using wgpu from WASM; force-directed or hierarchical layout; state-colored nodes with TicketCard rendering; edge lines with arrowheads; camera orbit/pan/zoom; click node to open; falls back to SVG when WebGPU unavailable"
+component = "ticket"
+deleted = true
+effort = "1200"
+priority = "low"
+risk_level = "high"
+type = "tracker-improvement"

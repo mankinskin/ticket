@@ -1,0 +1,9 @@
+id = "731f3579-0678-4eb8-a45c-53020830fba8"
+created_at = "2026-07-25T16:39:02.729783+00:00"
+title = "[ticket-api] Add built-in `task` schema and health check for ticket types missing a schema"
+state = "done"
+component = "ticket"
+effort = "1500"
+parts = [{ id = "5b8e6804-4417-4a74-adbf-053c314485f8", kind = "objective", path = "parts/5b8e6804-4417-4a74-adbf-053c314485f8.md", frozen = false, created_at = "2026-07-30T21:02:31.432963900Z" }, { id = "eba1762a-8d0c-4457-8506-4598f78b1bdf", kind = "validation", path = "parts/eba1762a-8d0c-4457-8506-4598f78b1bdf.md", frozen = false, created_at = "2026-07-30T21:02:31.437081800Z" }, { id = "b3a4e368-ce03-420a-a494-a6cde1706286", kind = "objective", path = "parts/b3a4e368-ce03-420a-a494-a6cde1706286.md", frozen = false, created_at = "2026-07-30T21:02:31.441047700Z" }]
+risk_level = "low"
+type = "tracker-improvement"

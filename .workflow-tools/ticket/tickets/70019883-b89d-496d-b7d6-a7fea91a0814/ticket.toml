@@ -1,0 +1,8 @@
+id = "70019883-b89d-496d-b7d6-a7fea91a0814"
+created_at = "2026-08-05T14:29:14.742861500+00:00"
+title = "next_tickets --root does not traverse containment edges to reach actionable leaves"
+state = "planning"
+component = "ticket"
+effort = "4000"
+priority = "medium"
+type = "tracker-improvement"

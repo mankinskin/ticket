@@ -1,0 +1,7 @@
+id = "52f2b14f-fd64-5eb2-83a3-a2c99c5680ce"
+created_at = "2026-07-26T12:49:00.462881800+00:00"
+title = "[feedback-followup][ticket] Address not-helpful feedback on ce://default/ticket/6a47ab0f-7e42-463e-afe0-bf51b85249c9"
+state = "cancelled"
+component = "ticket"
+priority = "medium"
+type = "tracker-improvement"

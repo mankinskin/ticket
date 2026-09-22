@@ -1,0 +1,2 @@
+{"rev":1,"ts":"2026-08-05T14:29:14.819514700+00:00","fields":{"component":"ticket-api","priority":"medium","state":"open","title":"next_tickets --root does not traverse containment edges to reach actionable leaves","type":"tracker-improvement"}}
+{"rev":2,"ts":"2026-08-05T16:48:18.060068500+00:00","fields":{"component":"ticket-api","effort":"4000","priority":"medium","state":"open","title":"next_tickets --root does not traverse containment edges to reach actionable leaves","type":"tracker-improvement"}}

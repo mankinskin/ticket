@@ -1,0 +1,1 @@
+`ticket board show --json` currently includes `recommended_next[].last_blocker_progress_at`, but recommended-next items are sourced from the actionable queue where that field is always null by contract. Remove the field from the board-show JSON payload to reduce token usage, update focused CLI tests, and record the contract change in the relevant workflow spec.

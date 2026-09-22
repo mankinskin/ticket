@@ -1,0 +1,7 @@
+id = "614fae19-cb51-4f38-96cc-40012d1adaae"
+created_at = "2026-08-08T11:50:52.201937500+00:00"
+title = "Resolve board/session worktree-claim conflict with orchestrator-provisioned worktrees"
+state = "planning"
+component = "ticket"
+priority = "high"
+type = "task"
