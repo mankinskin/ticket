@@ -1,0 +1,10 @@
+id = "fa2ba34b-59ec-4321-a4ce-a3c3a9295ea3"
+created_at = "2026-08-06T12:15:50.906818+00:00"
+title = "Session-anchored MCP workspace resolution: require session_id and resolve every proxied call to the session's active worktree"
+state = "in-implementation"
+component = "ticket"
+parts = [{ id = "bde87627-3985-4ff7-ad69-1a48668f262a", kind = "notes", path = "parts/bde87627-3985-4ff7-ad69-1a48668f262a.md", frozen = false, created_at = "2026-08-06T15:16:16.144799900Z" }, { id = "128b8373-f9f2-4bb9-8499-a29bc500854c", kind = "objective", path = "parts/128b8373-f9f2-4bb9-8499-a29bc500854c.md", frozen = true, created_at = "2026-08-15T23:21:32.132240100Z" }, { id = "32779d10-2fbe-459e-8640-c1d050ea3a38", kind = "requirements", path = "parts/32779d10-2fbe-459e-8640-c1d050ea3a38.md", frozen = true, created_at = "2026-08-15T23:21:32.132770Z" }, { id = "b6b2f0e6-cfa2-4f7c-9c01-25fe4f9562ce", kind = "design", path = "parts/b6b2f0e6-cfa2-4f7c-9c01-25fe4f9562ce.md", frozen = true, created_at = "2026-08-15T23:21:32.133237400Z" }, { id = "a91ed6b4-b57b-4bc2-a504-79af6aea64dc", kind = "examples", path = "parts/a91ed6b4-b57b-4bc2-a504-79af6aea64dc.md", frozen = true, created_at = "2026-08-15T23:21:32.133859700Z" }, { id = "1ece406e-3c00-4fa8-83dd-325f1582d9f5", kind = "acceptance_criteria", path = "parts/1ece406e-3c00-4fa8-83dd-325f1582d9f5.md", frozen = true, created_at = "2026-08-15T23:21:32.134129800Z" }]
+plan_revision = 1
+priority = "high"
+type = "bug"
+validation = "Session handoff worktree-path slice passed: vt-session-handoff-worktree-path / exec-session-handoff-worktree-path-20260816 cover session-api and session-mcp regressions. Live execution exec-session-handoff-main-checkout-live-20260816 read back handoff ef037e4e-7ead-444b-b958-515dae6d083c after installed session-mcp launched from the main checkout persisted .agents/agents/explainer.agent.md in the selected worktree. The broader proxy-wide session_id enforcement remains open."

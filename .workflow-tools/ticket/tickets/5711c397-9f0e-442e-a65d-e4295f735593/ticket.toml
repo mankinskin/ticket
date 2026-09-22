@@ -1,0 +1,10 @@
+id = "5711c397-9f0e-442e-a65d-e4295f735593"
+created_at = "2026-04-08T14:20:47.243493400+00:00"
+title = "Port: SVG dependency graph fallback view"
+state = "cancelled"
+acceptance_criteria = "SVG-based hierarchical graph layout by depth; state-colored nodes; directed edges with arrowheads; root node highlighting; renders from /api/graph/subgraph response; click node to open ticket"
+component = "ticket"
+depends_on = ["44d22e8f-bdc5-4268-b678-023dc0154c0f"]
+priority = "high"
+risk_level = "low"
+type = "tracker-improvement"

@@ -1,0 +1,13 @@
+id = "1b0dbe8a-1828-41e7-b33f-4a066c3622bf"
+created_at = "2026-07-09T22:36:37.860437900+00:00"
+title = "[ticket-viewer] Clickable parent/child neighbours in content panel with cache-driven graph retarget"
+state = "planning"
+acceptance_criteria = "1. The content panel lists the immediate parents and children of the selected ticket. 2. Each listed neighbour is clickable and retargets the selection to that node. 3. Clicking a neighbour updates the rendered graph from cache, not by fetching nodes on demand. 4. Navigation via neighbours stays consistent with graph-based selection."
+component = "ticket"
+depends_on = ["a34d9891-5cd3-403c-8576-f3a55a50047e", "e978d833-bbaa-4cb8-8c1a-52a282a079d9"]
+effort = "5000"
+priority = "high"
+risk_level = "medium"
+spec_refs = "8c4d51ef-c0b6-437d-bc14-672b0802cef2"
+tags = "ticket-viewer,content-panel,navigation,graph,cache"
+type = "tracker-improvement"

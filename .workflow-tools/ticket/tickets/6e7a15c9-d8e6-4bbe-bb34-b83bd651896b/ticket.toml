@@ -1,0 +1,16 @@
+id = "6e7a15c9-d8e6-4bbe-bb34-b83bd651896b"
+created_at = "2026-05-25T11:48:36.527477300+00:00"
+title = "[ticket-viewer] Keep full workspace graph visible with focused navigation"
+state = "cancelled"
+acceptance_criteria = "1. Graph mode keeps the workspace graph visible while ticket selection changes focus. 2. Focus changes pan or center the viewport instead of replacing the dataset with a new root-local graph. 3. Related edges and nearby nodes are emphasized while distant unrelated regions are de-emphasized."
+component = "ticket"
+depends_on = ["397fa45b-a0bd-43d2-b430-2dfa44d80c5c", "e978d833-bbaa-4cb8-8c1a-52a282a079d9"]
+implementation_summary = "Ticket-viewer graph mode now keeps a workspace-scoped graph mounted while selection changes retarget focus inside the existing dataset. A persistent graph root, shared selection-driven camera focus, and local node-context dimming let users move through nearby tickets without replacing the graph on each click."
+linked = ["c892904f-6aff-4892-baf1-1f832837cde5"]
+parts = [{ id = "76ab7c85-ceab-4cab-8051-18af9748a49d", kind = "objective", path = "parts/76ab7c85-ceab-4cab-8051-18af9748a49d.md", frozen = false, created_at = "2026-07-30T21:05:26.220505900Z" }, { id = "5ccf74dd-231d-4b51-b689-484495c55e20", kind = "validation", path = "parts/5ccf74dd-231d-4b51-b689-484495c55e20.md", frozen = false, created_at = "2026-07-30T21:05:26.224739500Z" }, { id = "f97e1cbd-8005-46a2-8f2c-15ba4335b4ee", kind = "objective", path = "parts/f97e1cbd-8005-46a2-8f2c-15ba4335b4ee.md", frozen = false, created_at = "2026-07-30T21:05:26.228821200Z" }]
+priority = "high"
+risk_level = "high"
+spec_refs = "8c4d51ef-c0b6-437d-bc14-672b0802cef2"
+tags = "ticket-viewer,graph,focus,ux"
+type = "tracker-improvement"
+validation_summary = "Previous broad graph suite pass is stale. Revalidated 2026-05-31: shared graph review evidence is currently blocked by ticket 60092819 failing focused default hierarchical/isometric ordering coverage in graph-detail-sidebar.spec.ts (\"graph mode defaults to hierarchical isometric controls and preserves top-to-bottom depth ordering\"): child y 557.26 was above the root threshold of 632.96. Full-workspace focused navigation needs a clean rerun after the default graph regression is fixed, so this ticket returns to in-implementation."

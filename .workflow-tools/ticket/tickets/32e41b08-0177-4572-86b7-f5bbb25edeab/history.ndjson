@@ -1,0 +1,1 @@
+{"rev":1,"ts":"2026-07-31T07:20:38.682541+00:00","fields":{"component":"ticket-api","effort":"small","priority":"medium","risk_level":"low","state":"open","title":"[ticket-api][ticket-mcp] No get_ticket view profile exposes affected/claimed file paths, causing false not-started triage classifications","type":"bug","workflow_stage":"tracker-improvement"}}

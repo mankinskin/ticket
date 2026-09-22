@@ -1,0 +1,1 @@
+Add workflow-focused ticket-viewer UI surfaces that consume the new workflow payloads. The viewer should keep generic field sorting for ad hoc browsing, but it should introduce workflow-specific next, blockers, and unblocked-by views that preserve server-authored order, direct hierarchy, and frontier-leaf emphasis.

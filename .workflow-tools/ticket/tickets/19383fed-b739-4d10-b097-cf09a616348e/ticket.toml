@@ -1,0 +1,10 @@
+id = "19383fed-b739-4d10-b097-cf09a616348e"
+created_at = "2026-04-08T14:20:49.744012300+00:00"
+title = "Feature: Edge management — add/remove dependencies from graph"
+state = "done"
+acceptance_criteria = "Add dependency button opens ticket picker with full-text search; select edge kind (depends_on/linked); edge reason field (optional free text, maps to ticket-api --reason); POST creates edge via /api/edges; click edge in SVG or GPU graph to remove; cycle detection error surfaced in UI; graph auto-updates via SSE after edge changes; remove confirmation dialog for depends_on edges; auth middleware applied to all mutations"
+component = "ticket"
+depends_on = ["15871ee6-8e6b-40a0-8293-46d31deae3e8", "8d861d64-4d3b-4c1c-82db-13fa1221cd04"]
+priority = "high"
+risk_level = "medium"
+type = "tracker-improvement"

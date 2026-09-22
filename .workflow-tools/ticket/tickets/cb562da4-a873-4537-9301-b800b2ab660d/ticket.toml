@@ -1,0 +1,14 @@
+id = "cb562da4-a873-4537-9301-b800b2ab660d"
+created_at = "2026-05-21T16:58:44.285475400+00:00"
+title = "[ticket-api][ticket-http][ticket-viewer] Design: canonical workspace identity and search consistency"
+state = "done"
+acceptance_criteria = "Workspace identity contract is collision-safe and reversible; reconciliation contract unifies search/index visibility for normal and force scan; unresolved-hit policy forbids synthetic ghost tickets; filtered explorer live-update semantics are specified; child implementation tickets carry explicit unit/integration/browser validation gates with required commands and fixtures; the validation matrix maps every invariant to passing tests"
+component = "ticket"
+depends_on = ["429f6f1d-6429-4601-bfac-b572fdb4dbff", "700b9763-17f8-436e-ace0-45b88bedd1d7"]
+parts = [{ id = "c75fc48c-658a-4b1a-af97-1f88708e07f6", kind = "objective", path = "parts/c75fc48c-658a-4b1a-af97-1f88708e07f6.md", frozen = false, created_at = "2026-07-30T21:05:26.524619100Z" }, { id = "0bae8624-90a2-4a5e-9dc6-b3fbd203d144", kind = "validation", path = "parts/0bae8624-90a2-4a5e-9dc6-b3fbd203d144.md", frozen = false, created_at = "2026-07-30T21:05:26.528739400Z" }, { id = "ff8cf574-4746-4708-aa7a-46bf2ee8a7e7", kind = "objective", path = "parts/ff8cf574-4746-4708-aa7a-46bf2ee8a7e7.md", frozen = false, created_at = "2026-07-30T21:05:26.532410600Z" }]
+priority = "high"
+risk_level = "high"
+spec_refs = "ae5ef697-0ee5-4f74-9dca-2cb268290dae,0b1888f2-7e59-45fb-95d8-1bf14ff7747f,5bd4fd1a-cd0e-4893-9dca-2cb268290dae,33e731c2-a0cf-41f7-bd7c-2df6c4545bf3"
+tags = "ticket-api,ticket-http,ticket-viewer,workspaces,search,design"
+type = "tracker-improvement"
+workflow_stage = "plan"

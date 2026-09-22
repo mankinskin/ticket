@@ -1,0 +1,11 @@
+id = "013b57bd-2e8c-4d4d-87c8-6f8687a195c8"
+created_at = "2026-07-04T14:15:08.186683800+00:00"
+title = "[ticket-api] Add targeted incremental reconcile modes for move and maintenance tooling"
+state = "done"
+component = "ticket"
+effort = "2.5k tokens"
+parts = [{ id = "5c1d674a-df70-4a16-b43b-c9b5406af107", kind = "objective", path = "parts/5c1d674a-df70-4a16-b43b-c9b5406af107.md", frozen = false, created_at = "2026-07-30T21:02:31.700357600Z" }, { id = "6144f4fc-c840-4648-bcac-9ff108b332a4", kind = "validation", path = "parts/6144f4fc-c840-4648-bcac-9ff108b332a4.md", frozen = false, created_at = "2026-07-30T21:02:31.704139700Z" }, { id = "cc4548df-7f4c-4494-b4b3-0d1e2119a6b3", kind = "objective", path = "parts/cc4548df-7f4c-4494-b4b3-0d1e2119a6b3.md", frozen = false, created_at = "2026-07-30T21:02:31.708165100Z" }]
+priority = "high"
+risk_level = "medium"
+tags = "ticket-api,performance,scan,move,reconcile,tooling"
+type = "tracker-improvement"

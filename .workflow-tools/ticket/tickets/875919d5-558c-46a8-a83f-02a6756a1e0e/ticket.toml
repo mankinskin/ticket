@@ -1,0 +1,11 @@
+id = "875919d5-558c-46a8-a83f-02a6756a1e0e"
+created_at = "2026-07-04T14:15:07.975317+00:00"
+title = "[ticket-api][memory-api] Batch residual SQLite and index writes during scan reconciliation"
+state = "done"
+component = "ticket"
+effort = "2k tokens"
+parts = [{ id = "c9996570-e26b-44e1-975b-4c1ea920a8b4", kind = "objective", path = "parts/c9996570-e26b-44e1-975b-4c1ea920a8b4.md", frozen = false, created_at = "2026-07-30T21:02:31.609481900Z" }, { id = "0fdd176c-5e1c-4007-925d-9148bc4091e1", kind = "validation", path = "parts/0fdd176c-5e1c-4007-925d-9148bc4091e1.md", frozen = false, created_at = "2026-07-30T21:02:31.614037Z" }, { id = "8bb1810d-f01b-46b5-b070-e7b14cbd8f05", kind = "objective", path = "parts/8bb1810d-f01b-46b5-b070-e7b14cbd8f05.md", frozen = false, created_at = "2026-07-30T21:02:31.617985400Z" }]
+priority = "high"
+risk_level = "medium"
+tags = "ticket-api,memory-api,performance,sqlite,indexing,scan"
+type = "tracker-improvement"

@@ -1,0 +1,10 @@
+id = "c031aeb0-f374-4d57-9d46-2463dfa8571d"
+created_at = "2026-06-01T21:48:25.890193100+00:00"
+title = "[ticket-api][ticket-cli][ticket-mcp][ticket-http] Define minimal workflow and health core plus adapter responsibilities"
+state = "done"
+component = "ticket"
+depends_on = ["0e375356-b74e-48c4-8f1d-77cd28e055bc"]
+priority = "high"
+risk_level = "medium"
+tags = "ticket-api,ticket-cli,ticket-mcp,ticket-http,workflow,health,adapter-boundary,parity"
+type = "tracker-improvement"

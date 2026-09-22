@@ -1,0 +1,10 @@
+id = "385f2521-b318-403b-a4ea-195a47e5c453"
+created_at = "2026-06-05T13:52:53.371301600+00:00"
+title = "[ticket-api] Unify multi-step state transitions across update and close flows"
+state = "done"
+component = "ticket"
+linked = ["f77ff07e-c250-4740-8da8-8cf065564f8a"]
+priority = "high"
+spec_refs = "ticket-api/state-transition-path-unification"
+tags = "ticket-api,ticket-cli,ticket-http,ticket-mcp,state-machine"
+type = "tracker-improvement"

@@ -1,0 +1,11 @@
+id = "3e4718af-3fd3-40a4-ac89-d298c99c806a"
+created_at = "2026-07-04T14:15:08.056403200+00:00"
+title = "[ticket-api] Make workflow-facts recompute incremental during scan and move reconcile"
+state = "done"
+component = "ticket"
+effort = "3k tokens"
+parts = [{ id = "f463f309-723a-4b21-8ce7-0cb017f9637e", kind = "objective", path = "parts/f463f309-723a-4b21-8ce7-0cb017f9637e.md", frozen = false, created_at = "2026-07-30T21:02:31.749220700Z" }, { id = "4b3582dd-8196-4b1c-b2c4-367b5be7eaed", kind = "validation", path = "parts/4b3582dd-8196-4b1c-b2c4-367b5be7eaed.md", frozen = false, created_at = "2026-07-30T21:02:31.753140200Z" }, { id = "d98e3049-d7ba-4f54-9628-33bb3eea404f", kind = "objective", path = "parts/d98e3049-d7ba-4f54-9628-33bb3eea404f.md", frozen = false, created_at = "2026-07-30T21:02:31.756858100Z" }]
+priority = "high"
+risk_level = "high"
+tags = "ticket-api,performance,scan,move,workflow-facts"
+type = "tracker-improvement"

@@ -1,0 +1,10 @@
+id = "6484d4b7-e24b-4c13-999c-d0b00928d97c"
+created_at = "2026-06-01T21:48:26.033204200+00:00"
+title = "[ticket-cli][ticket-http][ticket-mcp] Build larger-integration parity routine for workflow and health surfaces"
+state = "done"
+component = "ticket"
+depends_on = ["0e375356-b74e-48c4-8f1d-77cd28e055bc", "c031aeb0-f374-4d57-9d46-2463dfa8571d"]
+priority = "high"
+risk_level = "medium"
+tags = "ticket-cli,ticket-http,ticket-mcp,workflow,health,board,validation,e2e,parity"
+type = "tracker-improvement"
