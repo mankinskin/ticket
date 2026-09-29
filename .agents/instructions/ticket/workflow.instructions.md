@@ -103,11 +103,11 @@ do not.
 
 ### Discovery Before Creating
 
-Always search for existing tickets before creating new ones, using `ticket search`,
-`list_tickets`, `get_ticket_description`, or `ticket list`. Duplicate tickets degrade
-store quality. When a matching ticket already exists, report its id and evidence
-(or reuse/update it) instead of creating another; when only some of the needed
-tickets already exist, reuse those and create only the missing ones.
+[entity-discovery.instructions.md](../../../../.agents/instructions/workflow/entity-discovery.instructions.md)
+owns this rule for every store, including which phases it binds, how to record
+coverage, and the three permitted reuse forms. Do not restate it here.
+
+The ticket-specific surfaces it calls for:
 
 ```bash
 ./target/debug/ticket.exe search "<keywords>" --toon
@@ -115,6 +115,10 @@ tickets already exist, reuse those and create only the missing ones.
 
 Or via MCP: `mcp_ticket-mcp_list_tickets` with a `where` filter, or
 `mcp_ticket-mcp_get_ticket_description`.
+
+`ticket list --limit <n>` is **not** a reliable read-back: the store holds more
+tickets than a typical limit and list ordering will not surface a just-created
+ticket. Verify a created ticket with `ticket get <id>` or `ticket search`.
 
 ### Picking Next Work
 
