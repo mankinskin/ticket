@@ -1,7 +1,7 @@
 use std::{
     collections::BTreeMap,
     fs,
-    path::Path,
+    path::{Path, PathBuf},
 };
 
 use chrono::Utc;
@@ -319,19 +319,61 @@ fn display_path(path: &Path) -> String {
     path.to_string_lossy().replace('\\', "/")
 }
 
-/// Resolve a `SpecRef.store_root` (repo-root-relative, e.g. ".spec" or
-/// "memory-api/.spec") against the workspace root that `ticket validate-links`
-/// was invoked against.
+fn resolve_reference_owner_root(
+    aggregate_root: &Path,
+    workspace: &str,
+) -> Result<PathBuf, String> {
+    let aggregate_root = aggregate_root
+        .canonicalize()
+        .map_err(|error| format!("cannot resolve aggregate root: {error}"))?;
+    if workspace == "default" {
+        return Ok(aggregate_root);
+    }
+
+    let workspace_path = Path::new(workspace);
+    if workspace_path.is_absolute()
+        || workspace_path.components().any(|component| {
+            !matches!(component, std::path::Component::Normal(_))
+        })
+    {
+        return Err(format!(
+            "workspace '{workspace}' must be a relative path beneath the aggregate root"
+        ));
+    }
+
+    let owner_root = aggregate_root
+        .join(workspace_path)
+        .canonicalize()
+        .map_err(|error| {
+            format!("cannot resolve owner workspace '{workspace}': {error}")
+        })?;
+    if !owner_root.starts_with(&aggregate_root) {
+        return Err(format!(
+            "workspace '{workspace}' resolves outside the aggregate root"
+        ));
+    }
+
+    Ok(owner_root)
+}
+
 fn resolve_referenced_spec_root(
-    workspace_root: &Path,
+    owner_root: &Path,
     store_root: &str,
-) -> std::path::PathBuf {
+) -> Result<PathBuf, String> {
     let candidate = Path::new(store_root);
     if candidate.is_absolute() {
-        candidate.to_path_buf()
-    } else {
-        workspace_root.join(candidate)
+        return Ok(candidate.to_path_buf());
     }
+    if candidate
+        .components()
+        .any(|component| !matches!(component, std::path::Component::Normal(_)))
+    {
+        return Err(format!(
+            "relative store_root '{store_root}' must remain beneath its owner workspace"
+        ));
+    }
+
+    Ok(owner_root.join(candidate))
 }
 
 /// Attempt to read a spec at `root` by id. Returns `None` when the store
@@ -365,16 +407,12 @@ fn count_links_by_kind(findings: &[Value]) -> Value {
 /// store(s). Mirrors `spec validate-links` from the other direction.
 pub(crate) fn cmd_validate_links(
     store: &TicketStore,
+    aggregate_root: &Path,
 ) -> Result<Value, CliRunError> {
     let workspace_root = workspace::resolve_workspace_root_from_store_root(
         &store.index_root,
         workspace::TICKET_INDEX_DIR,
     );
-    let canonical_spec_root = memory_kernel::workspace::canonical_store_root(
-        &workspace_root,
-        ".spec",
-    );
-
     let all = store.list(None, None, None)?;
     let mut findings: Vec<Value> = Vec::new();
     let mut checked = 0usize;
@@ -387,13 +425,47 @@ pub(crate) fn cmd_validate_links(
 
         for spec_ref in ticket.related_specs() {
             checked += 1;
-            let referenced_root = resolve_referenced_spec_root(
-                &workspace_root,
+            let owner_root = match resolve_reference_owner_root(
+                aggregate_root,
+                &spec_ref.workspace,
+            ) {
+                Ok(owner_root) => owner_root,
+                Err(message) => {
+                    findings.push(json!({
+                        "kind": "invalid_owner_workspace",
+                        "ticket_id": ticket.id,
+                        "spec_id": spec_ref.spec_id,
+                        "workspace": spec_ref.workspace,
+                        "store_root": spec_ref.store_root,
+                        "message": message,
+                    }));
+                    continue;
+                },
+            };
+            let referenced_root = match resolve_referenced_spec_root(
+                &owner_root,
                 &spec_ref.store_root,
-            );
+            ) {
+                Ok(referenced_root) => referenced_root,
+                Err(message) => {
+                    findings.push(json!({
+                        "kind": "invalid_store_root",
+                        "ticket_id": ticket.id,
+                        "spec_id": spec_ref.spec_id,
+                        "workspace": spec_ref.workspace,
+                        "store_root": spec_ref.store_root,
+                        "message": message,
+                    }));
+                    continue;
+                },
+            };
+            let canonical_spec_root =
+                memory_kernel::workspace::canonical_store_root(
+                    &owner_root,
+                    ".spec",
+                );
 
-            if let Some(spec) = try_get_spec(&referenced_root, spec_ref.spec_id)
-            {
+            if let Some(spec) = try_get_spec(&referenced_root, spec_ref.spec_id) {
                 let has_back_ref = spec
                     .related_tickets()
                     .iter()
@@ -473,6 +545,9 @@ mod validate_links_tests {
     use super::{
         TicketStore,
         cmd_validate_links,
+        resolve_reference_owner_root,
+        resolve_referenced_spec_root,
+        try_get_spec,
     };
 
     /// Reproduces the nested-store bug: a ticket's `related_specs` entry
@@ -488,7 +563,8 @@ mod validate_links_tests {
         let workspace_root = workspace.path();
 
         let ticket_store = TicketStore::init(workspace_root).unwrap();
-        let mut spec_store = SpecStore::init(workspace_root).unwrap();
+        let mut spec_store =
+            SpecStore::init(workspace_root).unwrap();
 
         let spec_manifest = SpecManifest::new(
             "traceability/nested-store-bug",
@@ -526,7 +602,7 @@ mod validate_links_tests {
             .update(&ticket_id, patch, None, None, None, None)
             .unwrap();
 
-        let result = cmd_validate_links(&ticket_store).unwrap();
+        let result = cmd_validate_links(&ticket_store, workspace_root).unwrap();
 
         assert_eq!(result["valid"], false);
         assert_eq!(result["checked"], 1);
@@ -534,6 +610,106 @@ mod validate_links_tests {
         assert_eq!(findings.len(), 1);
         assert_eq!(findings[0]["kind"], "wrong_store_ref");
         assert_eq!(findings[0]["spec_id"], spec_id.to_string());
+    }
+
+    #[test]
+    fn resolves_reference_owner_independently_of_invocation_root() {
+        let aggregate = TempDir::new().unwrap();
+        let aggregate_root = aggregate.path();
+        let owner_root = aggregate_root.join("workflow-tools");
+        std::fs::create_dir_all(&owner_root).unwrap();
+
+        let aggregate_ticket_store = TicketStore::init(aggregate_root).unwrap();
+        let owner_ticket_store = TicketStore::init(&owner_root).unwrap();
+        let aggregate_ticket_id = aggregate_ticket_store
+            .create(
+                None,
+                "task",
+                Some("Aggregate invocation ticket"),
+                None,
+                BTreeMap::new(),
+                None,
+                None,
+            )
+            .unwrap();
+        let owner_ticket_id = owner_ticket_store
+            .create(
+                None,
+                "task",
+                Some("Nested invocation ticket"),
+                None,
+                BTreeMap::new(),
+                None,
+                None,
+            )
+            .unwrap();
+
+        let mut spec_manifest = SpecManifest::new(
+            "traceability/owner-root-resolution",
+            "Owner root resolution spec",
+            "ticket-api",
+        );
+        let spec_id = spec_manifest.id();
+        spec_manifest.set_related_tickets(vec![
+            TicketRef {
+                ticket_id: aggregate_ticket_id,
+                workspace: "default".to_string(),
+                store_root: ".workflow-tools/ticket".to_string(),
+            },
+            TicketRef {
+                ticket_id: owner_ticket_id,
+                workspace: "workflow-tools".to_string(),
+                store_root: ".workflow-tools/ticket".to_string(),
+            },
+        ]);
+        let mut spec_store = SpecStore::init(&owner_root).unwrap();
+        spec_store.create(&spec_manifest, "body", None).unwrap();
+
+        let spec_ref = SpecRef {
+            spec_id,
+            workspace: "workflow-tools".to_string(),
+            store_root: ".workflow-tools/spec".to_string(),
+        };
+        let resolved_owner_root =
+            resolve_reference_owner_root(aggregate_root, &spec_ref.workspace)
+                .unwrap();
+        let resolved_spec_root =
+            resolve_referenced_spec_root(&resolved_owner_root, &spec_ref.store_root)
+                .unwrap();
+        assert_eq!(
+            resolved_spec_root,
+            owner_root.canonicalize().unwrap().join(".workflow-tools/spec")
+        );
+        assert_eq!(
+            try_get_spec(&resolved_spec_root, spec_id).unwrap().id(),
+            spec_id
+        );
+
+        for (ticket_store, ticket_id) in [
+            (&aggregate_ticket_store, aggregate_ticket_id),
+            (&owner_ticket_store, owner_ticket_id),
+        ] {
+            let mut patch = BTreeMap::new();
+            patch.insert(
+                "related_specs".to_string(),
+                serde_json::to_value(vec![spec_ref.clone()]).unwrap(),
+            );
+            ticket_store
+                .update(&ticket_id, patch, None, None, None, None)
+                .unwrap();
+        }
+
+        let aggregate_result =
+            cmd_validate_links(&aggregate_ticket_store, aggregate_root)
+                .unwrap();
+        let nested_result =
+            cmd_validate_links(&owner_ticket_store, aggregate_root).unwrap();
+
+        for result in [&aggregate_result, &nested_result] {
+            assert_eq!(result["checked"], 1);
+            assert_eq!(result["valid"], true);
+            assert_eq!(result["findings"].as_array().unwrap().len(), 0);
+        }
     }
 
     #[test]
@@ -570,7 +746,7 @@ mod validate_links_tests {
             .update(&ticket_id, patch, None, None, None, None)
             .unwrap();
 
-        let result = cmd_validate_links(&ticket_store).unwrap();
+        let result = cmd_validate_links(&ticket_store, workspace_root).unwrap();
 
         assert_eq!(result["valid"], false);
         let findings = result["findings"].as_array().unwrap();
@@ -611,7 +787,7 @@ mod validate_links_tests {
         let spec_ref = SpecRef {
             spec_id,
             workspace: "default".to_string(),
-            store_root: ".spec".to_string(),
+            store_root: ".workflow-tools/spec".to_string(),
         };
         let mut patch = BTreeMap::new();
         patch.insert(
@@ -622,7 +798,7 @@ mod validate_links_tests {
             .update(&ticket_id, patch, None, None, None, None)
             .unwrap();
 
-        let result = cmd_validate_links(&ticket_store).unwrap();
+        let result = cmd_validate_links(&ticket_store, workspace_root).unwrap();
 
         assert_eq!(result["valid"], false);
         let findings = result["findings"].as_array().unwrap();
@@ -636,8 +812,7 @@ mod validate_links_tests {
         let workspace_root = workspace.path();
 
         let ticket_store = TicketStore::init(workspace_root).unwrap();
-        let mut spec_store =
-            SpecStore::init(workspace_root).unwrap();
+        let mut spec_store = SpecStore::init(workspace_root).unwrap();
 
         let mut spec_manifest = SpecManifest::new(
             "traceability/consistent-link",
@@ -668,7 +843,7 @@ mod validate_links_tests {
         let spec_ref = SpecRef {
             spec_id,
             workspace: "default".to_string(),
-            store_root: ".spec".to_string(),
+            store_root: ".workflow-tools/spec".to_string(),
         };
         let mut patch = BTreeMap::new();
         patch.insert(
@@ -679,7 +854,7 @@ mod validate_links_tests {
             .update(&ticket_id, patch, None, None, None, None)
             .unwrap();
 
-        let result = cmd_validate_links(&ticket_store).unwrap();
+        let result = cmd_validate_links(&ticket_store, workspace_root).unwrap();
 
         assert_eq!(result["valid"], true);
         assert_eq!(result["findings"].as_array().unwrap().len(), 0);

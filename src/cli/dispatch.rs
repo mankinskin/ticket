@@ -747,7 +747,15 @@ fn dispatch_store_command_ops_admin(
         TicketCommandCli::Board(args) => commands::cmd_board(args, &store),
         TicketCommandCli::Workspace(args) =>
             commands::cmd_workspace(args, &store),
-        TicketCommandCli::ValidateLinks => commands::cmd_validate_links(&store),
+        TicketCommandCli::ValidateLinks => {
+            let aggregate_root = ticket_api::workspace::working_dir()
+                .ok_or_else(|| {
+                    CliRunError::BadRequest(
+                        "could not determine the CLI process working directory for reference resolution".to_string(),
+                    )
+                })?;
+            commands::cmd_validate_links(&store, &aggregate_root)
+        },
         _ => unreachable!("handled in ops admin dispatch"),
     }
 }
