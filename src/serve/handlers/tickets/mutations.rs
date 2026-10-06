@@ -382,7 +382,21 @@ pub async fn move_ticket(
 
     let request_id = rid.0.clone();
     let task_request_id = request_id.clone();
-    let target_workspace = normalize_workspace_root(&body.to_workspace_root);
+    let target_selector =
+        match ticket_api::workspace::normalize_explicit_workspace_selector(
+            Some(&body.to_workspace_root),
+        ) {
+            Ok(path) => path,
+            Err(error) => {
+                return ApiError::new(
+                    "ticket.invalid_workspace_selector",
+                    &error.to_string(),
+                    &rid.0,
+                )
+                .into_response_with_status(StatusCode::BAD_REQUEST);
+            }
+        };
+    let target_workspace = normalize_workspace_root(&target_selector);
     let dry_run = body.dry_run;
 
     tracing::debug!(
@@ -727,9 +741,8 @@ fn move_recovery_json() -> Value {
     })
 }
 
-fn normalize_workspace_root(value: &str) -> std::path::PathBuf {
-    let path = std::path::PathBuf::from(value);
-    std::fs::canonicalize(&path).unwrap_or(path)
+fn normalize_workspace_root(value: &std::path::Path) -> std::path::PathBuf {
+    std::fs::canonicalize(value).unwrap_or_else(|_| value.to_path_buf())
 }
 
 fn normalize_display_path(path: &std::path::Path) -> String {

@@ -41,11 +41,31 @@ pub(super) fn dispatch(
         TicketCommandCli::ExportCommandSchema =>
             export_command_schema_payload(),
         TicketCommandCli::Catalog => capability_catalog_payload(),
-        TicketCommandCli::Init => cmd_init(
-            index_root_override,
-            workspace_root_override,
-            schema_dir_override,
-        ),
+        TicketCommandCli::Init => {
+            if index_root_override.is_none()
+                && workspace_root_override.is_none()
+            {
+                return Err(CliRunError::BadRequest(
+                    "store initialization requires explicit --workspace <path> or --index-root <path>".to_string(),
+                ));
+            }
+            let normalized_workspace_root = workspace_root_override
+                .map(|path| {
+                    let selector = path.to_string_lossy();
+                    ticket_api::workspace::normalize_explicit_workspace_selector(
+                        Some(&selector),
+                    )
+                    .map_err(|error| CliRunError::BadRequest(error.to_string()))
+                })
+                .transpose()?;
+            cmd_init(
+                index_root_override,
+                normalized_workspace_root
+                    .as_deref()
+                    .or(workspace_root_override),
+                schema_dir_override,
+            )
+        },
         other => dispatch_store_backed(
             other,
             index_root_override,
@@ -252,6 +272,23 @@ fn dispatch_store_backed(
         }
     }
 
+    let normalized_workspace_root = if command_mutates_workspace(&command) {
+        workspace_root_override
+            .map(|path| {
+                let selector = path.to_string_lossy();
+                ticket_api::workspace::normalize_explicit_workspace_selector(
+                    Some(&selector),
+                )
+                .map_err(|error| CliRunError::BadRequest(error.to_string()))
+            })
+            .transpose()?
+    } else {
+        None
+    };
+    let workspace_root_override = normalized_workspace_root
+        .as_deref()
+        .or(workspace_root_override);
+
     require_explicit_workspace_for_create(
         &command,
         index_root_override,
@@ -274,6 +311,33 @@ fn dispatch_store_backed(
     }
 
     dispatch_store_command(command, store, dry_run)
+}
+
+fn command_mutates_workspace(command: &TicketCommandCli) -> bool {
+    matches!(
+        command,
+        TicketCommandCli::Create(_)
+            | TicketCommandCli::Update(_)
+            | TicketCommandCli::Repro(_)
+            | TicketCommandCli::Delete(_)
+            | TicketCommandCli::Scan(_)
+            | TicketCommandCli::Claim(_)
+            | TicketCommandCli::Unclaim(_)
+            | TicketCommandCli::WritePart(_)
+            | TicketCommandCli::WriteAmendment(_)
+            | TicketCommandCli::UndoPart(_)
+            | TicketCommandCli::AddRoot(_)
+            | TicketCommandCli::Batch(_)
+            | TicketCommandCli::Revert(_)
+            | TicketCommandCli::FinalizeMerge(_)
+            | TicketCommandCli::Link(_)
+            | TicketCommandCli::Unlink(_)
+            | TicketCommandCli::PruneDangling(_)
+            | TicketCommandCli::Close(_)
+            | TicketCommandCli::Cancel(_)
+            | TicketCommandCli::Move(_)
+            | TicketCommandCli::Attach(_)
+    )
 }
 
 fn require_explicit_workspace_for_create(

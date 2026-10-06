@@ -73,9 +73,11 @@ pub(super) fn move_recovery_json() -> Value {
 pub(super) fn normalize_workspace_root(
     value: &str
 ) -> Result<PathBuf, McpError> {
-    ticket_api::workspace::canonicalize_workspace_root_strict(
-        std::path::Path::new(value),
+    let selector = ticket_api::workspace::normalize_explicit_workspace_selector(
+        Some(value),
     )
+    .map_err(|error| McpError::invalid_params(error.to_string(), None))?;
+    ticket_api::workspace::canonicalize_workspace_root_strict(&selector)
     .map_err(|error| {
         McpError::invalid_params(
             format!(

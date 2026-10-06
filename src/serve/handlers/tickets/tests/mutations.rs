@@ -434,3 +434,40 @@ async fn move_ticket_apply_executes_and_returns_journal() {
             .is_some()
     );
 }
+
+#[tokio::test]
+async fn move_ticket_rejects_ambient_target_aliases() {
+    let dir = tempfile::tempdir().expect("tempdir");
+    run_git(dir.path(), &["init"]);
+    let source_store = make_store(dir.path());
+    let id = source_store
+        .create(
+            None,
+            "tracker-improvement",
+            Some("Reject invalid move target"),
+            Some("planning"),
+            BTreeMap::new(),
+            None,
+            None,
+        )
+        .expect("create source ticket");
+
+    for selector in ["", "  ", "default", ".."] {
+        let state = make_state(Arc::clone(&source_store));
+        let workspace = state.registry.primary_workspace_name().to_string();
+        let response = move_ticket(
+            State(state),
+            Extension(RequestIdExt("rid-move-invalid-target".to_string())),
+            Path(id.clone()),
+            Query(MutationWorkspaceParam { workspace }),
+            Json(MoveTicketBody {
+                to_workspace_root: selector.to_string(),
+                dry_run: true,
+            }),
+        )
+        .await;
+
+        assert_eq!(response.status(), StatusCode::BAD_REQUEST);
+        assert!(source_store.get_indexed(&id).unwrap().is_some());
+    }
+}

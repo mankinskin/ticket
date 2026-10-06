@@ -156,11 +156,12 @@ impl TicketServer {
     ) -> Result<CallToolResult, McpError> {
         let extra = parse_field_patch(Some(input.fields.clone()), None)?;
         let workspace =
-            ticket_api::workspace::validate_explicit_workspace_selector(Some(
+            ticket_api::workspace::normalize_explicit_workspace_selector(Some(
                 &input.workspace,
             ))
             .map_err(|err| McpError::invalid_params(err.to_string(), None))?
-            .to_string();
+            .to_string_lossy()
+            .into_owned();
         let type_id = input.type_id;
         let title = input.title;
         let state = input.state;

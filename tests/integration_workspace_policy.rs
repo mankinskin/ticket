@@ -9,6 +9,7 @@ use common::{
     TicketCommands,
     WorkspaceSandbox,
 };
+use ticket_api::storage::TicketStore;
 
 const TICKET: &str = env!("CARGO_BIN_EXE_ticket");
 
@@ -119,6 +120,56 @@ fn workspace_policy_show_set_ignore_rescan_flow() {
         visible_after, 0,
         "fixture ticket must be excluded after ignore"
     );
+}
+
+#[test]
+fn create_with_dot_workspace_reads_back_from_canonical_store() {
+    let dir = tempfile::tempdir().expect("tempdir");
+    let workspace = dir.path().join("workspace");
+    std::fs::create_dir_all(&workspace).expect("create workspace");
+    let title = "Dot-selected CLI ticket";
+    let output = Command::new(TICKET)
+        .current_dir(&workspace)
+        .args([
+            "--workspace",
+            ".",
+            "--json",
+            "create",
+            "--title",
+            title,
+            "--type",
+            "tracker-improvement",
+            "--state",
+            "planning",
+        ])
+        .output()
+        .expect("run Ticket CLI create");
+    assert!(
+        output.status.success(),
+        "Ticket CLI create failed: {}",
+        String::from_utf8_lossy(&output.stderr)
+    );
+
+    let envelope: serde_json::Value = serde_json::from_slice(&output.stdout)
+        .expect("parse Ticket CLI output");
+    let id = envelope["payload"]["id"]
+        .as_str()
+        .expect("create response includes ticket id");
+    let id = uuid::Uuid::parse_str(id).expect("ticket id is a UUID");
+    let store =
+        TicketStore::open(&workspace).expect("open canonical Ticket store");
+    let ticket = store.get(&id).expect("read created ticket");
+
+    assert_eq!(
+        ticket.extra.get("title").and_then(|value| value.as_str()),
+        Some(title)
+    );
+    assert_eq!(
+        store.index_root,
+        workspace.join(".workflow-tools").join("ticket")
+    );
+    assert!(!workspace.join(".ticket").exists());
+    assert!(!dir.path().join(".workflow-tools").join("ticket").exists());
 }
 
 #[test]

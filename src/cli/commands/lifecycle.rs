@@ -117,10 +117,13 @@ pub(crate) fn cmd_move(
             )
         })?;
 
+    let selector = to_workspace_root.to_string_lossy();
+    let selector = workspace::normalize_explicit_workspace_selector(
+        Some(&selector),
+    )
+    .map_err(|error| CliRunError::BadRequest(error.to_string()))?;
     let requested_workspace_root =
-        workspace::canonicalize_workspace_root_strict(std::path::Path::new(
-            to_workspace_root,
-        ))
+        workspace::canonicalize_workspace_root_strict(&selector)
         .map_err(|error| {
             CliRunError::BadRequest(format!(
                 "workspace root canonicalization failed for '{}': {error}",
@@ -534,6 +537,41 @@ mod tests {
         assert_eq!(payload["dry_run"], true);
         assert!(payload["plan"]["source_ticket_path"].is_string());
         assert!(payload["plan"]["destination_ticket_path"].is_string());
+    }
+
+    #[test]
+    fn cmd_move_rejects_ambient_workspace_aliases() {
+        let temp = tempdir().unwrap();
+        let repo = temp.path().join("repo");
+        std::fs::create_dir_all(&repo).unwrap();
+        run_git(&repo, &["init"]);
+        let source_store = TicketStore::init(&repo).unwrap();
+        source_store
+            .create(
+                None,
+                "tracker-improvement",
+                Some("Reject invalid move target"),
+                Some("planning"),
+                Default::default(),
+                None,
+                None,
+            )
+            .unwrap();
+
+        for selector in ["", "  ", "default", ".."] {
+            let result = cmd_move(
+                MoveArgs {
+                    id: Some("11111111-1111-4111-8111-111111111111".to_string()),
+                    to_workspace_root: Some(std::path::PathBuf::from(selector)),
+                    resume: None,
+                    rollback: None,
+                    dry_run: true,
+                },
+                &source_store,
+                false,
+            );
+            assert!(result.is_err(), "selector {selector:?} must be rejected");
+        }
     }
 
     #[test]

@@ -106,31 +106,29 @@ impl TicketServer {
             return Ok(self.index_root.clone());
         }
 
+        let normalized = ticket_api::workspace::normalize_explicit_workspace_selector(
+            Some(workspace),
+        )
+        .map_err(|error| McpError::invalid_params(error.to_string(), None))?;
+        let workspace = normalized.to_string_lossy();
         let resolved = ticket_api::workspace::resolve_store_root_from(
-            Path::new(workspace),
+            Path::new(workspace.as_ref()),
             ticket_api::workspace::TICKET_INDEX_DIR,
         );
-        let resolved = ticket_api::workspace::canonicalize_workspace_root_strict(
-            &resolved,
-        )
-        .map_err(|error| {
-            McpError::invalid_params(
-                format!(
-                    "invalid workspace '{workspace}': failed to canonicalize ticket store root: {error}"
-                ),
-                None,
-            )
-        })?;
+        let requested_path = Path::new(workspace.as_ref());
+        let resolved =
+            ticket_api::workspace::canonicalize_workspace_root(&resolved);
         if resolved.file_name().and_then(|name| name.to_str())
             == Some(ticket_api::workspace::TICKET_INDEX_DIR)
             || Self::is_ticket_store_root(&resolved)
+            || requested_path.is_dir()
         {
             return Ok(resolved);
         }
 
         Err(McpError::invalid_params(
             format!(
-                "invalid workspace '{workspace}': expected 'default', a repo root containing .ticket, the .ticket store itself, a path inside that store, or an existing ticket store root"
+                    "invalid workspace '{workspace}': expected 'default', a repo root containing .ticket, the .ticket store itself, a path inside that store, or an existing ticket store root"
             ),
             None,
         ))
@@ -193,7 +191,12 @@ impl TicketServer {
         workspace: &str,
         f: impl FnOnce(&TicketStore) -> Result<T, McpError>,
     ) -> Result<T, McpError> {
-        let index_root = self.resolve_workspace_root(workspace)?;
+        let workspace = ticket_api::workspace::normalize_explicit_workspace_selector(
+            Some(workspace),
+        )
+        .map_err(|error| McpError::invalid_params(error.to_string(), None))?;
+        let workspace = workspace.to_string_lossy();
+        let index_root = self.resolve_workspace_root(&workspace)?;
         let _guard = self.store_lock.lock().await;
         let store =
             TicketStore::open_or_init(&index_root).map_err(Self::store_err)?;

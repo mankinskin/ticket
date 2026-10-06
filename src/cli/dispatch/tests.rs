@@ -210,6 +210,42 @@ fn resolve_index_root_prefers_explicit_workspace_root() {
 }
 
 #[test]
+fn create_rejects_ambient_workspace_aliases_before_store_open() {
+    for selector in ["", "  ", "default", ".."] {
+        let workspace = PathBuf::from(selector);
+        let result = dispatch(
+            TicketCommandCli::Create(crate::cli::CreateArgs {
+                id: None,
+                ticket_type: Some("task".to_string()),
+                title: Some("Selector validation".to_string()),
+                state: None,
+                fields: vec![],
+                body_file: None,
+            }),
+            None,
+            Some(&workspace),
+            None,
+            false,
+            false,
+        );
+
+        let error = result.expect_err("ambient selector must fail");
+        assert!(error.to_string().contains("invalid workspace selector"));
+    }
+}
+
+#[test]
+fn init_requires_explicit_workspace_or_store_root() {
+    let error =
+        dispatch(TicketCommandCli::Init, None, None, None, false, false)
+        .expect_err("init must not select an ambient workspace");
+
+    assert!(error
+        .to_string()
+        .contains("store initialization requires explicit"));
+}
+
+#[test]
 fn resolve_workspace_root_keeps_explicit_nested_workspace_bounded() {
     let dir = tempdir().unwrap();
     let repo = dir.path().join("repo");
