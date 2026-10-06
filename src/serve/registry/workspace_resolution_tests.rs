@@ -13,6 +13,18 @@ use ticket_api::{
 };
 
 #[test]
+fn canonical_ticket_store_root_maps_to_owning_workspace() {
+    let workspace = tempfile::tempdir().expect("tempdir");
+    let store =
+        TicketStore::init_in_workspace(workspace.path()).expect("open store");
+
+    assert_eq!(
+        workspace_root_for_index_root(&store.index_root),
+        workspace.path()
+    );
+}
+
+#[test]
 fn descendant_workspaces_use_workspace_root_name() {
     let root = tempfile::tempdir().expect("tempdir");
     let parent_store =

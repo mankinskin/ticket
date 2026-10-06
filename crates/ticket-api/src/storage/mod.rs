@@ -1,4 +1,5 @@
 pub mod board;
+pub mod domain_store;
 pub mod index;
 pub mod indexed;
 pub mod move_execution;
@@ -22,6 +23,7 @@ pub use board::{
     BoardSnapshot,
     ReconcileAction,
 };
+pub use domain_store::{TicketCreateInput, TicketListQuery, TicketUpdatePatch};
 pub use store::{
     DESCRIPTION_HISTORY_KEY,
     DescriptionUpdate,

@@ -259,6 +259,47 @@ fn resolve_workspace_root_keeps_explicit_nested_workspace_bounded() {
 }
 
 #[test]
+fn dispatch_create_writes_only_to_the_explicit_child_workspace() {
+    let dir = tempdir().unwrap();
+    let repo = dir.path().join("repo");
+    let child = repo.join("selected");
+    let sibling = repo.join("sibling");
+    std::fs::create_dir_all(&child).unwrap();
+    std::fs::create_dir_all(&sibling).unwrap();
+
+    let parent_store = TicketStore::init_in_workspace(&repo).unwrap();
+    let ticket_id = Uuid::new_v4();
+    let payload = dispatch(
+        TicketCommandCli::Create(crate::cli::CreateArgs {
+            id: Some(ticket_id),
+            ticket_type: Some("tracker-improvement".to_string()),
+            title: Some("Child workspace only".to_string()),
+            state: None,
+            fields: vec![],
+            body_file: None,
+        }),
+        None,
+        Some(&child),
+        None,
+        false,
+        false,
+    )
+    .unwrap();
+
+    assert_eq!(payload["id"], ticket_id.to_string());
+    assert!(TicketStore::open_in_workspace(&child)
+        .unwrap()
+        .get(&ticket_id)
+        .is_ok());
+    assert!(matches!(
+        parent_store.get(&ticket_id),
+        Err(ticket_api::error::StorageError::NotFound(_))
+    ));
+    assert!(!ticket_api::workspace::canonical_store_root(&sibling, ".ticket").exists());
+    assert!(!ticket_api::workspace::canonical_store_root(dir.path(), ".ticket").exists());
+}
+
+#[test]
 fn resolve_index_root_prefers_explicit_index_root_over_workspace_root() {
     let dir = tempdir().unwrap();
     let repo = dir.path().join("repo");

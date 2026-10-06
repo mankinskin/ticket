@@ -48,11 +48,12 @@ pub struct TicketServer {
 pub fn open_canonical_store(
     index_root: &Path,
 ) -> Result<TicketStore, ticket_api::error::StorageError> {
-    let store = TicketStore::open_or_init(index_root)?;
-    let workspace_root = ticket_api::workspace::resolve_workspace_root_from_store_root(
-        &store.index_root,
-        ticket_api::workspace::TICKET_INDEX_DIR,
-    );
+    let resolution = TicketStore::resolve_workspace_store(
+        index_root,
+        memory_kernel::domain_store::StoreAccessMode::CreateOrOpen,
+    )?;
+    let workspace_root = resolution.local_workspace;
+    let store = TicketStore::open_or_init_in_workspace(&workspace_root)?;
     store.reapply_workspace_policy(&workspace_root)?;
     Ok(store)
 }
@@ -103,7 +104,10 @@ impl TicketServer {
     ) -> Result<PathBuf, McpError> {
         let workspace = workspace.trim();
         if workspace.is_empty() || workspace == "default" {
-            return Ok(self.index_root.clone());
+            return Ok(ticket_api::workspace::resolve_workspace_root_from_store_root(
+                &self.index_root,
+                ticket_api::workspace::TICKET_INDEX_DIR,
+            ));
         }
 
         let normalized = ticket_api::workspace::normalize_explicit_workspace_selector(
@@ -111,19 +115,14 @@ impl TicketServer {
         )
         .map_err(|error| McpError::invalid_params(error.to_string(), None))?;
         let workspace = normalized.to_string_lossy();
-        let resolved = ticket_api::workspace::resolve_store_root_from(
-            Path::new(workspace.as_ref()),
-            ticket_api::workspace::TICKET_INDEX_DIR,
-        );
         let requested_path = Path::new(workspace.as_ref());
-        let resolved =
-            ticket_api::workspace::canonicalize_workspace_root(&resolved);
-        if resolved.file_name().and_then(|name| name.to_str())
-            == Some(ticket_api::workspace::TICKET_INDEX_DIR)
-            || Self::is_ticket_store_root(&resolved)
-            || requested_path.is_dir()
-        {
-            return Ok(resolved);
+        let resolution = TicketStore::resolve_workspace_store(
+            requested_path,
+            memory_kernel::domain_store::StoreAccessMode::ReadOnly,
+        )
+        .map_err(Self::store_err)?;
+        if Self::is_ticket_store_root(requested_path) || requested_path.is_dir() {
+            return Ok(resolution.local_workspace);
         }
 
         Err(McpError::invalid_params(
@@ -178,8 +177,8 @@ impl TicketServer {
     ) -> Result<T, McpError> {
         let index_root = self.resolve_workspace_root(workspace)?;
         let _guard = self.store_lock.lock().await;
-        let store =
-            TicketStore::open_or_init(&index_root).map_err(Self::store_err)?;
+        let store = TicketStore::open_or_init_in_workspace(&index_root)
+            .map_err(Self::store_err)?;
         store.scan(false).map_err(Self::store_err)?;
         let result = f(&store).map_err(Self::store_err);
         drop(store);
@@ -198,8 +197,8 @@ impl TicketServer {
         let workspace = workspace.to_string_lossy();
         let index_root = self.resolve_workspace_root(&workspace)?;
         let _guard = self.store_lock.lock().await;
-        let store =
-            TicketStore::open_or_init(&index_root).map_err(Self::store_err)?;
+        let store = TicketStore::open_or_init_in_workspace(&index_root)
+            .map_err(Self::store_err)?;
         store.scan(false).map_err(Self::store_err)?;
         let result = f(&store);
         drop(store);
@@ -703,6 +702,32 @@ impl ServerHandler for TicketServer {
             capabilities: ServerCapabilities::builder().enable_tools().build(),
             ..Default::default()
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn explicit_workspace_resolution_does_not_fall_back_to_parent_store() {
+        let root = tempfile::tempdir().unwrap();
+        let parent = root.path().join("parent");
+        let selected = parent.join("selected");
+        std::fs::create_dir_all(&selected).unwrap();
+        let parent_store = TicketStore::init_in_workspace(&parent).unwrap();
+
+        let server = TicketServer::new(parent_store.index_root.clone());
+        let resolved = server
+            .resolve_workspace_root(selected.to_str().unwrap())
+            .unwrap();
+
+        assert_eq!(resolved, selected);
+        let selected_store = TicketStore::open_or_init_in_workspace(&resolved).unwrap();
+        assert_eq!(
+            selected_store.index_root,
+            ticket_api::workspace::canonical_store_root(&selected, ".ticket")
+        );
     }
 }
 

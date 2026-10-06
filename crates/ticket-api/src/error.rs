@@ -100,6 +100,8 @@ pub enum StorageSchemaError {
 
 #[derive(Debug, Error)]
 pub enum StorageError {
+	#[error(transparent)]
+	DomainStore(#[from] memory_kernel::domain_store::DomainStoreError),
 	#[error("database error: {0}")]
 	Database(String),
 	#[error("io error: {0}")]

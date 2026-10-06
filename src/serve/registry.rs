@@ -441,6 +441,18 @@ fn workspace_root_for_store(store: &TicketStore) -> &std::path::Path {
 pub(crate) fn workspace_root_for_index_root(index_root: &Path) -> &Path {
     match index_root.file_name().and_then(|name| name.to_str()) {
         Some(".ticket") => index_root.parent().unwrap_or(index_root),
+        Some("ticket")
+            if index_root
+                .parent()
+                .and_then(Path::file_name)
+                .and_then(|name| name.to_str())
+                == Some(".workflow-tools") =>
+        {
+            index_root
+                .parent()
+                .and_then(Path::parent)
+                .unwrap_or(index_root)
+        },
         _ => index_root,
     }
 }

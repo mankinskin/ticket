@@ -87,7 +87,12 @@ fn cmd_init(
     if let Some(schema_dir) = schema_dir_override {
         registry.load_dir(schema_dir)?;
     }
-    let store = TicketStore::init_with(&index_root, registry)?;
+    let workspace_root = if index_root_override.is_some() {
+        resolve_workspace_root(&index_root, None)
+    } else {
+        resolve_workspace_root(&index_root, workspace_root_override)
+    };
+    let store = TicketStore::init_in_workspace_with(&workspace_root, registry)?;
     Ok(json!({
         "command": "init",
         "status": "ok",
@@ -302,7 +307,14 @@ fn dispatch_store_backed(
     )?;
     let workspace_root =
         resolve_workspace_root(&index_root, workspace_root_override);
-    let store = open_store(&index_root, schema_dir_override)?;
+    let store_workspace_root = if index_root_override.is_some()
+        || matches!(&command, TicketCommandCli::Board(_))
+    {
+        resolve_workspace_root(&index_root, None)
+    } else {
+        workspace_root.clone()
+    };
+    let store = open_store(&store_workspace_root, schema_dir_override)?;
     if command_uses_descendant_scan_roots(&command) {
         let reindex = register_descendant_scan_roots(&store, &workspace_root)?;
         if reindex {
@@ -539,14 +551,15 @@ fn resolve_workspace_root(
 }
 
 fn open_store(
-    index_root: &Path,
+    local_workspace: &Path,
     schema_dir_override: Option<&Path>,
 ) -> Result<TicketStore, CliRunError> {
     let mut registry = SchemaRegistry::with_builtins();
     if let Some(schema_dir) = schema_dir_override {
         registry.load_dir(schema_dir)?;
     }
-    TicketStore::open_or_init_with(index_root, registry).map_err(CliRunError::from)
+    TicketStore::open_or_init_in_workspace_with(local_workspace, registry)
+        .map_err(CliRunError::from)
 }
 
 fn register_descendant_scan_roots(
