@@ -1,8 +1,5 @@
 use axum::{
-    extract::{
-        Extension,
-        State,
-    },
+    extract::{Extension, State},
     response::Json,
 };
 use serde::Serialize;
@@ -23,10 +20,7 @@ pub struct WorkspacesResponse {
     pub workspaces: Vec<WorkspaceInfo>,
 }
 
-fn preferred_active_workspace(
-    primary_workspace: &str,
-    workspace_names: &[String],
-) -> String {
+fn preferred_active_workspace(primary_workspace: &str, workspace_names: &[String]) -> String {
     if workspace_names.iter().any(|name| name == primary_workspace) {
         return primary_workspace.to_string();
     }
@@ -42,10 +36,8 @@ pub async fn list_workspaces(
     Extension(rid): Extension<RequestIdExt>,
 ) -> Json<WorkspacesResponse> {
     let workspace_names = state.registry.workspace_names();
-    let active_workspace = preferred_active_workspace(
-        state.registry.primary_workspace_name(),
-        &workspace_names,
-    );
+    let active_workspace =
+        preferred_active_workspace(state.registry.primary_workspace_name(), &workspace_names);
     let workspaces = state
         .registry
         .workspace_infos()
@@ -67,23 +59,16 @@ pub async fn list_workspaces(
 mod tests {
     use std::sync::Arc;
 
-    use axum::extract::{
-        Extension,
-        State,
-    };
+    use axum::extract::{Extension, State};
     use ticket_api::storage::store::TicketStore;
     use viewer_api::error::RequestIdExt;
 
     use super::*;
-    use crate::serve::{
-        StreamBroker,
-        WorkspaceRegistry,
-    };
+    use crate::serve::{StreamBroker, WorkspaceRegistry};
 
     #[test]
     fn preferred_active_workspace_prefers_primary_workspace() {
-        let workspaces =
-            vec!["child".to_string(), "context-engine".to_string()];
+        let workspaces = vec!["child".to_string(), "context-engine".to_string()];
         assert_eq!(
             preferred_active_workspace("context-engine", &workspaces),
             "context-engine"
@@ -100,25 +85,19 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn list_workspaces_uses_concrete_folder_names_for_child_and_ancestor()
-    {
+    async fn list_workspaces_uses_concrete_folder_names_for_child_and_ancestor() {
         let root = tempfile::tempdir().expect("tempdir");
         let child_dir = root.path().join("child");
         std::fs::create_dir_all(&child_dir).expect("create child dir");
 
-        let _parent_store =
-            TicketStore::init(root.path()).expect("open parent store");
-        let child_store =
-            Arc::new(TicketStore::init(&child_dir).expect("open child store"));
+        let _parent_store = TicketStore::init(root.path()).expect("open parent store");
+        let child_store = Arc::new(TicketStore::init(&child_dir).expect("open child store"));
 
         let state = AppState::new(
-            Arc::new(WorkspaceRegistry::single_opened(Arc::clone(
-                &child_store,
-            ))),
+            Arc::new(WorkspaceRegistry::single_opened(Arc::clone(&child_store))),
             Arc::new(StreamBroker::new()),
         );
-        let expected_active_workspace =
-            state.registry.primary_workspace_name().to_string();
+        let expected_active_workspace = state.registry.primary_workspace_name().to_string();
 
         let response = list_workspaces(
             State(state),
@@ -154,9 +133,7 @@ mod tests {
     #[tokio::test]
     async fn list_workspaces_returns_distinct_ids_for_duplicate_basenames() {
         let root = tempfile::tempdir().expect("tempdir");
-        let parent_store = Arc::new(
-            TicketStore::init(root.path()).expect("open parent store"),
-        );
+        let parent_store = Arc::new(TicketStore::init(root.path()).expect("open parent store"));
         parent_store
             .add_scan_root(ticket_api::model::filesystem::ScanRoot {
                 path: root.path().join("tickets"),
@@ -164,12 +141,20 @@ mod tests {
             })
             .expect("add parent scan root");
 
-        let left_dir = root.path().join("alpha").join("shared").join(".workflow-tools").join("ticket");
-        let right_dir = root.path().join("beta").join("shared").join(".workflow-tools").join("ticket");
-        std::fs::create_dir_all(left_dir.join("tickets"))
-            .expect("create left dir");
-        std::fs::create_dir_all(right_dir.join("tickets"))
-            .expect("create right dir");
+        let left_dir = root
+            .path()
+            .join("alpha")
+            .join("shared")
+            .join(".workflow-tools")
+            .join("ticket");
+        let right_dir = root
+            .path()
+            .join("beta")
+            .join("shared")
+            .join(".workflow-tools")
+            .join("ticket");
+        std::fs::create_dir_all(left_dir.join("tickets")).expect("create left dir");
+        std::fs::create_dir_all(right_dir.join("tickets")).expect("create right dir");
         TicketStore::init(&left_dir).expect("open left store");
         TicketStore::init(&right_dir).expect("open right store");
 

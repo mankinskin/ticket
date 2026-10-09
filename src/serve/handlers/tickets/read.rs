@@ -1,43 +1,23 @@
-use std::collections::{
-    BTreeMap,
-    HashMap,
-};
+use std::collections::{BTreeMap, HashMap};
 
 use axum::{
-    extract::{
-        Extension,
-        Path,
-        Query,
-        State,
-    },
+    extract::{Extension, Path, Query, State},
     http::StatusCode,
-    response::{
-        IntoResponse,
-        Json,
-        Response,
-    },
+    response::{IntoResponse, Json, Response},
 };
 use uuid::Uuid;
 
 use ticket_api::storage::ticket_fs::TicketFs;
 
-use viewer_api::error::{
-    ApiError,
-    RequestIdExt,
-};
+use viewer_api::error::{ApiError, RequestIdExt};
 
 use crate::serve::{
     AppState,
-    error::{
-        storage_err,
-        task_join_err,
-    },
+    error::{storage_err, task_join_err},
     registry::ResolvedIndexedTicket,
 };
 
-fn effort_from_fields(
-    fields: &BTreeMap<String, serde_json::Value>
-) -> Option<u64> {
+fn effort_from_fields(fields: &BTreeMap<String, serde_json::Value>) -> Option<u64> {
     fields
         .get("effort")
         .and_then(serde_json::Value::as_str)
@@ -45,17 +25,9 @@ fn effort_from_fields(
 }
 
 use super::types::{
-    HistoryEntry,
-    TicketDescriptionResponse,
-    TicketDetail,
-    TicketDetailResponse,
-    TicketHistoryResponse,
-    TicketIdParam,
-    TicketRef,
-    TicketSummary,
-    TicketsResponse,
-    WorkspaceParam,
-    ticket_ref_from_indexed,
+    HistoryEntry, TicketDescriptionResponse, TicketDetail, TicketDetailResponse,
+    TicketHistoryResponse, TicketIdParam, TicketRef, TicketSummary, TicketsResponse,
+    WorkspaceParam, ticket_ref_from_indexed,
 };
 
 pub async fn list_tickets(
@@ -63,11 +35,10 @@ pub async fn list_tickets(
     Extension(rid): Extension<RequestIdExt>,
     Query(params): Query<WorkspaceParam>,
 ) -> Response {
-    let (workspace, store) =
-        match resolve_workspace_request(&state, &params.workspace, &rid.0) {
-            Ok(resolved) => resolved,
-            Err(response) => return response,
-        };
+    let (workspace, store) = match resolve_workspace_request(&state, &params.workspace, &rid.0) {
+        Ok(resolved) => resolved,
+        Err(response) => return response,
+    };
     let state = state.clone();
     let request_id = rid.0.clone();
     let task_request_id = request_id.clone();
@@ -178,9 +149,7 @@ fn collect_search_ticket_summaries(
             );
             continue;
         };
-        if state_filter
-            .map_or(true, |state| summary.state.as_deref() == Some(state))
-        {
+        if state_filter.map_or(true, |state| summary.state.as_deref() == Some(state)) {
             items.push(summary);
         }
         if items.len() >= requested_limit {
@@ -207,9 +176,8 @@ fn collect_list_ticket_summaries(
     let mut summaries = Vec::with_capacity(items.len());
     for ticket in items {
         let resolved_ticket = resolved.get(&ticket.id);
-        let local_ticket_ref =
-            ticket_ref_from_indexed(store, workspace, &ticket)
-                .map_err(|e| storage_err(e, request_id))?;
+        let local_ticket_ref = ticket_ref_from_indexed(store, workspace, &ticket)
+            .map_err(|e| storage_err(e, request_id))?;
         let summary = if should_prefer_local_ticket(
             store,
             workspace,
@@ -217,8 +185,7 @@ fn collect_list_ticket_summaries(
             Some(&local_ticket_ref),
             resolved_ticket,
         ) {
-            let mut summary =
-                ticket_summary_from_indexed(local_ticket_ref, &ticket);
+            let mut summary = ticket_summary_from_indexed(local_ticket_ref, &ticket);
             summary.effort = store
                 .get(&ticket.id)
                 .ok()
@@ -257,11 +224,10 @@ pub async fn get_ticket(
     Path(id): Path<Uuid>,
     Query(params): Query<TicketIdParam>,
 ) -> Response {
-    let (workspace, store) =
-        match resolve_workspace_request(&state, &params.workspace, &rid.0) {
-            Ok(resolved) => resolved,
-            Err(response) => return response,
-        };
+    let (workspace, store) = match resolve_workspace_request(&state, &params.workspace, &rid.0) {
+        Ok(resolved) => resolved,
+        Err(response) => return response,
+    };
     let state = state.clone();
     let request_id = rid.0.clone();
     let task_request_id = request_id.clone();
@@ -270,24 +236,18 @@ pub async fn get_ticket(
 
     tokio::task::spawn_blocking(move || {
         let request_id = task_request_id.clone();
-        let resolved = match resolve_ticket_with_preferred_source(
-            &store,
-            &state,
-            &workspace,
-            id,
-            &request_id,
-        ) {
-            Ok(ticket) => ticket,
-            Err(response) => return response,
-        };
+        let resolved =
+            match resolve_ticket_with_preferred_source(&store, &state, &workspace, id, &request_id)
+            {
+                Ok(ticket) => ticket,
+                Err(response) => return response,
+            };
 
-        let projection = match ticket_api::storage::ReadProjection::decode(
-            view.as_deref(),
-            parts.as_deref(),
-        ) {
-            Ok(projection) => projection,
-            Err(error) => return storage_err(error, &request_id),
-        };
+        let projection =
+            match ticket_api::storage::ReadProjection::decode(view.as_deref(), parts.as_deref()) {
+                Ok(projection) => projection,
+                Err(error) => return storage_err(error, &request_id),
+            };
 
         if let Some(projection) = projection {
             return match store.project(&id, &projection) {
@@ -319,7 +279,7 @@ pub async fn get_ticket(
                     },
                 })
                 .into_response()
-            },
+            }
             Err(e) => storage_err(e, &request_id),
         }
     })
@@ -339,27 +299,22 @@ pub async fn get_ticket_description(
     Path(id): Path<Uuid>,
     Query(params): Query<TicketIdParam>,
 ) -> Response {
-    let (workspace, store) =
-        match resolve_workspace_request(&state, &params.workspace, &rid.0) {
-            Ok(resolved) => resolved,
-            Err(response) => return response,
-        };
+    let (workspace, store) = match resolve_workspace_request(&state, &params.workspace, &rid.0) {
+        Ok(resolved) => resolved,
+        Err(response) => return response,
+    };
     let state = state.clone();
     let request_id = rid.0.clone();
     let task_request_id = request_id.clone();
 
     tokio::task::spawn_blocking(move || {
         let request_id = task_request_id.clone();
-        let resolved = match resolve_ticket_with_preferred_source(
-            &store,
-            &state,
-            &workspace,
-            id,
-            &request_id,
-        ) {
-            Ok(ticket) => ticket,
-            Err(response) => return response,
-        };
+        let resolved =
+            match resolve_ticket_with_preferred_source(&store, &state, &workspace, id, &request_id)
+            {
+                Ok(ticket) => ticket,
+                Err(response) => return response,
+            };
 
         Json(TicketDescriptionResponse {
             request_id: request_id.clone(),
@@ -372,9 +327,7 @@ pub async fn get_ticket_description(
         .into_response()
     })
     .await
-    .unwrap_or_else(|_| {
-        task_join_err(&request_id, "ticket description request")
-    })
+    .unwrap_or_else(|_| task_join_err(&request_id, "ticket description request"))
 }
 
 /// `GET /api/tickets/{id}/history?workspace=<name>`
@@ -386,27 +339,22 @@ pub async fn get_ticket_history(
     Path(id): Path<Uuid>,
     Query(params): Query<TicketIdParam>,
 ) -> Response {
-    let (workspace, store) =
-        match resolve_workspace_request(&state, &params.workspace, &rid.0) {
-            Ok(resolved) => resolved,
-            Err(response) => return response,
-        };
+    let (workspace, store) = match resolve_workspace_request(&state, &params.workspace, &rid.0) {
+        Ok(resolved) => resolved,
+        Err(response) => return response,
+    };
     let state = state.clone();
     let request_id = rid.0.clone();
     let task_request_id = request_id.clone();
 
     tokio::task::spawn_blocking(move || {
         let request_id = task_request_id.clone();
-        let resolved = match resolve_ticket_with_preferred_source(
-            &store,
-            &state,
-            &workspace,
-            id,
-            &request_id,
-        ) {
-            Ok(ticket) => ticket,
-            Err(response) => return response,
-        };
+        let resolved =
+            match resolve_ticket_with_preferred_source(&store, &state, &workspace, id, &request_id)
+            {
+                Ok(ticket) => ticket,
+                Err(response) => return response,
+            };
         match TicketFs::read_history(&resolved.path) {
             Ok(revisions) => {
                 let ticket_ref = resolved.ticket_ref;
@@ -430,7 +378,7 @@ pub async fn get_ticket_history(
                     entries,
                 })
                 .into_response()
-            },
+            }
             Err(e) => storage_err(e, &request_id),
         }
     })
@@ -456,11 +404,9 @@ fn resolve_ticket(
     id: Uuid,
     request_id: &str,
 ) -> Result<ResolvedIndexedTicket, Response> {
-    let mut resolved =
-        resolve_tickets(state, active_workspace, &[id], request_id)?;
+    let mut resolved = resolve_tickets(state, active_workspace, &[id], request_id)?;
     resolved.remove(&id).ok_or_else(|| {
-        ApiError::not_found("ticket", request_id)
-            .into_response_with_status(StatusCode::NOT_FOUND)
+        ApiError::not_found("ticket", request_id).into_response_with_status(StatusCode::NOT_FOUND)
     })
 }
 
@@ -502,9 +448,7 @@ fn ticket_summary_from_indexed(
     }
 }
 
-fn ticket_summary_from_resolved(
-    ticket: &ResolvedIndexedTicket
-) -> TicketSummary {
+fn ticket_summary_from_resolved(ticket: &ResolvedIndexedTicket) -> TicketSummary {
     let effort = ticket
         .store
         .get(&ticket.ticket.id)
@@ -594,6 +538,5 @@ fn should_use_local_ticket(
     ticket: &ticket_api::storage::indexed::IndexedTicket,
     ticket_ref: &TicketRef,
 ) -> bool {
-    ticket_ref.workspace != active_workspace
-        && ticket.path.join("ticket.toml").is_file()
+    ticket_ref.workspace != active_workspace && ticket.path.join("ticket.toml").is_file()
 }

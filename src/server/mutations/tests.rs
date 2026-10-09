@@ -66,7 +66,10 @@ async fn explicit_dot_workspace_creates_and_reads_back_in_current_workspace() {
     }
 
     let selected = std::env::current_dir().unwrap();
-    let sibling_root = selected.parent().unwrap().join("sibling/.workflow-tools/ticket");
+    let sibling_root = selected
+        .parent()
+        .unwrap()
+        .join("sibling/.workflow-tools/ticket");
     let server = TicketServer::new(sibling_root);
     let result = server
         .create_ticket_tool(CreateTicketInput {
@@ -80,19 +83,16 @@ async fn explicit_dot_workspace_creates_and_reads_back_in_current_workspace() {
         .await
         .expect("create in selected workspace");
     assert!(!result.is_error.unwrap_or(false));
-        let text = result
-            .content
-            .iter()
-            .find_map(|content| match &content.raw {
-                rmcp::model::RawContent::Text(text) => Some(text.text.as_str()),
-                _ => None,
-            })
-            .expect("ticket create response");
-        let response: serde_json::Value = serde_json::from_str(text).unwrap();
-        assert_eq!(
-            response["workspace"],
-            selected.to_string_lossy().as_ref()
-        );
+    let text = result
+        .content
+        .iter()
+        .find_map(|content| match &content.raw {
+            rmcp::model::RawContent::Text(text) => Some(text.text.as_str()),
+            _ => None,
+        })
+        .expect("ticket create response");
+    let response: serde_json::Value = serde_json::from_str(text).unwrap();
+    assert_eq!(response["workspace"], selected.to_string_lossy().as_ref());
 }
 
 #[tokio::test]

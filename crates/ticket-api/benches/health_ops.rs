@@ -1,20 +1,13 @@
-use std::{
-    path::Path,
-    sync::OnceLock,
-    time::Instant,
-};
+use std::{path::Path, sync::OnceLock, time::Instant};
 
 use chrono::Utc;
 use criterion::{Criterion, criterion_group, criterion_main};
 use memory_fixtures::{
-    TicketPerfFixtureOptions, append_fixture_ticket,
-    materialize_fixture_with_ticket_perf_load,
+    TicketPerfFixtureOptions, append_fixture_ticket, materialize_fixture_with_ticket_perf_load,
 };
 use memory_kernel::testing::calibrated_bench_function;
 use ticket_api::{
-    health::collect_findings,
-    model::edge::EdgeRecord,
-    storage::store::TicketStore,
+    health::collect_findings, model::edge::EdgeRecord, storage::store::TicketStore,
     workflow::WorkflowModel,
 };
 use uuid::Uuid;

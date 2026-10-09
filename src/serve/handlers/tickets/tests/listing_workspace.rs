@@ -1,35 +1,19 @@
 use axum::{
     body::to_bytes,
-    extract::{
-        Extension,
-        Path,
-        Query,
-        State,
-    },
+    extract::{Extension, Path, Query, State},
     http::StatusCode,
 };
-use std::{
-    collections::BTreeMap,
-    sync::Arc,
-};
+use std::{collections::BTreeMap, sync::Arc};
 use ticket_api::storage::search::TantivySearchIndex;
 use uuid::Uuid;
 use viewer_api::error::RequestIdExt;
 
 use super::{
     super::{
-        TicketAssetParam,
-        TicketIdParam,
-        WorkspaceParam,
-        get_ticket,
-        get_ticket_asset,
-        get_ticket_description,
-        get_ticket_history,
-        list_ticket_files,
-        list_tickets,
+        TicketAssetParam, TicketIdParam, WorkspaceParam, get_ticket, get_ticket_asset,
+        get_ticket_description, get_ticket_history, list_ticket_files, list_tickets,
     },
-    make_state,
-    make_store,
+    make_state, make_store,
 };
 
 #[tokio::test]
@@ -76,8 +60,7 @@ async fn list_tickets_uses_scan_root_label_for_ticket_ref_workspace() {
     let bytes = to_bytes(response.into_body(), 1024 * 1024)
         .await
         .expect("read body");
-    let payload: serde_json::Value =
-        serde_json::from_slice(&bytes).expect("json body");
+    let payload: serde_json::Value = serde_json::from_slice(&bytes).expect("json body");
 
     assert_eq!(payload["items"][0]["ticket_ref"]["workspace"], "child");
     assert_eq!(payload["items"][0]["ticket_ref"]["id"], id.to_string());
@@ -87,8 +70,7 @@ async fn list_tickets_uses_scan_root_label_for_ticket_ref_workspace() {
 async fn search_list_prefers_authoritative_mixed_workspace_hit() {
     let root = tempfile::tempdir().expect("tempdir");
     let parent_store = Arc::new(
-        ticket_api::storage::store::TicketStore::init(root.path())
-            .expect("open parent store"),
+        ticket_api::storage::store::TicketStore::init(root.path()).expect("open parent store"),
     );
     parent_store
         .add_scan_root(ticket_api::model::filesystem::ScanRoot {
@@ -97,12 +79,14 @@ async fn search_list_prefers_authoritative_mixed_workspace_hit() {
         })
         .expect("add parent scan root");
 
-    let child_index_root = root.path().join("child").join(".workflow-tools").join("ticket");
-    std::fs::create_dir_all(child_index_root.join("tickets"))
-        .expect("mkdir child store");
+    let child_index_root = root
+        .path()
+        .join("child")
+        .join(".workflow-tools")
+        .join("ticket");
+    std::fs::create_dir_all(child_index_root.join("tickets")).expect("mkdir child store");
     let child_store = Arc::new(
-        ticket_api::storage::store::TicketStore::init(&child_index_root)
-            .expect("open child store"),
+        ticket_api::storage::store::TicketStore::init(&child_index_root).expect("open child store"),
     );
     child_store
         .add_scan_root(ticket_api::model::filesystem::ScanRoot {
@@ -139,28 +123,24 @@ async fn search_list_prefers_authoritative_mixed_workspace_hit() {
         .get_indexed(&id)
         .expect("get parent indexed ticket")
         .expect("parent indexed ticket");
-    poisoned.path =
-        parent_store.index_root.join("tickets").join(id.to_string());
-    poisoned.title =
-        Some("mixed-workspace stale parent placeholder".to_string());
+    poisoned.path = parent_store.index_root.join("tickets").join(id.to_string());
+    poisoned.title = Some("mixed-workspace stale parent placeholder".to_string());
     poisoned.state = Some("open".to_string());
     poisoned_index
         .insert_ticket(&poisoned)
         .expect("poison parent indexed row");
-    TantivySearchIndex::open_or_create(
-        &parent_store.index_root.join("search_index"),
-    )
-    .expect("open parent search index")
-    .upsert(
-        &id,
-        Some("mixed-workspace stale parent placeholder"),
-        Some("mixed-workspace stale parent body"),
-        Some("open"),
-        Some("tracker-improvement"),
-        Some(&chrono::Utc::now().to_rfc3339()),
-        None,
-    )
-    .expect("upsert stale parent search doc");
+    TantivySearchIndex::open_or_create(&parent_store.index_root.join("search_index"))
+        .expect("open parent search index")
+        .upsert(
+            &id,
+            Some("mixed-workspace stale parent placeholder"),
+            Some("mixed-workspace stale parent body"),
+            Some("open"),
+            Some("tracker-improvement"),
+            Some(&chrono::Utc::now().to_rfc3339()),
+            None,
+        )
+        .expect("upsert stale parent search doc");
 
     let state = make_state(Arc::clone(&parent_store));
     let workspace = state.registry.primary_workspace_name().to_string();
@@ -188,8 +168,7 @@ async fn search_list_prefers_authoritative_mixed_workspace_hit() {
     let bytes = to_bytes(response.into_body(), 1024 * 1024)
         .await
         .expect("read body");
-    let payload: serde_json::Value =
-        serde_json::from_slice(&bytes).expect("json body");
+    let payload: serde_json::Value = serde_json::from_slice(&bytes).expect("json body");
     let items = payload["items"].as_array().expect("items array");
 
     assert_eq!(items.len(), 1);
@@ -200,9 +179,7 @@ async fn search_list_prefers_authoritative_mixed_workspace_hit() {
     assert_eq!(items[0]["ticket_ref"]["id"], id.to_string());
     assert_eq!(
         items[0]["title"],
-        serde_json::Value::String(
-            "mixed-workspace child authoritative ticket".to_string()
-        )
+        serde_json::Value::String("mixed-workspace child authoritative ticket".to_string())
     );
     assert_eq!(items[0]["state"], "planned");
     assert_ne!(items[0]["created_at"], "1970-01-01T00:00:00Z");
@@ -277,8 +254,7 @@ async fn get_ticket_and_history_include_ticket_refs() {
 async fn mixed_workspace_search_followups_remain_reversible() {
     let root = tempfile::tempdir().expect("tempdir");
     let parent_store = Arc::new(
-        ticket_api::storage::store::TicketStore::init(root.path())
-            .expect("open parent store"),
+        ticket_api::storage::store::TicketStore::init(root.path()).expect("open parent store"),
     );
     parent_store
         .add_scan_root(ticket_api::model::filesystem::ScanRoot {
@@ -287,12 +263,14 @@ async fn mixed_workspace_search_followups_remain_reversible() {
         })
         .expect("add parent scan root");
 
-    let child_index_root = root.path().join("child").join(".workflow-tools").join("ticket");
-    std::fs::create_dir_all(child_index_root.join("tickets"))
-        .expect("mkdir child store");
+    let child_index_root = root
+        .path()
+        .join("child")
+        .join(".workflow-tools")
+        .join("ticket");
+    std::fs::create_dir_all(child_index_root.join("tickets")).expect("mkdir child store");
     let child_store = Arc::new(
-        ticket_api::storage::store::TicketStore::init(&child_index_root)
-            .expect("open child store"),
+        ticket_api::storage::store::TicketStore::init(&child_index_root).expect("open child store"),
     );
     child_store
         .add_scan_root(ticket_api::model::filesystem::ScanRoot {
@@ -316,8 +294,7 @@ async fn mixed_workspace_search_followups_remain_reversible() {
         .get_indexed(&id)
         .expect("get child indexed ticket")
         .expect("child indexed ticket");
-    std::fs::create_dir_all(ticket_dir.path.join("assets"))
-        .expect("mkdir assets");
+    std::fs::create_dir_all(ticket_dir.path.join("assets")).expect("mkdir assets");
     std::fs::write(
         ticket_dir.path.join("assets").join("plan.md"),
         "nested child asset",
@@ -340,28 +317,24 @@ async fn mixed_workspace_search_followups_remain_reversible() {
         .get_indexed(&id)
         .expect("get parent indexed ticket")
         .expect("parent indexed ticket");
-    poisoned.path =
-        parent_store.index_root.join("tickets").join(id.to_string());
-    poisoned.title =
-        Some("mixed-workspace stale parent placeholder".to_string());
+    poisoned.path = parent_store.index_root.join("tickets").join(id.to_string());
+    poisoned.title = Some("mixed-workspace stale parent placeholder".to_string());
     poisoned.state = Some("open".to_string());
     poisoned_index
         .insert_ticket(&poisoned)
         .expect("poison parent indexed row");
-    TantivySearchIndex::open_or_create(
-        &parent_store.index_root.join("search_index"),
-    )
-    .expect("open parent search index")
-    .upsert(
-        &id,
-        Some("mixed-workspace stale parent placeholder"),
-        Some("mixed-workspace stale parent body"),
-        Some("open"),
-        Some("tracker-improvement"),
-        Some(&chrono::Utc::now().to_rfc3339()),
-        None,
-    )
-    .expect("upsert stale parent search doc");
+    TantivySearchIndex::open_or_create(&parent_store.index_root.join("search_index"))
+        .expect("open parent search index")
+        .upsert(
+            &id,
+            Some("mixed-workspace stale parent placeholder"),
+            Some("mixed-workspace stale parent body"),
+            Some("open"),
+            Some("tracker-improvement"),
+            Some(&chrono::Utc::now().to_rfc3339()),
+            None,
+        )
+        .expect("upsert stale parent search doc");
 
     let state = make_state(Arc::clone(&parent_store));
     let workspace = state.registry.primary_workspace_name().to_string();
@@ -389,13 +362,10 @@ async fn mixed_workspace_search_followups_remain_reversible() {
     let list_bytes = to_bytes(list.into_body(), 1024 * 1024)
         .await
         .expect("list body");
-    let list_payload: serde_json::Value =
-        serde_json::from_slice(&list_bytes).expect("list json");
+    let list_payload: serde_json::Value = serde_json::from_slice(&list_bytes).expect("list json");
     assert_eq!(
         list_payload["items"][0]["title"],
-        serde_json::Value::String(
-            "mixed-workspace child authoritative ticket".to_string()
-        )
+        serde_json::Value::String("mixed-workspace child authoritative ticket".to_string())
     );
     assert_eq!(
         list_payload["items"][0]["ticket_ref"]["workspace"],
@@ -524,8 +494,7 @@ async fn mixed_workspace_search_followups_remain_reversible() {
 async fn legacy_workspace_label_collision_returns_typed_bad_request() {
     let root = tempfile::tempdir().expect("tempdir");
     let parent_store = Arc::new(
-        ticket_api::storage::store::TicketStore::init(root.path())
-            .expect("open parent store"),
+        ticket_api::storage::store::TicketStore::init(root.path()).expect("open parent store"),
     );
     parent_store
         .add_scan_root(ticket_api::model::filesystem::ScanRoot {
@@ -534,22 +503,26 @@ async fn legacy_workspace_label_collision_returns_typed_bad_request() {
         })
         .expect("add parent scan root");
 
-    let left_index_root =
-        root.path().join("alpha").join("shared").join(".workflow-tools").join("ticket");
-    let right_index_root =
-        root.path().join("beta").join("shared").join(".workflow-tools").join("ticket");
-    std::fs::create_dir_all(left_index_root.join("tickets"))
-        .expect("mkdir left store");
-    std::fs::create_dir_all(right_index_root.join("tickets"))
-        .expect("mkdir right store");
+    let left_index_root = root
+        .path()
+        .join("alpha")
+        .join("shared")
+        .join(".workflow-tools")
+        .join("ticket");
+    let right_index_root = root
+        .path()
+        .join("beta")
+        .join("shared")
+        .join(".workflow-tools")
+        .join("ticket");
+    std::fs::create_dir_all(left_index_root.join("tickets")).expect("mkdir left store");
+    std::fs::create_dir_all(right_index_root.join("tickets")).expect("mkdir right store");
 
     let left_store = Arc::new(
-        ticket_api::storage::store::TicketStore::init(&left_index_root)
-            .expect("open left store"),
+        ticket_api::storage::store::TicketStore::init(&left_index_root).expect("open left store"),
     );
     let right_store = Arc::new(
-        ticket_api::storage::store::TicketStore::init(&right_index_root)
-            .expect("open right store"),
+        ticket_api::storage::store::TicketStore::init(&right_index_root).expect("open right store"),
     );
     left_store
         .create(
@@ -606,8 +579,7 @@ async fn legacy_workspace_label_collision_returns_typed_bad_request() {
     let bytes = to_bytes(response.into_body(), 1024 * 1024)
         .await
         .expect("read body");
-    let payload: serde_json::Value =
-        serde_json::from_slice(&bytes).expect("json body");
+    let payload: serde_json::Value = serde_json::from_slice(&bytes).expect("json body");
 
     assert_eq!(payload["code"], "workspace.ambiguous_label");
     assert_eq!(payload["details"]["requested"], "shared");
@@ -624,8 +596,7 @@ async fn legacy_workspace_label_collision_returns_typed_bad_request() {
 async fn unique_display_workspace_label_returns_typed_bad_request() {
     let root = tempfile::tempdir().expect("tempdir");
     let parent_store = Arc::new(
-        ticket_api::storage::store::TicketStore::init(root.path())
-            .expect("open parent store"),
+        ticket_api::storage::store::TicketStore::init(root.path()).expect("open parent store"),
     );
     parent_store
         .add_scan_root(ticket_api::model::filesystem::ScanRoot {
@@ -634,12 +605,14 @@ async fn unique_display_workspace_label_returns_typed_bad_request() {
         })
         .expect("add parent scan root");
 
-    let child_index_root = root.path().join("child").join(".workflow-tools").join("ticket");
-    std::fs::create_dir_all(child_index_root.join("tickets"))
-        .expect("mkdir child store");
+    let child_index_root = root
+        .path()
+        .join("child")
+        .join(".workflow-tools")
+        .join("ticket");
+    std::fs::create_dir_all(child_index_root.join("tickets")).expect("mkdir child store");
     let child_store = Arc::new(
-        ticket_api::storage::store::TicketStore::init(&child_index_root)
-            .expect("open child store"),
+        ticket_api::storage::store::TicketStore::init(&child_index_root).expect("open child store"),
     );
     child_store
         .add_scan_root(ticket_api::model::filesystem::ScanRoot {
@@ -694,8 +667,7 @@ async fn unique_display_workspace_label_returns_typed_bad_request() {
     let bytes = to_bytes(response.into_body(), 1024 * 1024)
         .await
         .expect("read body");
-    let payload: serde_json::Value =
-        serde_json::from_slice(&bytes).expect("json body");
+    let payload: serde_json::Value = serde_json::from_slice(&bytes).expect("json body");
 
     assert_eq!(payload["code"], "workspace.display_label_not_allowed");
     assert_eq!(payload["details"]["requested"], "child");

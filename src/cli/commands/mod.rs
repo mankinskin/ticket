@@ -19,10 +19,7 @@ pub(crate) use query::*;
 pub(crate) use workspace::*;
 
 use crate::cli::CliRunError;
-use serde_json::{
-    Value,
-    json,
-};
+use serde_json::{Value, json};
 use ticket_api::storage::TicketStore;
 use uuid::Uuid;
 
@@ -39,11 +36,10 @@ pub(crate) fn ticket_workspace_metadata_for_path(
         ticket_path,
         ticket_api::workspace::TICKET_INDEX_DIR,
     );
-    let workspace_root =
-        ticket_api::workspace::resolve_workspace_root_from_store_root(
-            &store_root,
-            ticket_api::workspace::TICKET_INDEX_DIR,
-        );
+    let workspace_root = ticket_api::workspace::resolve_workspace_root_from_store_root(
+        &store_root,
+        ticket_api::workspace::TICKET_INDEX_DIR,
+    );
 
     json!({
         "active_index_root": normalize_display_path(&active_index_root),
@@ -68,10 +64,7 @@ fn workspace_recovery_hint(store: &TicketStore) -> String {
 }
 
 /// Resolve a UUID string that may be a full UUID or a hex prefix (>= 8 chars).
-pub(crate) fn resolve_uuid_prefix(
-    s: &str,
-    store: &TicketStore,
-) -> Result<Uuid, CliRunError> {
+pub(crate) fn resolve_uuid_prefix(s: &str, store: &TicketStore) -> Result<Uuid, CliRunError> {
     if let Ok(id) = s.parse::<Uuid>() {
         return Ok(id);
     }

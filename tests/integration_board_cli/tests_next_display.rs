@@ -20,8 +20,7 @@ fn board_show_text_output_stops_after_dashboard() {
         String::from_utf8_lossy(&out.stderr),
     );
 
-    let stdout = String::from_utf8(out.stdout)
-        .expect("board show stdout should be valid UTF-8");
+    let stdout = String::from_utf8(out.stdout).expect("board show stdout should be valid UTF-8");
 
     assert!(stdout.contains("Board: [0/5 active]"));
     assert!(!stdout.contains("Next Up:"));
@@ -67,8 +66,7 @@ fn next_text_output_uses_pretty_card_format() {
         String::from_utf8_lossy(&out.stderr),
     );
 
-    let stdout = String::from_utf8(out.stdout)
-        .expect("next stdout should be valid UTF-8");
+    let stdout = String::from_utf8(out.stdout).expect("next stdout should be valid UTF-8");
     let short_ticket = &next_ticket[..8];
 
     assert!(stdout.contains("next ok"));
@@ -87,8 +85,7 @@ fn next_with_root_returns_unblocked_blocker_leaves() {
     assert_eq!(s.ticket_json(&["init"])["status"], "ok");
     let root = create_ticket(&s, "Root ticket to unblock");
     let direct_blocker = create_ticket(&s, "Direct actionable blocker");
-    let intermediate_blocker =
-        create_ticket(&s, "Intermediate blocked blocker");
+    let intermediate_blocker = create_ticket(&s, "Intermediate blocked blocker");
     let nested_leaf = create_ticket(&s, "Nested actionable blocker");
     let unrelated = create_ticket(&s, "Unrelated actionable work");
 
@@ -97,15 +94,7 @@ fn next_with_root_returns_unblocked_blocker_leaves() {
         (&root, &intermediate_blocker),
         (&intermediate_blocker, &nested_leaf),
     ] {
-        let linked = s.ticket_json(&[
-            "link",
-            "--from",
-            from,
-            "--to",
-            to,
-            "--kind",
-            "depends_on",
-        ]);
+        let linked = s.ticket_json(&["link", "--from", from, "--to", to, "--kind", "depends_on"]);
         assert_eq!(linked["status"], "ok");
     }
 
@@ -150,15 +139,7 @@ fn next_with_root_text_output_shows_root_scope() {
         (&root, &intermediate),
         (&intermediate, &nested),
     ] {
-        let linked = s.ticket_json(&[
-            "link",
-            "--from",
-            from,
-            "--to",
-            to,
-            "--kind",
-            "depends_on",
-        ]);
+        let linked = s.ticket_json(&["link", "--from", from, "--to", to, "--kind", "depends_on"]);
         assert_eq!(linked["status"], "ok");
     }
 
@@ -176,8 +157,7 @@ fn next_with_root_text_output_shows_root_scope() {
         String::from_utf8_lossy(&out.stderr),
     );
 
-    let stdout =
-        String::from_utf8(out.stdout).expect("next stdout should be UTF-8");
+    let stdout = String::from_utf8(out.stdout).expect("next stdout should be UTF-8");
     let short_ticket = &blocker[..8];
 
     assert!(stdout.contains("next ok"));

@@ -1,15 +1,8 @@
-use std::collections::{
-    HashMap,
-    HashSet,
-    VecDeque,
-};
+use std::collections::{HashMap, HashSet, VecDeque};
 
 use ticket_api::model::edge::EdgeRecord;
 
-use super::{
-    types::*,
-    *,
-};
+use super::{types::*, *};
 
 struct GraphRequest {
     workspace: String,
@@ -106,11 +99,7 @@ fn traverse_graph(
     all_edges: &[EdgeRecord],
     request: &GraphRequest,
 ) -> Result<TraversalResult, McpError> {
-    let adjacency = build_adjacency(
-        all_edges,
-        &request.direction,
-        request.edge_kind.as_deref(),
-    );
+    let adjacency = build_adjacency(all_edges, &request.direction, request.edge_kind.as_deref());
     let mut state = TraversalState::new(root);
 
     while let Some((current_id, current_depth)) = state.queue.pop_front() {
@@ -206,10 +195,7 @@ fn build_adjacency(
     adjacency
 }
 
-fn edge_kind_matches(
-    edge_kind: Option<&str>,
-    actual_kind: &str,
-) -> bool {
+fn edge_kind_matches(edge_kind: Option<&str>, actual_kind: &str) -> bool {
     match edge_kind {
         Some("all") | None => true,
         Some(kind) => kind == actual_kind,

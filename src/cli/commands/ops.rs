@@ -5,40 +5,21 @@ use std::{
 };
 
 use chrono::Utc;
-use serde_json::{
-    Value,
-    json,
-};
+use serde_json::{Value, json};
 use uuid::Uuid;
 
 use ticket_api::{
-    TICKET_INDEX_AGENT_HOOK_PATH,
-    TicketCatalogSource,
+    TICKET_INDEX_AGENT_HOOK_PATH, TicketCatalogSource,
     error::StorageError,
     generate_ticket_catalog,
     model::ticket::TicketManifestExt,
-    storage::{
-        TicketStore,
-        ticket_fs::TicketFs,
-    },
+    storage::{TicketStore, ticket_fs::TicketFs},
     workspace,
 };
 
 use crate::cli::{
-    AddRootArgs,
-    AttachArgs,
-    BlockersArgs,
-    CliRunError,
-    FmtArgs,
-    HealthArgs,
-    IdArgs,
-    NextArgs,
-    ReadyOverviewArgs,
-    ScanArgs,
-    ServeCliArgs,
-    StatusArgs,
-    StoreIndexArgs,
-    UnblockedByArgs,
+    AddRootArgs, AttachArgs, BlockersArgs, CliRunError, FmtArgs, HealthArgs, IdArgs, NextArgs,
+    ReadyOverviewArgs, ScanArgs, ServeCliArgs, StatusArgs, StoreIndexArgs, UnblockedByArgs,
     WatchArgs,
 };
 
@@ -48,10 +29,7 @@ mod health;
 mod next;
 mod status;
 
-pub(crate) fn cmd_scan(
-    args: ScanArgs,
-    store: &TicketStore,
-) -> Result<Value, CliRunError> {
+pub(crate) fn cmd_scan(args: ScanArgs, store: &TicketStore) -> Result<Value, CliRunError> {
     let reindex = args.reindex || args.force;
     let report = store.scan(reindex)?;
     let diags: Vec<Value> = report
@@ -73,10 +51,7 @@ pub(crate) fn cmd_scan(
     Ok(result)
 }
 
-pub(crate) fn cmd_attach(
-    args: AttachArgs,
-    store: &TicketStore,
-) -> Result<Value, CliRunError> {
+pub(crate) fn cmd_attach(args: AttachArgs, store: &TicketStore) -> Result<Value, CliRunError> {
     let id = super::resolve_uuid_prefix(&args.id, store)?;
     let dest = store.attach(&id, &args.path, args.asset_name.as_deref())?;
     let title = store
@@ -98,10 +73,7 @@ pub(crate) fn cmd_attach(
     }))
 }
 
-pub(crate) fn cmd_assets(
-    args: IdArgs,
-    store: &TicketStore,
-) -> Result<Value, CliRunError> {
+pub(crate) fn cmd_assets(args: IdArgs, store: &TicketStore) -> Result<Value, CliRunError> {
     let id = super::resolve_uuid_prefix(&args.id, store)?;
     let names = store.list_assets(&id)?;
     Ok(json!({
@@ -119,10 +91,7 @@ pub(crate) fn cmd_assets(
 /// (`allowed_next_states`), the full transition edge list, and the schema's
 /// declared states, required intermediate states, and terminal states. This is
 /// the inspection surface paired with the invalid-transition recovery error.
-pub(crate) fn cmd_transitions(
-    args: IdArgs,
-    store: &TicketStore,
-) -> Result<Value, CliRunError> {
+pub(crate) fn cmd_transitions(args: IdArgs, store: &TicketStore) -> Result<Value, CliRunError> {
     let id = super::resolve_uuid_prefix(&args.id, store)?;
     let indexed = store.get_indexed(&id)?.ok_or_else(|| {
         CliRunError::BadRequest(format!(
@@ -130,12 +99,9 @@ pub(crate) fn cmd_transitions(
         ))
     })?;
     let type_id = indexed.type_id.clone();
-    let current_state =
-        indexed.state.clone().unwrap_or_else(|| "open".to_string());
+    let current_state = indexed.state.clone().unwrap_or_else(|| "open".to_string());
     let schema = store.schema_registry().get(&type_id).ok_or_else(|| {
-        CliRunError::BadRequest(format!(
-            "no schema registered for ticket type '{type_id}'"
-        ))
+        CliRunError::BadRequest(format!("no schema registered for ticket type '{type_id}'"))
     })?;
 
     let allowed_next = schema.allowed_next_states(&current_state);
@@ -196,8 +162,7 @@ pub(crate) fn cmd_store_index(
 
     for ticket in indexed {
         let manifest = TicketFs::read(&ticket.path)?;
-        let description =
-            TicketFs::read_description(&ticket.path).unwrap_or_default();
+        let description = TicketFs::read_description(&ticket.path).unwrap_or_default();
         let source_path = memory_kernel::index_generator::to_relative_slash(
             &workspace_root,
             &ticket.path.join("ticket.toml"),
@@ -256,11 +221,10 @@ pub(crate) fn cmd_store_index(
         &sidecar_toon,
         read_existing(&sidecar_path).as_deref(),
     );
-    let agent_hook_out =
-        memory_kernel::generated_markdown::prepare_generated_output(
-            &artifacts.agent_hook_markdown,
-            read_existing(&agent_hook_path).as_deref(),
-        );
+    let agent_hook_out = memory_kernel::generated_markdown::prepare_generated_output(
+        &artifacts.agent_hook_markdown,
+        read_existing(&agent_hook_path).as_deref(),
+    );
 
     let planned = [
         (&readme_path, &readme_out),
@@ -271,9 +235,7 @@ pub(crate) fn cmd_store_index(
     if args.check {
         let drifted: Vec<String> = planned
             .iter()
-            .filter(|(path, content)| {
-                read_existing(path).as_deref() != Some(content.as_str())
-            })
+            .filter(|(path, content)| read_existing(path).as_deref() != Some(content.as_str()))
             .map(|(path, _)| display_path(path))
             .collect();
 
@@ -319,10 +281,7 @@ fn display_path(path: &Path) -> String {
     path.to_string_lossy().replace('\\', "/")
 }
 
-fn resolve_reference_owner_root(
-    aggregate_root: &Path,
-    workspace: &str,
-) -> Result<PathBuf, String> {
+fn resolve_reference_owner_root(aggregate_root: &Path, workspace: &str) -> Result<PathBuf, String> {
     let aggregate_root = aggregate_root
         .canonicalize()
         .map_err(|error| format!("cannot resolve aggregate root: {error}"))?;
@@ -332,9 +291,9 @@ fn resolve_reference_owner_root(
 
     let workspace_path = Path::new(workspace);
     if workspace_path.is_absolute()
-        || workspace_path.components().any(|component| {
-            !matches!(component, std::path::Component::Normal(_))
-        })
+        || workspace_path
+            .components()
+            .any(|component| !matches!(component, std::path::Component::Normal(_)))
     {
         return Err(format!(
             "workspace '{workspace}' must be a relative path beneath the aggregate root"
@@ -344,9 +303,7 @@ fn resolve_reference_owner_root(
     let owner_root = aggregate_root
         .join(workspace_path)
         .canonicalize()
-        .map_err(|error| {
-            format!("cannot resolve owner workspace '{workspace}': {error}")
-        })?;
+        .map_err(|error| format!("cannot resolve owner workspace '{workspace}': {error}"))?;
     if !owner_root.starts_with(&aggregate_root) {
         return Err(format!(
             "workspace '{workspace}' resolves outside the aggregate root"
@@ -356,10 +313,7 @@ fn resolve_reference_owner_root(
     Ok(owner_root)
 }
 
-fn resolve_referenced_spec_root(
-    owner_root: &Path,
-    store_root: &str,
-) -> Result<PathBuf, String> {
+fn resolve_referenced_spec_root(owner_root: &Path, store_root: &str) -> Result<PathBuf, String> {
     let candidate = Path::new(store_root);
     if candidate.is_absolute() {
         return Ok(candidate.to_path_buf());
@@ -378,10 +332,7 @@ fn resolve_referenced_spec_root(
 
 /// Attempt to read a spec at `root` by id. Returns `None` when the store
 /// does not exist there or the id is not found.
-fn try_get_spec(
-    root: &Path,
-    spec_id: Uuid,
-) -> Option<spec_api::SpecManifest> {
+fn try_get_spec(root: &Path, spec_id: Uuid) -> Option<spec_api::SpecManifest> {
     let store = spec_api::SpecStore::open(root).ok()?;
     store.get(&spec_id.to_string()).ok()
 }
@@ -425,10 +376,8 @@ pub(crate) fn cmd_validate_links(
 
         for spec_ref in ticket.related_specs() {
             checked += 1;
-            let owner_root = match resolve_reference_owner_root(
-                aggregate_root,
-                &spec_ref.workspace,
-            ) {
+            let owner_root = match resolve_reference_owner_root(aggregate_root, &spec_ref.workspace)
+            {
                 Ok(owner_root) => owner_root,
                 Err(message) => {
                     findings.push(json!({
@@ -440,30 +389,25 @@ pub(crate) fn cmd_validate_links(
                         "message": message,
                     }));
                     continue;
-                },
+                }
             };
-            let referenced_root = match resolve_referenced_spec_root(
-                &owner_root,
-                &spec_ref.store_root,
-            ) {
-                Ok(referenced_root) => referenced_root,
-                Err(message) => {
-                    findings.push(json!({
-                        "kind": "invalid_store_root",
-                        "ticket_id": ticket.id,
-                        "spec_id": spec_ref.spec_id,
-                        "workspace": spec_ref.workspace,
-                        "store_root": spec_ref.store_root,
-                        "message": message,
-                    }));
-                    continue;
-                },
-            };
+            let referenced_root =
+                match resolve_referenced_spec_root(&owner_root, &spec_ref.store_root) {
+                    Ok(referenced_root) => referenced_root,
+                    Err(message) => {
+                        findings.push(json!({
+                            "kind": "invalid_store_root",
+                            "ticket_id": ticket.id,
+                            "spec_id": spec_ref.spec_id,
+                            "workspace": spec_ref.workspace,
+                            "store_root": spec_ref.store_root,
+                            "message": message,
+                        }));
+                        continue;
+                    }
+                };
             let canonical_spec_root =
-                memory_kernel::workspace::canonical_store_root(
-                    &owner_root,
-                    ".spec",
-                );
+                memory_kernel::workspace::canonical_store_root(&owner_root, ".spec");
 
             if let Some(spec) = try_get_spec(&referenced_root, spec_ref.spec_id) {
                 let has_back_ref = spec
@@ -534,20 +478,13 @@ pub(crate) fn cmd_validate_links(
 mod validate_links_tests {
     use std::collections::BTreeMap;
 
-    use ticket_api::model::ticket::SpecRef;
-    use spec_api::{
-        SpecManifest,
-        SpecStore,
-        TicketRef,
-    };
+    use spec_api::{SpecManifest, SpecStore, TicketRef};
     use tempfile::TempDir;
+    use ticket_api::model::ticket::SpecRef;
 
     use super::{
-        TicketStore,
-        cmd_validate_links,
-        resolve_reference_owner_root,
-        resolve_referenced_spec_root,
-        try_get_spec,
+        TicketStore, cmd_validate_links, resolve_reference_owner_root,
+        resolve_referenced_spec_root, try_get_spec,
     };
 
     /// Reproduces the nested-store bug: a ticket's `related_specs` entry
@@ -563,8 +500,7 @@ mod validate_links_tests {
         let workspace_root = workspace.path();
 
         let ticket_store = TicketStore::init(workspace_root).unwrap();
-        let mut spec_store =
-            SpecStore::init(workspace_root).unwrap();
+        let mut spec_store = SpecStore::init(workspace_root).unwrap();
 
         let spec_manifest = SpecManifest::new(
             "traceability/nested-store-bug",
@@ -671,14 +607,15 @@ mod validate_links_tests {
             store_root: ".workflow-tools/spec".to_string(),
         };
         let resolved_owner_root =
-            resolve_reference_owner_root(aggregate_root, &spec_ref.workspace)
-                .unwrap();
+            resolve_reference_owner_root(aggregate_root, &spec_ref.workspace).unwrap();
         let resolved_spec_root =
-            resolve_referenced_spec_root(&resolved_owner_root, &spec_ref.store_root)
-                .unwrap();
+            resolve_referenced_spec_root(&resolved_owner_root, &spec_ref.store_root).unwrap();
         assert_eq!(
             resolved_spec_root,
-            owner_root.canonicalize().unwrap().join(".workflow-tools/spec")
+            owner_root
+                .canonicalize()
+                .unwrap()
+                .join(".workflow-tools/spec")
         );
         assert_eq!(
             try_get_spec(&resolved_spec_root, spec_id).unwrap().id(),
@@ -699,11 +636,8 @@ mod validate_links_tests {
                 .unwrap();
         }
 
-        let aggregate_result =
-            cmd_validate_links(&aggregate_ticket_store, aggregate_root)
-                .unwrap();
-        let nested_result =
-            cmd_validate_links(&owner_ticket_store, aggregate_root).unwrap();
+        let aggregate_result = cmd_validate_links(&aggregate_ticket_store, aggregate_root).unwrap();
+        let nested_result = cmd_validate_links(&owner_ticket_store, aggregate_root).unwrap();
 
         for result in [&aggregate_result, &nested_result] {
             assert_eq!(result["checked"], 1);
@@ -760,14 +694,10 @@ mod validate_links_tests {
         let workspace_root = workspace.path();
 
         let ticket_store = TicketStore::init(workspace_root).unwrap();
-        let mut spec_store =
-            SpecStore::init(workspace_root).unwrap();
+        let mut spec_store = SpecStore::init(workspace_root).unwrap();
 
-        let spec_manifest = SpecManifest::new(
-            "traceability/no-back-ref",
-            "No back ref spec",
-            "ticket-api",
-        );
+        let spec_manifest =
+            SpecManifest::new("traceability/no-back-ref", "No back ref spec", "ticket-api");
         let spec_id = spec_manifest.id();
         spec_store.create(&spec_manifest, "body", None).unwrap();
         // Deliberately do not set the spec's related_tickets back-reference.
@@ -861,10 +791,7 @@ mod validate_links_tests {
     }
 }
 
-pub(crate) fn cmd_add_root(
-    args: AddRootArgs,
-    store: &TicketStore,
-) -> Result<Value, CliRunError> {
+pub(crate) fn cmd_add_root(args: AddRootArgs, store: &TicketStore) -> Result<Value, CliRunError> {
     use ticket_api::model::filesystem::ScanRoot;
     let path = args.path.canonicalize().unwrap_or(args.path.clone());
     std::fs::create_dir_all(&path).map_err(StorageError::Io)?;
@@ -880,17 +807,10 @@ pub(crate) fn cmd_add_root(
     }))
 }
 
-pub(crate) fn cmd_serve(
-    args: ServeCliArgs,
-    store: TicketStore,
-) -> Result<Value, CliRunError> {
+pub(crate) fn cmd_serve(args: ServeCliArgs, store: TicketStore) -> Result<Value, CliRunError> {
     #[cfg(feature = "http")]
     {
-        use crate::serve::{
-            ServeConfig,
-            WorkspaceRegistry,
-            serve,
-        };
+        use crate::serve::{ServeConfig, WorkspaceRegistry, serve};
 
         let registry = WorkspaceRegistry::single_opened(std::sync::Arc::new(store));
 
@@ -902,11 +822,7 @@ pub(crate) fn cmd_serve(
         let rt = tokio::runtime::Builder::new_multi_thread()
             .enable_all()
             .build()
-            .map_err(|e| {
-                CliRunError::BadRequest(format!(
-                    "failed to start tokio runtime: {e}"
-                ))
-            })?;
+            .map_err(|e| CliRunError::BadRequest(format!("failed to start tokio runtime: {e}")))?;
 
         rt.block_on(async {
             serve(config, registry)
@@ -925,14 +841,8 @@ pub(crate) fn cmd_serve(
     }
 }
 
-pub(crate) fn cmd_watch(
-    args: WatchArgs,
-    store: &TicketStore,
-) -> Result<Value, CliRunError> {
-    use ticket_api::watcher::reconciler::{
-        run_watch_loop,
-        start_watcher,
-    };
+pub(crate) fn cmd_watch(args: WatchArgs, store: &TicketStore) -> Result<Value, CliRunError> {
+    use ticket_api::watcher::reconciler::{run_watch_loop, start_watcher};
     eprintln!(
         "Starting filesystem watcher (debounce={}ms). Press Ctrl+C to stop.",
         args.debounce_ms
@@ -942,10 +852,7 @@ pub(crate) fn cmd_watch(
     Ok(json!({ "command": "watch", "status": "stopped" }))
 }
 
-pub(crate) fn cmd_status(
-    args: StatusArgs,
-    store: &TicketStore,
-) -> Result<Value, CliRunError> {
+pub(crate) fn cmd_status(args: StatusArgs, store: &TicketStore) -> Result<Value, CliRunError> {
     status::run(args, store)
 }
 
@@ -961,9 +868,9 @@ pub(crate) fn cmd_ready_overview(
         store,
     )?;
 
-    let scope = args.scope.unwrap_or_else(|| {
-        "ready tickets currently open in the active index".to_string()
-    });
+    let scope = args
+        .scope
+        .unwrap_or_else(|| "ready tickets currently open in the active index".to_string());
 
     Ok(json!({
         "command": "ready_overview",
@@ -976,17 +883,11 @@ pub(crate) fn cmd_ready_overview(
     }))
 }
 
-pub(crate) fn cmd_next(
-    args: NextArgs,
-    store: &TicketStore,
-) -> Result<Value, CliRunError> {
+pub(crate) fn cmd_next(args: NextArgs, store: &TicketStore) -> Result<Value, CliRunError> {
     next::run(args, store)
 }
 
-pub(crate) fn cmd_blockers(
-    args: BlockersArgs,
-    store: &TicketStore,
-) -> Result<Value, CliRunError> {
+pub(crate) fn cmd_blockers(args: BlockersArgs, store: &TicketStore) -> Result<Value, CliRunError> {
     next::run_blockers(args, store)
 }
 
@@ -997,23 +898,14 @@ pub(crate) fn cmd_unblocked_by(
     next::run_unblocked_by(args, store)
 }
 
-pub(crate) fn cmd_health(
-    args: HealthArgs,
-    store: &TicketStore,
-) -> Result<Value, CliRunError> {
+pub(crate) fn cmd_health(args: HealthArgs, store: &TicketStore) -> Result<Value, CliRunError> {
     health::run(args, store)
 }
 
 // ── fmt (canonical field ordering) ────────────────────────────────────────────
 
-pub(crate) fn cmd_fmt(
-    args: FmtArgs,
-    store: &TicketStore,
-) -> Result<Value, CliRunError> {
-    use ticket_api::model::{
-        filesystem::TICKET_MANIFEST_FILE,
-        manifest_format,
-    };
+pub(crate) fn cmd_fmt(args: FmtArgs, store: &TicketStore) -> Result<Value, CliRunError> {
+    use ticket_api::model::{filesystem::TICKET_MANIFEST_FILE, manifest_format};
 
     // Use the same ticket enumeration as `health --all`: iterate via the index
     // so we pick up every non-deleted ticket regardless of scan-root registration.
@@ -1038,7 +930,7 @@ pub(crate) fn cmd_fmt(
                     "error": e.to_string(),
                 }));
                 continue;
-            },
+            }
         };
 
         if manifest_format::is_canonically_ordered(&raw) {
@@ -1058,7 +950,7 @@ pub(crate) fn cmd_fmt(
                         "path": manifest_path,
                         "error": e.to_string(),
                     }));
-                },
+                }
             }
         }
     }

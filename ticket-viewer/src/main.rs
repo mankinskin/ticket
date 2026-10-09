@@ -20,30 +20,18 @@
 use std::{
     env,
     io::Write,
-    path::{
-        Path,
-        PathBuf,
-    },
+    path::{Path, PathBuf},
     sync::Arc,
 };
 use tracing::info;
 use viewer_api::{
-    client_log::{
-        client_log_router,
-        ClientLogState,
-    },
-    display_host,
-    init_tracing,
-    with_static_files,
+    client_log::{client_log_router, ClientLogState},
+    display_host, init_tracing, with_static_files,
 };
 
 use feedback_http::AppState as FeedbackAppState;
 use ticket_api::storage::store::TicketStore;
-use ticket_http::serve::{
-    AppState,
-    StreamBroker,
-    WorkspaceRegistry,
-};
+use ticket_http::serve::{AppState, StreamBroker, WorkspaceRegistry};
 
 struct CliOptions {
     port: u16,
@@ -78,23 +66,25 @@ fn parse_cli_options() -> CliOptions {
     let mut args = env::args().skip(1);
     while let Some(arg) = args.next() {
         match arg.as_str() {
-            "--port" =>
+            "--port" => {
                 if let Some(value) = args.next() {
                     if let Ok(parsed) = value.parse::<u16>() {
                         port = parsed;
                     }
-                },
-            "--static-dir" =>
+                }
+            }
+            "--static-dir" => {
                 if let Some(value) = args.next() {
                     static_dir = PathBuf::from(value);
-                },
+                }
+            }
             "--workspace" => {
                 workspace = args.next();
-            },
+            }
             "--index-root" => {
                 index_root = args.next().map(PathBuf::from);
-            },
-            _ => {},
+            }
+            _ => {}
         }
     }
 
@@ -111,10 +101,8 @@ async fn shutdown_signal() {
 
     #[cfg(unix)]
     {
-        let mut sigterm = tokio::signal::unix::signal(
-            tokio::signal::unix::SignalKind::terminate(),
-        )
-        .expect("failed to register SIGTERM handler");
+        let mut sigterm = tokio::signal::unix::signal(tokio::signal::unix::SignalKind::terminate())
+            .expect("failed to register SIGTERM handler");
         tokio::select! {
             _ = ctrl_c => {}
             _ = sigterm.recv() => {}
@@ -128,7 +116,7 @@ async fn shutdown_signal() {
 }
 
 fn open_local_ticket_store(
-    index_root: &Path
+    index_root: &Path,
 ) -> Result<TicketStore, ticket_api::error::StorageError> {
     TicketStore::open(index_root)
 }
@@ -162,26 +150,22 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             index_root.display()
         ))
     })?;
-    let workspace_root =
-        ticket_api::workspace::resolve_workspace_root_from_store_root(
-            &index_root,
-            ticket_api::workspace::TICKET_INDEX_DIR,
-        );
-    ticket_http::serve::reapply_workspace_scan_policy(
-        &store,
-        &workspace_root,
-    )
-    .map_err(|error| {
-        std::io::Error::other(format!(
-            "failed to apply ticket workspace policy for {}: {error}",
-            workspace_root.display()
-        ))
-    })?;
+    let workspace_root = ticket_api::workspace::resolve_workspace_root_from_store_root(
+        &index_root,
+        ticket_api::workspace::TICKET_INDEX_DIR,
+    );
+    ticket_http::serve::reapply_workspace_scan_policy(&store, &workspace_root).map_err(
+        |error| {
+            std::io::Error::other(format!(
+                "failed to apply ticket workspace policy for {}: {error}",
+                workspace_root.display()
+            ))
+        },
+    )?;
     let registry = WorkspaceRegistry::single_opened(Arc::new(store));
 
     // Build the ticket-http AppState and wire up streaming.
-    let state =
-        AppState::new(Arc::new(registry), Arc::new(StreamBroker::new()));
+    let state = AppState::new(Arc::new(registry), Arc::new(StreamBroker::new()));
 
     // Pre-initialize all known workspaces at startup.
     let workspace_names = state.registry.workspace_names();
@@ -192,16 +176,12 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     // Build the ticket API router from ticket-http (includes /healthz).
     let app = ticket_http::serve::routes::build_router(state);
     let feedback_state = FeedbackAppState {
-        store_root: ticket_api::workspace::resolve_store_root_from(
-            &workspace_root,
-            ".feedback",
-        ),
+        store_root: ticket_api::workspace::resolve_store_root_from(&workspace_root, ".feedback"),
     };
     let app = app.merge(feedback_http::app(feedback_state));
     let app = app.merge(client_log_router(ClientLogState::default()));
 
-    let app =
-        with_static_files(app, Some(options.static_dir).filter(|p| p.exists()));
+    let app = with_static_files(app, Some(options.static_dir).filter(|p| p.exists()));
 
     let addr = format!("0.0.0.0:{}", options.port);
     let listener = tokio::net::TcpListener::bind(&addr).await?;
@@ -229,10 +209,7 @@ mod tests {
     use tempfile::tempdir;
 
     use super::open_local_ticket_store;
-    use ticket_api::storage::{
-        index::RedbIndexStore,
-        store::TicketStore,
-    };
+    use ticket_api::storage::{index::RedbIndexStore, store::TicketStore};
 
     #[test]
     fn startup_requires_an_initialized_ticket_store() {
@@ -242,13 +219,7 @@ mod tests {
         };
 
         assert!(error.to_string().contains("workspace not initialized"));
-        assert!(
-            !dir
-                .path()
-                .join(".workflow-tools")
-                .join("ticket")
-                .exists()
-        );
+        assert!(!dir.path().join(".workflow-tools").join("ticket").exists());
     }
 
     #[test]

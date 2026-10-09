@@ -1,23 +1,13 @@
-use std::{
-    collections::BTreeMap,
-    path::PathBuf,
-};
+use std::{collections::BTreeMap, path::PathBuf};
 
 use serde_json::Value;
-use ticket_api::model::{
-    edge::EdgeRecord,
-    ticket::TicketManifest,
-};
+use ticket_api::model::{edge::EdgeRecord, ticket::TicketManifest};
 use uuid::Uuid;
 
-use super::{
-    McpError,
-    TicketDetail,
-    TicketServer,
-};
+use super::{McpError, TicketDetail, TicketServer};
 
 pub(super) fn move_plan_json(
-    report: &ticket_api::storage::move_planner::MovePreflightReport
+    report: &ticket_api::storage::move_planner::MovePreflightReport,
 ) -> Result<Value, McpError> {
     Ok(serde_json::json!({
         "supported": report.supported(),
@@ -41,7 +31,7 @@ pub(super) fn move_plan_json(
 }
 
 pub(super) fn move_outcome_json(
-    outcome: &ticket_api::storage::move_execution::MoveExecutionOutcome
+    outcome: &ticket_api::storage::move_execution::MoveExecutionOutcome,
 ) -> Value {
     serde_json::json!({
         "resumed": outcome.resumed,
@@ -70,15 +60,10 @@ pub(super) fn move_recovery_json() -> Value {
     })
 }
 
-pub(super) fn normalize_workspace_root(
-    value: &str
-) -> Result<PathBuf, McpError> {
-    let selector = ticket_api::workspace::normalize_explicit_workspace_selector(
-        Some(value),
-    )
-    .map_err(|error| McpError::invalid_params(error.to_string(), None))?;
-    ticket_api::workspace::canonicalize_workspace_root_strict(&selector)
-    .map_err(|error| {
+pub(super) fn normalize_workspace_root(value: &str) -> Result<PathBuf, McpError> {
+    let selector = ticket_api::workspace::normalize_explicit_workspace_selector(Some(value))
+        .map_err(|error| McpError::invalid_params(error.to_string(), None))?;
+    ticket_api::workspace::canonicalize_workspace_root_strict(&selector).map_err(|error| {
         McpError::invalid_params(
             format!(
                 "workspace root canonicalization failed for '{}': {error}",
@@ -89,20 +74,16 @@ pub(super) fn normalize_workspace_root(
     })
 }
 
-pub(super) fn normalize_display_path(
-    path: &std::path::Path
-) -> Result<String, McpError> {
-    ticket_api::workspace::normalize_path_for_display_strict(path).map_err(
-        |error| {
-            McpError::invalid_params(
-                format!(
-                    "path payload normalization failed for '{}': {error}",
-                    path.display()
-                ),
-                None,
-            )
-        },
-    )
+pub(super) fn normalize_display_path(path: &std::path::Path) -> Result<String, McpError> {
+    ticket_api::workspace::normalize_path_for_display_strict(path).map_err(|error| {
+        McpError::invalid_params(
+            format!(
+                "path payload normalization failed for '{}': {error}",
+                path.display()
+            ),
+            None,
+        )
+    })
 }
 
 pub(super) fn parse_field_patch(
@@ -163,9 +144,7 @@ fn resolve_from_selector_for_remove(
     }
 
     Err(McpError::invalid_params(
-        format!(
-            "invalid UUID '{selector}': expected full UUID or hex prefix (>= 8 chars)"
-        ),
+        format!("invalid UUID '{selector}': expected full UUID or hex prefix (>= 8 chars)"),
         None,
     ))
 }
@@ -180,12 +159,9 @@ fn resolve_to_selector_for_remove(
     if let Ok(id) = trimmed.parse::<Uuid>() {
         return Ok(id);
     }
-    if !(trimmed.len() >= 8 && trimmed.chars().all(|ch| ch.is_ascii_hexdigit()))
-    {
+    if !(trimmed.len() >= 8 && trimmed.chars().all(|ch| ch.is_ascii_hexdigit())) {
         return Err(McpError::invalid_params(
-            format!(
-                "invalid UUID '{selector}': expected full UUID or hex prefix (>= 8 chars)"
-            ),
+            format!("invalid UUID '{selector}': expected full UUID or hex prefix (>= 8 chars)"),
             None,
         ));
     }
@@ -202,9 +178,7 @@ fn resolve_to_selector_for_remove(
 
     match matches.len() {
         0 => Err(McpError::invalid_params(
-            format!(
-                "edge not found: kind='{kind}' from='{from}' to='{selector}'"
-            ),
+            format!("edge not found: kind='{kind}' from='{from}' to='{selector}'"),
             None,
         )),
         1 => Ok(matches[0]),
@@ -227,10 +201,7 @@ pub(super) fn indexed_ticket_path(
         .map(|ticket| ticket.path.display().to_string()))
 }
 
-pub(super) fn detail_from_manifest(
-    manifest: TicketManifest,
-    path: Option<String>,
-) -> TicketDetail {
+pub(super) fn detail_from_manifest(manifest: TicketManifest, path: Option<String>) -> TicketDetail {
     TicketDetail {
         id: manifest.id.to_string(),
         path,

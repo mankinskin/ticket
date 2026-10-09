@@ -135,9 +135,7 @@ fn run_scan_reconciliation_visibility_agreement(reindex: bool) {
         .unwrap();
     let expected_move = child_store_b.get_indexed(&move_id).unwrap().unwrap();
 
-    let poisoned_index =
-        RedbIndexStore::open(&root_store.index_root.join("tickets.db"))
-            .unwrap();
+    let poisoned_index = RedbIndexStore::open(&root_store.index_root.join("tickets.db")).unwrap();
     let mut poisoned = root_store.get_indexed(&move_id).unwrap().unwrap();
     poisoned.path = root_store
         .index_root
@@ -168,8 +166,7 @@ fn run_scan_reconciliation_visibility_agreement(reindex: bool) {
         "in-implementation",
     );
 
-    let delete_path =
-        child_store_a.get_indexed(&delete_id).unwrap().unwrap().path;
+    let delete_path = child_store_a.get_indexed(&delete_id).unwrap().unwrap().path;
     fs::remove_dir_all(&delete_path).unwrap();
 
     root_store.scan(reindex).unwrap();
@@ -183,12 +180,7 @@ fn run_scan_reconciliation_visibility_agreement(reindex: bool) {
     fs::remove_dir_all(&child_repo_b).unwrap();
 
     root_store.scan(reindex).unwrap();
-    assert_visibility_surfaces_agree(
-        &root_store,
-        "VisibilityFixture",
-        &known_ids,
-        &[stable_id],
-    );
+    assert_visibility_surfaces_agree(&root_store, "VisibilityFixture", &known_ids, &[stable_id]);
     assert_ticket_title_and_state(
         &root_store,
         "VisibilityFixture",
@@ -228,9 +220,11 @@ fn open_registers_default_tickets_scan_root() {
 
     let roots = store.list_scan_roots().unwrap();
 
-    assert!(roots.iter().any(|root| {
-        root.path == store.index_root.join("tickets") && root.label == "tickets"
-    }));
+    assert!(
+        roots.iter().any(|root| {
+            root.path == store.index_root.join("tickets") && root.label == "tickets"
+        })
+    );
 }
 
 #[test]
@@ -402,9 +396,7 @@ fn scan_repairs_corrupted_nested_workspace_ticket_path() {
     let child_indexed = child_store.get_indexed(&ticket_id).unwrap().unwrap();
     let child_ticket_path = child_indexed.path.clone();
 
-    let poisoned_index =
-        RedbIndexStore::open(&root_store.index_root.join("tickets.db"))
-            .unwrap();
+    let poisoned_index = RedbIndexStore::open(&root_store.index_root.join("tickets.db")).unwrap();
     let mut poisoned = root_store.get_indexed(&ticket_id).unwrap().unwrap();
     poisoned.path = root_store
         .index_root
@@ -493,9 +485,7 @@ fn scan_without_reindex_repairs_moved_nested_ticket_path_and_search_doc() {
     root_store.scan(true).unwrap();
     let expected = child_store.get_indexed(&ticket_id).unwrap().unwrap();
 
-    let poisoned_index =
-        RedbIndexStore::open(&root_store.index_root.join("tickets.db"))
-            .unwrap();
+    let poisoned_index = RedbIndexStore::open(&root_store.index_root.join("tickets.db")).unwrap();
     let mut poisoned = root_store.get_indexed(&ticket_id).unwrap().unwrap();
     poisoned.path = root_store
         .index_root
@@ -536,8 +526,7 @@ fn scan_without_reindex_repairs_moved_nested_ticket_path_and_search_doc() {
             .iter()
             .any(|result| {
                 result.id == ticket_id
-                    && result.title.as_deref()
-                        == Some("Nested workspace ticket")
+                    && result.title.as_deref() == Some("Nested workspace ticket")
                     && result.state.as_deref() == Some("in-implementation")
             })
     );
@@ -557,8 +546,7 @@ fn scan_indexes_manual_ticket_with_missing_optional_fields() {
     let store = TicketStore::init(dir.path()).unwrap();
     let ticket_id = Uuid::new_v4();
     let manifest = TicketManifest::new(ticket_id, Utc::now());
-    let ticket_path =
-        store.index_root.join("tickets").join(ticket_id.to_string());
+    let ticket_path = store.index_root.join("tickets").join(ticket_id.to_string());
 
     fs::create_dir_all(&ticket_path).unwrap();
     fs::write(

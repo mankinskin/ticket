@@ -7,13 +7,12 @@ use std::{
 use chrono::Utc;
 use criterion::{Criterion, criterion_group, criterion_main};
 use memory_fixtures::{
-    TicketPerfFixtureOptions, append_fixture_ticket,
-    materialize_git_fixture_with_ticket_perf_load,
+    TicketPerfFixtureOptions, append_fixture_ticket, materialize_git_fixture_with_ticket_perf_load,
 };
 use memory_kernel::storage::move_kernel::MoveSetExecutionPhase;
 use memory_kernel::testing::{
-    MOVE_BENCH_SAMPLE_SIZE, MOVE_BENCH_WARM_UP, MoveBenchmarkWorkspace,
-    drop_fixture_blockers, move_bench_criterion, move_bench_measurement_time,
+    MOVE_BENCH_SAMPLE_SIZE, MOVE_BENCH_WARM_UP, MoveBenchmarkWorkspace, drop_fixture_blockers,
+    move_bench_criterion, move_bench_measurement_time,
 };
 use ticket_api::{
     model::edge::EdgeRecord,

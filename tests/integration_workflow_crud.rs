@@ -7,17 +7,10 @@
 
 mod common;
 
-use std::{
-    fs,
-    path::Path,
-};
 use std::process::Command;
+use std::{fs, path::Path};
 
-use common::{
-    TicketCommands,
-    TicketSandbox as Sandbox,
-    create_ticket,
-};
+use common::{TicketCommands, TicketSandbox as Sandbox, create_ticket};
 use ticket_api::storage::REQUIRED_DESCRIPTION_MODE_ERROR;
 
 // ---------------------------------------------------------------------------
@@ -58,13 +51,7 @@ fn create_multiple_and_list_all() {
     let s = Sandbox::new();
 
     for title in &["Alpha feature", "Beta fix", "Gamma refactor"] {
-        let r = s.ticket_json(&[
-            "create",
-            "--title",
-            title,
-            "--type",
-            "tracker-improvement",
-        ]);
+        let r = s.ticket_json(&["create", "--title", title, "--type", "tracker-improvement"]);
         assert_eq!(r["status"], "ok");
     }
 
@@ -156,12 +143,7 @@ fn update_description_requires_an_explicit_mode() {
     let s = Sandbox::new();
     let id = create_ticket(&s, "Needs description mode");
 
-    let (code, stderr) = s.ticket_fail(&[
-        "update",
-        &id,
-        "--description",
-        "Summary text",
-    ]);
+    let (code, stderr) = s.ticket_fail(&["update", &id, "--description", "Summary text"]);
 
     assert_eq!(code, 1);
     assert!(
@@ -292,23 +274,14 @@ fn claim_conflict_and_unclaim_cycle() {
     let id = create_ticket(&s, "Work to claim");
 
     // Agent-1 claims the ticket successfully.
-    let claim = s.ticket_json(&[
-        "claim",
-        &id,
-        "--agent",
-        "agent-1",
-        "--ttl-secs",
-        "300",
-    ]);
+    let claim = s.ticket_json(&["claim", &id, "--agent", "agent-1", "--ttl-secs", "300"]);
     assert_eq!(claim["status"], "ok");
     assert_eq!(claim["working_by"], "agent-1");
 
     // Agent-2 attempts to claim the same ticket — must fail (lease conflict).
     let (_code, stderr) = s.ticket_fail(&["claim", &id, "--agent", "agent-2"]);
     assert!(
-        stderr.contains("agent-1")
-            || stderr.contains("lease")
-            || stderr.contains("conflict"),
+        stderr.contains("agent-1") || stderr.contains("lease") || stderr.contains("conflict"),
         "expected a lease-conflict error mentioning agent-1, got: {stderr}"
     );
 
@@ -332,14 +305,7 @@ fn unclaim_clears_stale_orphaned_lease_without_board_entry() {
     let s = Sandbox::new();
     let id = create_ticket(&s, "Orphaned lease cleanup");
 
-    let claim = s.ticket_json(&[
-        "claim",
-        &id,
-        "--agent",
-        "agent-1",
-        "--ttl-secs",
-        "0",
-    ]);
+    let claim = s.ticket_json(&["claim", &id, "--agent", "agent-1", "--ttl-secs", "0"]);
     assert_eq!(claim["status"], "ok");
 
     let preview = s.ticket_json(&["board", "clean", "preview", "--include-stale"]);
@@ -348,13 +314,7 @@ fn unclaim_clears_stale_orphaned_lease_without_board_entry() {
         .expect("clean preview token must be present")
         .to_string();
 
-    let apply = s.ticket_json(&[
-        "board",
-        "clean",
-        "apply",
-        &token,
-        "--include-stale",
-    ]);
+    let apply = s.ticket_json(&["board", "clean", "apply", &token, "--include-stale"]);
     assert_eq!(apply["status"], "ok");
 
     let leases_before = s.ticket_json(&["leases"]);
@@ -439,15 +399,7 @@ fn unlink_removes_existing_edge() {
         "tracker-improvement",
     ]);
 
-    let linked = s.ticket_json(&[
-        "link",
-        "--from",
-        id_a,
-        "--to",
-        id_b,
-        "--kind",
-        "depends_on",
-    ]);
+    let linked = s.ticket_json(&["link", "--from", id_a, "--to", id_b, "--kind", "depends_on"]);
     assert_eq!(linked["status"], "ok");
 
     let before = s.ticket_json(&["links", id_a]);
@@ -547,15 +499,7 @@ fn unlink_removes_edge_when_target_ticket_folder_is_missing_fixture() {
         "tracker-improvement",
     ]);
 
-    s.ticket_json(&[
-        "link",
-        "--from",
-        id_a,
-        "--to",
-        id_b,
-        "--kind",
-        "depends_on",
-    ]);
+    s.ticket_json(&["link", "--from", id_a, "--to", id_b, "--kind", "depends_on"]);
 
     // Fixture: remove target ticket folder directly to force a dangling edge.
     let target = s.ticket_json(&["get", id_b]);
@@ -623,15 +567,7 @@ fn unlink_reports_error_when_source_ticket_folder_is_missing_fixture() {
         "tracker-improvement",
     ]);
 
-    s.ticket_json(&[
-        "link",
-        "--from",
-        id_a,
-        "--to",
-        id_b,
-        "--kind",
-        "depends_on",
-    ]);
+    s.ticket_json(&["link", "--from", id_a, "--to", id_b, "--kind", "depends_on"]);
 
     // Fixture: remove source ticket folder directly to force a dangling edge.
     let source = s.ticket_json(&["get", id_a]);
@@ -669,11 +605,9 @@ fn unlink_reports_error_when_source_ticket_folder_is_missing_fixture() {
     // Missing source no longer appears in list output, so verify globally.
     let all_links = s.ticket_json(&["links", "--all"]);
     let edges = all_links["edges"].as_array().expect("edges array");
-    let still_present = edges.iter().any(|edge| {
-        edge["from"] == id_a
-            && edge["to"] == id_b
-            && edge["kind"] == "depends_on"
-    });
+    let still_present = edges
+        .iter()
+        .any(|edge| edge["from"] == id_a && edge["to"] == id_b && edge["kind"] == "depends_on");
     assert!(
         !still_present,
         "edge should be removed from global edge set"
@@ -719,15 +653,7 @@ fn update_routes_depends_on_field_patch_and_preserves_unlink_flow() {
     assert_eq!(after_update["count"].as_u64().unwrap(), 1);
 
     // Canonical graph flow still works through link/unlink.
-    let linked = s.ticket_json(&[
-        "link",
-        "--from",
-        id_a,
-        "--to",
-        id_b,
-        "--kind",
-        "depends_on",
-    ]);
+    let linked = s.ticket_json(&["link", "--from", id_a, "--to", id_b, "--kind", "depends_on"]);
     assert_eq!(linked["status"], "ok");
 
     let unlinked = s.ticket_json(&[

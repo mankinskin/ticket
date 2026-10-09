@@ -1,10 +1,5 @@
 use chrono::Utc;
-use ticket_api::model::event::{
-    BranchLifecycle,
-    GitHistoryConfig,
-    GitHistoryMode,
-    HistoryEntry,
-};
+use ticket_api::model::event::{BranchLifecycle, GitHistoryConfig, GitHistoryMode, HistoryEntry};
 use uuid::Uuid;
 
 #[test]

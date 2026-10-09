@@ -6,10 +6,7 @@
 
 mod common;
 
-use common::{
-    TicketCommands,
-    TicketSandbox as Sandbox,
-};
+use common::{TicketCommands, TicketSandbox as Sandbox};
 
 #[test]
 fn catalog_lists_ticket_spec_rule_workflows() {
@@ -55,5 +52,9 @@ fn catalog_lists_ticket_spec_rule_workflows() {
     }
 
     // Parity gaps are explicit.
-    assert!(catalog["parity_gaps"].as_array().is_some_and(|g| !g.is_empty()));
+    assert!(
+        catalog["parity_gaps"]
+            .as_array()
+            .is_some_and(|g| !g.is_empty())
+    );
 }

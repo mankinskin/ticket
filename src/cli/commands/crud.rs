@@ -1,31 +1,13 @@
 use std::collections::BTreeMap;
 
-use serde_json::{
-    Map,
-    Value,
-    json,
-};
+use serde_json::{Map, Value, json};
 
-use ticket_api::storage::{
-    TicketStore,
-    ticket_fs::TicketFs,
-};
+use ticket_api::storage::{TicketStore, ticket_fs::TicketFs};
 
 use crate::cli::{
-    CliRunError,
-    CreateArgs,
-    IdArgs,
-    ListArgs,
-    ReproArgs,
-    UpdateArgs,
-    UpdateArgsCli,
-    commands::ticket_workspace_metadata_for_path,
-    current_git_commit,
-    default_repro_summary,
-    normalize_repro_timestamp,
-    parse_fields,
-    parse_fields_to_json,
-    repro_summary_from_fields,
+    CliRunError, CreateArgs, IdArgs, ListArgs, ReproArgs, UpdateArgs, UpdateArgsCli,
+    commands::ticket_workspace_metadata_for_path, current_git_commit, default_repro_summary,
+    normalize_repro_timestamp, parse_fields, parse_fields_to_json, repro_summary_from_fields,
 };
 
 fn effort_from_ticket(
@@ -53,21 +35,15 @@ pub(crate) fn resolve_author(explicit: Option<&str>) -> Option<String> {
     })
 }
 
-pub(crate) fn cmd_create(
-    args: CreateArgs,
-    store: &TicketStore,
-) -> Result<Value, CliRunError> {
+pub(crate) fn cmd_create(args: CreateArgs, store: &TicketStore) -> Result<Value, CliRunError> {
     let type_id = args.ticket_type.as_deref().unwrap_or("tracker-improvement");
     let extra = parse_fields_to_json(&args.fields)?;
 
     let body = args
         .body_file
         .map(|p| {
-            std::fs::read_to_string(&p).map_err(|e| {
-                CliRunError::InvalidFieldPatch(format!(
-                    "cannot read body-file: {e}"
-                ))
-            })
+            std::fs::read_to_string(&p)
+                .map_err(|e| CliRunError::InvalidFieldPatch(format!("cannot read body-file: {e}")))
         })
         .transpose()?;
 
@@ -104,15 +80,10 @@ pub(crate) fn cmd_create(
     }))
 }
 
-pub(crate) fn cmd_get(
-    args: IdArgs,
-    store: &TicketStore,
-) -> Result<Value, CliRunError> {
+pub(crate) fn cmd_get(args: IdArgs, store: &TicketStore) -> Result<Value, CliRunError> {
     let id = super::resolve_uuid_prefix(&args.id, store)?;
-    let projection = ticket_api::storage::ReadProjection::decode(
-        args.view.as_deref(),
-        args.parts.as_deref(),
-    )?;
+    let projection =
+        ticket_api::storage::ReadProjection::decode(args.view.as_deref(), args.parts.as_deref())?;
     if let Some(projection) = projection {
         let projected = match store.project(&id, &projection) {
             Ok(projected) => projected,
@@ -120,7 +91,7 @@ pub(crate) fn cmd_get(
                 return Err(CliRunError::BadRequest(format!(
                     "ticket '{id}' was not found in the active workspace. Retry with --workspace-root <workspace-path> or --index-root <path-to-.ticket>."
                 )));
-            },
+            }
             Err(error) => return Err(CliRunError::Storage(error)),
         };
         return Ok(json!({
@@ -136,7 +107,7 @@ pub(crate) fn cmd_get(
             return Err(CliRunError::BadRequest(format!(
                 "ticket '{id}' was not found in the active workspace. Retry with --workspace-root <workspace-path> or --index-root <path-to-.ticket>."
             )));
-        },
+        }
         Err(error) => return Err(CliRunError::Storage(error)),
     };
     let path = store
@@ -158,23 +129,17 @@ pub(crate) fn cmd_get(
     }))
 }
 
-pub(crate) fn cmd_update(
-    args: UpdateArgsCli,
-    store: &TicketStore,
-) -> Result<Value, CliRunError> {
+pub(crate) fn cmd_update(args: UpdateArgsCli, store: &TicketStore) -> Result<Value, CliRunError> {
     // Boundary decode: the raw two-flag clap struct converts into the
     // domain `UpdateArgs`, whose single `description_update` field cannot
     // represent a description supplied without a mode (AC5 of ticket
     // 3d952036). Everything below this line uses the compile-time-safe type.
-    let args: UpdateArgs =
-        args.try_into().map_err(CliRunError::BadRequest)?;
+    let args: UpdateArgs = args.try_into().map_err(CliRunError::BadRequest)?;
     let id = super::resolve_uuid_prefix(&args.id, store)?;
     let author = resolve_author(args.author.as_deref());
 
     if args.undo {
-        if args.to_state.is_some()
-            || !args.transition_states.is_empty()
-            || !args.fields.is_empty()
+        if args.to_state.is_some() || !args.transition_states.is_empty() || !args.fields.is_empty()
         {
             return Err(CliRunError::BadRequest(
                 "--undo cannot be combined with --to-state, --transition-state, or --field".into(),
@@ -198,8 +163,7 @@ pub(crate) fn cmd_update(
                 desc_val.clone(),
             );
         }
-        let new_rev =
-            store.apply_revert(&id, revert_fields, author.as_deref())?;
+        let new_rev = store.apply_revert(&id, revert_fields, author.as_deref())?;
         let updated = store.get(&id)?;
         return Ok(json!({
             "command": "update",
@@ -242,7 +206,7 @@ pub(crate) fn cmd_update(
                 return Err(CliRunError::BadRequest(
                     "--board-check-in requires --board-agent".into(),
                 ));
-            },
+            }
             Some(ref agent) => {
                 let ttl = args.board_ttl_secs.unwrap_or(3600);
                 let intent = args.board_intent.as_deref().unwrap_or("");
@@ -267,7 +231,7 @@ pub(crate) fn cmd_update(
                     "checked_in_at": entry.checked_in_at,
                     "ttl_secs": entry.ttl_secs,
                 }))
-            },
+            }
         }
     } else {
         None
@@ -285,19 +249,14 @@ pub(crate) fn cmd_update(
         }
     });
 
-    if let (Some(entry), Some(obj)) =
-        (board_entry_json, response.as_object_mut())
-    {
+    if let (Some(entry), Some(obj)) = (board_entry_json, response.as_object_mut()) {
         obj.insert("board_entry".to_string(), entry);
     }
 
     Ok(response)
 }
 
-pub(crate) fn cmd_repro(
-    args: ReproArgs,
-    store: &TicketStore,
-) -> Result<Value, CliRunError> {
+pub(crate) fn cmd_repro(args: ReproArgs, store: &TicketStore) -> Result<Value, CliRunError> {
     let id = super::resolve_uuid_prefix(&args.id, store)?;
     let manifest = store.get(&id)?;
     let mut reproductions = manifest
@@ -359,10 +318,7 @@ pub(crate) fn cmd_repro(
     }))
 }
 
-pub(crate) fn cmd_list(
-    args: ListArgs,
-    store: &TicketStore,
-) -> Result<Value, CliRunError> {
+pub(crate) fn cmd_list(args: ListArgs, store: &TicketStore) -> Result<Value, CliRunError> {
     let field_filters: Vec<(String, String)> =
         parse_fields(&args.where_clauses)?.into_iter().collect();
     let items = store.list_extended(
@@ -419,10 +375,7 @@ pub(crate) fn cmd_list(
     }))
 }
 
-pub(crate) fn cmd_delete(
-    args: IdArgs,
-    store: &TicketStore,
-) -> Result<Value, CliRunError> {
+pub(crate) fn cmd_delete(args: IdArgs, store: &TicketStore) -> Result<Value, CliRunError> {
     let id = super::resolve_uuid_prefix(&args.id, store)?;
     let manifest = store.get(&id)?;
     let title = manifest
@@ -447,15 +400,10 @@ pub(crate) fn cmd_delete(
     }))
 }
 
-pub(crate) fn cmd_describe(
-    args: IdArgs,
-    store: &TicketStore,
-) -> Result<Value, CliRunError> {
+pub(crate) fn cmd_describe(args: IdArgs, store: &TicketStore) -> Result<Value, CliRunError> {
     let id = super::resolve_uuid_prefix(&args.id, store)?;
-    let projection = ticket_api::storage::ReadProjection::decode(
-        args.view.as_deref(),
-        args.parts.as_deref(),
-    )?;
+    let projection =
+        ticket_api::storage::ReadProjection::decode(args.view.as_deref(), args.parts.as_deref())?;
     if let Some(projection) = projection {
         let projected = store.project(&id, &projection)?;
         return Ok(json!({
@@ -466,9 +414,9 @@ pub(crate) fn cmd_describe(
         }));
     }
 
-    let indexed = store.get_indexed(&id)?.ok_or_else(|| {
-        CliRunError::BadRequest(format!("ticket not found: {}", id))
-    })?;
+    let indexed = store
+        .get_indexed(&id)?
+        .ok_or_else(|| CliRunError::BadRequest(format!("ticket not found: {}", id)))?;
     let description = TicketFs::read_description(&indexed.path);
     Ok(json!({
         "command": "describe",
@@ -514,7 +462,7 @@ mod tests {
             },
             &store,
         )
-            .expect("cmd_get succeeds");
+        .expect("cmd_get succeeds");
 
         assert_eq!(
             payload["ticket"]["path"].as_str(),

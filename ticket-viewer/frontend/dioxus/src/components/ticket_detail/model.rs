@@ -1,14 +1,9 @@
-use crate::types::{
-    HistoryEntry,
-    TypeSchema,
-};
+use crate::types::{HistoryEntry, TypeSchema};
 
 pub(super) type ConflictState = (String, String, String);
 
-pub(super) const PRIORITY_OPTIONS: &[&str] =
-    &["", "none", "low", "medium", "high", "critical"];
-pub(super) const RISK_LEVEL_OPTIONS: &[&str] =
-    &["", "none", "low", "medium", "high", "critical"];
+pub(super) const PRIORITY_OPTIONS: &[&str] = &["", "none", "low", "medium", "high", "critical"];
+pub(super) const RISK_LEVEL_OPTIONS: &[&str] = &["", "none", "low", "medium", "high", "critical"];
 
 pub(super) const STRING_FIELDS: &[(&str, &str)] = &[
     ("title", "Title"),
@@ -33,10 +28,7 @@ pub(super) fn static_options(key: &str) -> &'static [&'static str] {
     }
 }
 
-pub(super) fn field_str(
-    fields: &serde_json::Value,
-    key: &str,
-) -> String {
+pub(super) fn field_str(fields: &serde_json::Value, key: &str) -> String {
     fields
         .get(key)
         .and_then(|value| value.as_str())
@@ -44,10 +36,7 @@ pub(super) fn field_str(
         .to_string()
 }
 
-pub(super) fn field_bool(
-    fields: &serde_json::Value,
-    key: &str,
-) -> bool {
+pub(super) fn field_bool(fields: &serde_json::Value, key: &str) -> bool {
     fields
         .get(key)
         .and_then(|value| value.as_bool())
@@ -69,10 +58,7 @@ pub(super) fn collect_visited_states(entries: &[HistoryEntry]) -> Vec<String> {
         .collect()
 }
 
-pub(super) fn valid_next_states(
-    schema: Option<&TypeSchema>,
-    current_state: &str,
-) -> Vec<String> {
+pub(super) fn valid_next_states(schema: Option<&TypeSchema>, current_state: &str) -> Vec<String> {
     schema
         .map(|schema| {
             schema

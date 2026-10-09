@@ -3,10 +3,7 @@ use std::fmt::Write;
 use serde_json::Value;
 use uuid::Uuid;
 
-use crate::cli::commands::{
-    parse_board_recommendation,
-    write_next_up,
-};
+use crate::cli::commands::{parse_board_recommendation, write_next_up};
 
 /// Render a command payload as human-readable key-value text.
 ///
@@ -33,8 +30,7 @@ pub(crate) fn render_human_readable(payload: &Value) -> String {
     let status = obj.get("status").and_then(Value::as_str).unwrap_or("?");
     let _ = writeln!(out, "{command} {status}");
 
-    let (scalars, sections) =
-        partition_object_fields(obj, &["command", "status"]);
+    let (scalars, sections) = partition_object_fields(obj, &["command", "status"]);
 
     for (key, val) in &scalars {
         let _ = writeln!(out, "{key}: {}", format_scalar(val));
@@ -51,9 +47,7 @@ pub(crate) fn render_human_readable(payload: &Value) -> String {
     result
 }
 
-fn render_special_command(
-    obj: &serde_json::Map<String, Value>
-) -> Option<String> {
+fn render_special_command(obj: &serde_json::Map<String, Value>) -> Option<String> {
     let command = obj.get("command").and_then(Value::as_str)?;
 
     if matches!(command, "board_show" | "board_history") {
@@ -64,8 +58,7 @@ fn render_special_command(
         "next" => Some(render_next_report(obj)),
         "blockers" => Some(render_workflow_tree_report(obj, "Blocker Tree")),
         "unblocked_by" => Some(render_workflow_tree_report(obj, "Unlock Tree")),
-        "subgraph" | "topgraph" =>
-            obj.get("tree").and_then(Value::as_str).map(str::to_string),
+        "subgraph" | "topgraph" => obj.get("tree").and_then(Value::as_str).map(str::to_string),
         "describe" => Some(
             obj.get("description")
                 .and_then(Value::as_str)
@@ -109,11 +102,7 @@ fn render_next_report(obj: &serde_json::Map<String, Value>) -> String {
     let mut sections = Vec::new();
 
     for (key, val) in obj {
-        if key == "command"
-            || key == "status"
-            || key == "items"
-            || key == "blocker_tree"
-        {
+        if key == "command" || key == "status" || key == "items" || key == "blocker_tree" {
             continue;
         }
         if is_section(val) {
@@ -156,10 +145,7 @@ fn render_next_report(obj: &serde_json::Map<String, Value>) -> String {
     result
 }
 
-fn render_workflow_tree_report(
-    obj: &serde_json::Map<String, Value>,
-    tree_heading: &str,
-) -> String {
+fn render_workflow_tree_report(obj: &serde_json::Map<String, Value>, tree_heading: &str) -> String {
     let mut out = String::new();
 
     let command = obj.get("command").and_then(Value::as_str).unwrap_or("?");
@@ -170,11 +156,7 @@ fn render_workflow_tree_report(
     let mut sections = Vec::new();
 
     for (key, val) in obj {
-        if key == "command"
-            || key == "status"
-            || key == "root"
-            || key == "frontier_items"
-        {
+        if key == "command" || key == "status" || key == "root" || key == "frontier_items" {
             continue;
         }
         if is_section(val) {
@@ -211,10 +193,7 @@ fn render_workflow_tree_report(
     result
 }
 
-fn write_frontier_items(
-    out: &mut String,
-    items: &[Value],
-) {
+fn write_frontier_items(out: &mut String, items: &[Value]) {
     let _ = writeln!(out);
     let _ = writeln!(out, "Frontier Leaves:");
 
@@ -353,11 +332,7 @@ fn write_workflow_tree_node(
     let _ = writeln!(
         out,
         "{detail_indent}state: {}  priority: {}  remaining_blockers: {}  frontier_leaves: {}  blocker_distance: {}",
-        state,
-        priority,
-        remaining_blocker_count,
-        frontier_leaf_count,
-        blocker_distance,
+        state, priority, remaining_blocker_count, frontier_leaf_count, blocker_distance,
     );
 
     let children = node
@@ -409,8 +384,7 @@ fn format_scalar(val: &Value) -> String {
         Value::Bool(b) => b.to_string(),
         Value::Number(n) => n.to_string(),
         Value::String(s) => s.to_string(),
-        Value::Array(arr) =>
-            arr.iter().map(format_scalar).collect::<Vec<_>>().join(", "),
+        Value::Array(arr) => arr.iter().map(format_scalar).collect::<Vec<_>>().join(", "),
         // Fallback for inline objects
         Value::Object(_) => serde_json::to_string(val).unwrap_or_default(),
     }
@@ -418,35 +392,26 @@ fn format_scalar(val: &Value) -> String {
 
 // ── section rendering ──────────────────────────────────────────────────────────
 
-fn write_section(
-    out: &mut String,
-    key: &str,
-    val: &Value,
-    depth: usize,
-) {
+fn write_section(out: &mut String, key: &str, val: &Value, depth: usize) {
     let indent = "  ".repeat(depth);
 
     match val {
         Value::Object(map) => {
             let _ = write!(out, "\n{indent}[{key}]\n");
             write_object_fields(out, map, depth + 1);
-        },
+        }
         Value::Array(arr) => {
             let count = arr.len();
             let _ = write!(out, "\n{indent}[{key}] ({count})\n");
             write_array_items(out, arr, depth + 1);
-        },
+        }
         _ => {
             let _ = writeln!(out, "{indent}{key}: {}", format_scalar(val));
-        },
+        }
     }
 }
 
-fn write_object_fields(
-    out: &mut String,
-    map: &serde_json::Map<String, Value>,
-    depth: usize,
-) {
+fn write_object_fields(out: &mut String, map: &serde_json::Map<String, Value>, depth: usize) {
     let indent = "  ".repeat(depth);
     let mut child_sections = Vec::new();
 
@@ -463,11 +428,7 @@ fn write_object_fields(
     }
 }
 
-fn write_array_items(
-    out: &mut String,
-    arr: &[Value],
-    depth: usize,
-) {
+fn write_array_items(out: &mut String, arr: &[Value], depth: usize) {
     let indent = "  ".repeat(depth);
 
     for (i, item) in arr.iter().enumerate() {
@@ -477,10 +438,10 @@ fn write_array_items(
         match item {
             Value::Object(map) => {
                 write_object_fields(out, map, depth);
-            },
+            }
             _ => {
                 let _ = writeln!(out, "{indent}{}", format_scalar(item));
-            },
+            }
         }
     }
 }
@@ -515,22 +476,17 @@ fn render_health_report(obj: &serde_json::Map<String, Value>) -> String {
 
         let mut sorted: Vec<&Value> = findings.iter().collect();
         sorted.sort_by(|a, b| {
-            let sa =
-                a.get("severity").and_then(Value::as_str).unwrap_or("info");
-            let sb =
-                b.get("severity").and_then(Value::as_str).unwrap_or("info");
+            let sa = a.get("severity").and_then(Value::as_str).unwrap_or("info");
+            let sb = b.get("severity").and_then(Value::as_str).unwrap_or("info");
             severity_order(sa).cmp(&severity_order(sb))
         });
 
         for f in &sorted {
-            let severity =
-                f.get("severity").and_then(Value::as_str).unwrap_or("info");
+            let severity = f.get("severity").and_then(Value::as_str).unwrap_or("info");
             let check = f.get("check").and_then(Value::as_str).unwrap_or("?");
-            let short_id =
-                f.get("short_id").and_then(Value::as_str).unwrap_or("?");
+            let short_id = f.get("short_id").and_then(Value::as_str).unwrap_or("?");
             let title = f.get("title").and_then(Value::as_str).unwrap_or("?");
-            let message =
-                f.get("message").and_then(Value::as_str).unwrap_or("");
+            let message = f.get("message").and_then(Value::as_str).unwrap_or("");
 
             let icon = match severity {
                 "error" => "ERR ",

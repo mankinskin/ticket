@@ -1,33 +1,16 @@
 use axum::{
-    extract::{
-        Extension,
-        Query,
-        State,
-    },
+    extract::{Extension, Query, State},
     http::StatusCode,
-    response::{
-        IntoResponse,
-        Json,
-        Response,
-    },
+    response::{IntoResponse, Json, Response},
 };
 use chrono::Utc;
-use serde::{
-    Deserialize,
-    Serialize,
-};
+use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
 use crate::serve::{
     AppState,
-    error::{
-        storage_err,
-        task_join_err,
-    },
-    handlers::tickets::{
-        TicketRef,
-        ticket_ref_from_indexed,
-    },
+    error::{storage_err, task_join_err},
+    handlers::tickets::{TicketRef, ticket_ref_from_indexed},
     registry::ResolvedIndexedTicket,
 };
 use ticket_api::model::edge::EdgeRecord;
@@ -61,12 +44,11 @@ pub async fn list_edges(
     Extension(rid): Extension<RequestIdExt>,
     Query(params): Query<EdgesQuery>,
 ) -> Response {
-    let (active_workspace, store) = match state
-        .resolve_public_workspace_request(&params.workspace, &rid.0)
-    {
-        Ok(resolved) => resolved,
-        Err(response) => return response,
-    };
+    let (active_workspace, store) =
+        match state.resolve_public_workspace_request(&params.workspace, &rid.0) {
+            Ok(resolved) => resolved,
+            Err(response) => return response,
+        };
     let state = state.clone();
     let request_id = rid.0.clone();
     let task_request_id = request_id.clone();
@@ -102,12 +84,7 @@ pub async fn list_edges(
             let items = match filtered
                 .into_iter()
                 .map(|edge| {
-                    edge_item_from_record(
-                        &resolved,
-                        &active_workspace,
-                        edge,
-                        &task_request_id,
-                    )
+                    edge_item_from_record(&resolved, &active_workspace, edge, &task_request_id)
                 })
                 .collect::<Result<Vec<_>, _>>()
             {
@@ -122,7 +99,7 @@ pub async fn list_edges(
                 items,
             })
             .into_response()
-        },
+        }
         Err(e) => storage_err(e, &task_request_id),
     })
     .await
@@ -168,12 +145,11 @@ pub async fn add_edge(
     Query(params): Query<EdgeMutationQuery>,
     Json(body): Json<EdgeBody>,
 ) -> Response {
-    let (active_workspace, store) = match state
-        .resolve_public_workspace_request(&params.workspace, &rid.0)
-    {
-        Ok(resolved) => resolved,
-        Err(response) => return response,
-    };
+    let (active_workspace, store) =
+        match state.resolve_public_workspace_request(&params.workspace, &rid.0) {
+            Ok(resolved) => resolved,
+            Err(response) => return response,
+        };
     let state = state.clone();
     let request_id = rid.0.clone();
     let task_request_id = request_id.clone();
@@ -219,7 +195,7 @@ pub async fn add_edge(
                 }),
             )
                 .into_response()
-        },
+        }
         Err(e) => storage_err(e, &task_request_id),
     })
     .await
@@ -238,12 +214,11 @@ pub async fn remove_edge(
     Query(params): Query<EdgeMutationQuery>,
     Json(body): Json<EdgeBody>,
 ) -> Response {
-    let (active_workspace, store) = match state
-        .resolve_public_workspace_request(&params.workspace, &rid.0)
-    {
-        Ok(resolved) => resolved,
-        Err(response) => return response,
-    };
+    let (active_workspace, store) =
+        match state.resolve_public_workspace_request(&params.workspace, &rid.0) {
+            Ok(resolved) => resolved,
+            Err(response) => return response,
+        };
     let state = state.clone();
     let request_id = rid.0.clone();
     let task_request_id = request_id.clone();
@@ -286,7 +261,7 @@ pub async fn remove_edge(
                 edge,
             })
             .into_response()
-        },
+        }
         Err(e) => storage_err(e, &task_request_id),
     })
     .await
@@ -320,18 +295,8 @@ fn edge_item(
     Ok(EdgeItem {
         from: from_id.to_string(),
         to: to_id.to_string(),
-        from_ref: resolve_edge_ref(
-            resolved,
-            active_workspace,
-            from_id,
-            request_id,
-        )?,
-        to_ref: resolve_edge_ref(
-            resolved,
-            active_workspace,
-            to_id,
-            request_id,
-        )?,
+        from_ref: resolve_edge_ref(resolved, active_workspace, from_id, request_id)?,
+        to_ref: resolve_edge_ref(resolved, active_workspace, to_id, request_id)?,
         kind,
     })
 }
@@ -343,12 +308,8 @@ fn resolve_edge_ref(
     request_id: &str,
 ) -> Result<TicketRef, Response> {
     match resolved.get(&id) {
-        Some(ticket) => ticket_ref_from_indexed(
-            &ticket.store,
-            &ticket.workspace,
-            &ticket.ticket,
-        )
-        .map_err(|error| storage_err(error, request_id)),
+        Some(ticket) => ticket_ref_from_indexed(&ticket.store, &ticket.workspace, &ticket.ticket)
+            .map_err(|error| storage_err(error, request_id)),
         None => Ok(TicketRef {
             workspace: active_workspace.to_string(),
             id: id.to_string(),

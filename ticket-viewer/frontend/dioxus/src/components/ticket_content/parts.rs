@@ -5,16 +5,10 @@
 use std::collections::HashSet;
 
 use dioxus::prelude::*;
-use percent_encoding::{
-    utf8_percent_encode,
-    NON_ALPHANUMERIC,
-};
+use percent_encoding::{utf8_percent_encode, NON_ALPHANUMERIC};
 use viewer_api_dioxus::FileContentViewer;
 
-use crate::types::{
-    ProjectedPart,
-    ProjectedRef,
-};
+use crate::types::{ProjectedPart, ProjectedRef};
 
 fn kind_label(kind: &str) -> String {
     kind.replace('_', " ")
@@ -22,9 +16,7 @@ fn kind_label(kind: &str) -> String {
         .map(|word| {
             let mut chars = word.chars();
             match chars.next() {
-                Some(first) => {
-                    first.to_uppercase().collect::<String>() + chars.as_str()
-                },
+                Some(first) => first.to_uppercase().collect::<String>() + chars.as_str(),
                 None => String::new(),
             }
         })
@@ -252,26 +244,22 @@ fn render_ref_row(reference: ProjectedRef) -> Element {
 /// `(Some(href), true)` when resolvable, `(None, true)` for kinds that are
 /// intentionally plain text (e.g. `file`), and `(None, false)` when the kind
 /// claims a resolvable shape but the URN does not parse — the dangling case.
-fn resolve_ref_href(
-    kind: &str,
-    urn: &str,
-) -> (Option<String>, bool) {
+fn resolve_ref_href(kind: &str, urn: &str) -> (Option<String>, bool) {
     match kind {
         "spec" => match last_segment(urn) {
             Some(id) if looks_like_uuid(id) => {
                 (Some(format!("http://localhost:4002/specs/{id}")), true)
-            },
+            }
             _ => (None, false),
         },
         "log" => match last_segment(urn) {
             Some(name) if !name.is_empty() => {
-                let encoded =
-                    utf8_percent_encode(name, NON_ALPHANUMERIC).to_string();
+                let encoded = utf8_percent_encode(name, NON_ALPHANUMERIC).to_string();
                 (
                     Some(format!("http://localhost:3000/#/file/{encoded}")),
                     true,
                 )
-            },
+            }
             _ => (None, false),
         },
         // `file` refs are repo-relative paths, not a viewer route; render as

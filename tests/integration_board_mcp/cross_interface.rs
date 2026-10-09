@@ -1,25 +1,11 @@
 use std::collections::BTreeMap;
 
 use rmcp::handler::server::wrapper::Parameters;
-use serde_json::{
-    Value,
-    json,
-};
-use ticket_api::{
-    model::edge::EdgeRecord,
-    storage::store::TicketStore,
-};
-use ticket::server::{
-    BoardShowInput,
-    NextTicketsInput,
-};
+use serde_json::{Value, json};
+use ticket::server::{BoardShowInput, NextTicketsInput};
+use ticket_api::{model::edge::EdgeRecord, storage::store::TicketStore};
 
-use super::support::{
-    extract_text,
-    make_sandbox,
-    seed_ticket,
-    ws,
-};
+use super::support::{extract_text, make_sandbox, seed_ticket, ws};
 
 #[tokio::test]
 async fn board_show_parity_store_and_mcp() {
@@ -95,14 +81,7 @@ async fn next_tickets_excludes_board_active_and_surfaces_wip_warning() {
         for id_str in [&t_active, &t_free] {
             let uid: uuid::Uuid = id_str.parse().expect("uuid");
             store
-                .update(
-                    &uid,
-                    Default::default(),
-                    None,
-                    Some("planned"),
-                    None,
-                    None,
-                )
+                .update(&uid, Default::default(), None, Some("planned"), None, None)
                 .expect("planned");
         }
 
@@ -148,10 +127,9 @@ async fn next_tickets_excludes_board_active_and_surfaces_wip_warning() {
 
     let warnings = json["warnings"].as_array().expect("warnings array");
     assert!(
-        warnings.iter().any(|warning| warning
-            .as_str()
-            .unwrap_or("")
-            .contains("WIP limit reached")),
+        warnings
+            .iter()
+            .any(|warning| warning.as_str().unwrap_or("").contains("WIP limit reached")),
         "wip limit warning must still be surfaced: {warnings:?}"
     );
 
@@ -196,8 +174,7 @@ async fn next_tickets_prefers_newer_candidates_before_older_ones() {
     let newer;
     {
         let store = TicketStore::init(tmp.path()).expect("open store");
-        let fields =
-            BTreeMap::from([(String::from("priority"), json!("high"))]);
+        let fields = BTreeMap::from([(String::from("priority"), json!("high"))]);
 
         older = store
             .create(
@@ -257,8 +234,7 @@ async fn next_tickets_prefers_more_dependees_before_newer_candidates() {
     let newer_fewer_dependees;
     {
         let store = TicketStore::init(tmp.path()).expect("open store");
-        let fields =
-            BTreeMap::from([(String::from("priority"), json!("high"))]);
+        let fields = BTreeMap::from([(String::from("priority"), json!("high"))]);
 
         older_more_dependees = store
             .create(
@@ -340,16 +316,14 @@ async fn next_tickets_prefers_more_dependees_before_newer_candidates() {
 }
 
 #[tokio::test]
-async fn next_tickets_prefer_recently_actionable_candidates_and_surface_timing_metadata()
- {
+async fn next_tickets_prefer_recently_actionable_candidates_and_surface_timing_metadata() {
     let (tmp, server) = make_sandbox();
 
     let recently_actionable;
     let steadier_newer;
     {
         let store = TicketStore::init(tmp.path()).expect("open store");
-        let fields =
-            BTreeMap::from([(String::from("priority"), json!("high"))]);
+        let fields = BTreeMap::from([(String::from("priority"), json!("high"))]);
 
         recently_actionable = store
             .create(
@@ -442,8 +416,7 @@ async fn next_tickets_promote_convergence_before_unrelated_ready_candidates() {
     let advanced_dependent;
     {
         let store = TicketStore::init(tmp.path()).expect("open store");
-        let fields =
-            BTreeMap::from([(String::from("priority"), json!("high"))]);
+        let fields = BTreeMap::from([(String::from("priority"), json!("high"))]);
 
         lagging_prerequisite = store
             .create(

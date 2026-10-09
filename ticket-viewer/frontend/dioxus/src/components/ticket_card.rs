@@ -71,10 +71,8 @@ pub fn TicketCard(props: TicketCardProps) -> Element {
 
     // Convert layout-space position to screen pixels relative to the
     // dep-graph container (which has its origin at the container centre).
-    let screen_x =
-        props.canvas_w / 2.0 + (props.layout_x + props.pan_x) * props.zoom;
-    let screen_y =
-        props.canvas_h / 2.0 + (props.layout_y + props.pan_y) * props.zoom;
+    let screen_x = props.canvas_w / 2.0 + (props.layout_x + props.pan_x) * props.zoom;
+    let screen_y = props.canvas_h / 2.0 + (props.layout_y + props.pan_y) * props.zoom;
 
     const CARD_W: f64 = 220.0;
     const CARD_H: f64 = 80.0;

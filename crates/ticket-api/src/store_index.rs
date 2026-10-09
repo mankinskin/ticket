@@ -8,30 +8,20 @@
 
 use std::collections::BTreeMap;
 
-use chrono::{
-    DateTime,
-    Utc,
-};
+use chrono::{DateTime, Utc};
 
 use memory_kernel::{
-    ContentKind,
-    IndexEntry,
-    IndexRef,
-    IndexRelations,
-    IndexSidecar,
-    RelationKind,
+    ContentKind, IndexEntry, IndexRef, IndexRelations, IndexSidecar, RelationKind,
 };
 
 /// Provenance comment written at the top of `.ticket/README.md`.
-pub const TICKET_INDEX_FILE_COMMENT: &str =
-    "<!-- ticket-index:file generated=true -->";
+pub const TICKET_INDEX_FILE_COMMENT: &str = "<!-- ticket-index:file generated=true -->";
 
 /// Per-entry provenance prefix used in `.ticket/README.md`.
 pub const TICKET_INDEX_ENTRY_PREFIX: &str = "ticket-index:entry";
 
 /// Provenance comment for the generated agent-hook file.
-pub const TICKET_INDEX_AGENT_HOOK_COMMENT: &str =
-    "<!-- ticket-index:agent-hook generated=true -->";
+pub const TICKET_INDEX_AGENT_HOOK_COMMENT: &str = "<!-- ticket-index:agent-hook generated=true -->";
 
 /// Repository-relative path of the generated agent-hook file.
 pub const TICKET_INDEX_AGENT_HOOK_PATH: &str = ".agents/ticket-catalog.md";
@@ -108,8 +98,7 @@ pub fn generate_ticket_catalog(
         })
         .collect();
 
-    let mut sidecar =
-        IndexSidecar::new(ContentKind::Ticket, store_dir, entries);
+    let mut sidecar = IndexSidecar::new(ContentKind::Ticket, store_dir, entries);
     sidecar.generated_at = generated_at;
     sidecar.sort();
 
@@ -123,10 +112,7 @@ pub fn generate_ticket_catalog(
     }
 }
 
-fn make_entry(
-    source: &TicketCatalogSource,
-    generated_at: DateTime<Utc>,
-) -> IndexEntry {
+fn make_entry(source: &TicketCatalogSource, generated_at: DateTime<Utc>) -> IndexEntry {
     let title = if source.title.trim().is_empty() {
         source.id.to_string()
     } else {
@@ -147,8 +133,7 @@ fn make_entry(
     }
     normalize_tokens(&mut tags);
 
-    let mut keywords =
-        vec!["ticket".to_string(), state.clone(), component.clone()];
+    let mut keywords = vec!["ticket".to_string(), state.clone(), component.clone()];
     keywords.extend(words_for_keywords(&title));
     keywords.extend(words_for_keywords(&source.description));
     if let Some(priority) = &priority {
@@ -193,9 +178,7 @@ fn normalize_summary(description: &str) -> String {
 
         let clean = line
             .trim_start_matches(['-', '*', '+'])
-            .trim_start_matches(|c: char| {
-                c.is_ascii_digit() || c == '.' || c == ')'
-            })
+            .trim_start_matches(|c: char| c.is_ascii_digit() || c == '.' || c == ')')
             .trim();
         if clean.is_empty() {
             continue;
@@ -207,10 +190,7 @@ fn normalize_summary(description: &str) -> String {
     String::new()
 }
 
-fn truncate_chars(
-    input: &str,
-    max_chars: usize,
-) -> String {
+fn truncate_chars(input: &str, max_chars: usize) -> String {
     let count = input.chars().count();
     if count <= max_chars {
         return input.to_string();
@@ -268,8 +248,7 @@ fn render_catalog_markdown(
     sidecar: &IndexSidecar,
     extras: &BTreeMap<uuid::Uuid, TicketDisplayExtra>,
 ) -> String {
-    let mut by_group: BTreeMap<(String, String), Vec<&IndexEntry>> =
-        BTreeMap::new();
+    let mut by_group: BTreeMap<(String, String), Vec<&IndexEntry>> = BTreeMap::new();
     for entry in &sidecar.entries {
         let extra = extras.get(&entry.id).expect("entry has display data");
         by_group
@@ -294,13 +273,10 @@ fn render_catalog_markdown(
         out.push_str(&format!("\n### Component: {}\n\n", component));
 
         let mut sorted = entries;
-        sorted.sort_by(|a, b| {
-            a.title.cmp(&b.title).then_with(|| a.id.cmp(&b.id))
-        });
+        sorted.sort_by(|a, b| a.title.cmp(&b.title).then_with(|| a.id.cmp(&b.id)));
 
         for entry in sorted {
-            let digest_prefix =
-                entry.digest.get(0..12).unwrap_or(&entry.digest);
+            let digest_prefix = entry.digest.get(0..12).unwrap_or(&entry.digest);
             out.push_str(&format!(
                 "<!-- {TICKET_INDEX_ENTRY_PREFIX} id={} slug={}/{} digest={} -->\n",
                 entry.id, state, component, digest_prefix
@@ -316,10 +292,7 @@ fn render_catalog_markdown(
     out
 }
 
-fn render_entry_block(
-    entry: &IndexEntry,
-    extra: Option<&TicketDisplayExtra>,
-) -> String {
+fn render_entry_block(entry: &IndexEntry, extra: Option<&TicketDisplayExtra>) -> String {
     let mut block = String::new();
     block.push_str(&format!("#### [{}] {}\n", short_id(entry.id), entry.title));
 
@@ -418,12 +391,8 @@ mod tests {
 
     #[test]
     fn catalog_groups_by_state_and_component() {
-        let id_a =
-            uuid::Uuid::parse_str("aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa")
-                .unwrap();
-        let id_b =
-            uuid::Uuid::parse_str("bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb")
-                .unwrap();
+        let id_a = uuid::Uuid::parse_str("aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa").unwrap();
+        let id_b = uuid::Uuid::parse_str("bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb").unwrap();
         let sources = vec![
             source(
                 id_a,
@@ -458,8 +427,7 @@ mod tests {
 
     #[test]
     fn entry_relations_reference_canonical_ticket_path() {
-        let id = uuid::Uuid::parse_str("cccccccc-cccc-4ccc-8ccc-cccccccccccc")
-            .unwrap();
+        let id = uuid::Uuid::parse_str("cccccccc-cccc-4ccc-8ccc-cccccccccccc").unwrap();
         let sources = vec![source(
             id,
             ".workflow-tools/ticket/tickets/c/ticket.toml",
@@ -483,8 +451,7 @@ mod tests {
 
     #[test]
     fn generation_is_deterministic_for_same_input() {
-        let id = uuid::Uuid::parse_str("dddddddd-dddd-4ddd-8ddd-dddddddddddd")
-            .unwrap();
+        let id = uuid::Uuid::parse_str("dddddddd-dddd-4ddd-8ddd-dddddddddddd").unwrap();
         let sources = vec![source(
             id,
             ".workflow-tools/ticket/tickets/d/ticket.toml",

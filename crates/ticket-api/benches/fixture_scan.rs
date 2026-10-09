@@ -5,11 +5,7 @@
 //! ticket store. Complements `graph_ops` by exercising the on-disk discovery
 //! + index path against the canonical fixture.
 
-use criterion::{
-    Criterion,
-    criterion_group,
-    criterion_main,
-};
+use criterion::{Criterion, criterion_group, criterion_main};
 use memory_fixtures::materialize_fixture_with_generated_tickets;
 use ticket_api::storage::store::TicketStore;
 
@@ -19,15 +15,13 @@ fn bench_fixture_scan(c: &mut Criterion) {
     c.bench_function("fixture_scan_reindex_root_store", |b| {
         b.iter_batched(
             || {
-                let fixture =
-                    materialize_fixture_with_generated_tickets(generated)
-                        .expect("fixture should materialize");
+                let fixture = materialize_fixture_with_generated_tickets(generated)
+                    .expect("fixture should materialize");
                 let store_root = fixture
                     .store_root("ticket-root")
                     .expect("ticket-root path")
                     .to_path_buf();
-                let store = TicketStore::open_or_init(&store_root)
-                    .expect("open_or_init");
+                let store = TicketStore::open_or_init(&store_root).expect("open_or_init");
                 (fixture, store)
             },
             |(fixture, store)| {

@@ -1,14 +1,8 @@
 use dioxus::prelude::*;
 
 use crate::{
-    api::{
-        HttpTicketBackend,
-        TicketBackend,
-    },
-    types::{
-        EdgeMutationBody,
-        TicketSummary,
-    },
+    api::{HttpTicketBackend, TicketBackend},
+    types::{EdgeMutationBody, TicketSummary},
 };
 
 #[component]
@@ -25,8 +19,7 @@ pub(super) fn EdgePickerOverlay(
     #[cfg_attr(not(target_arch = "wasm32"), allow(unused_mut))]
     let mut picker_selected_id: Signal<Option<String>> = use_signal(|| None);
     #[cfg_attr(not(target_arch = "wasm32"), allow(unused_mut))]
-    let mut picker_kind: Signal<String> =
-        use_signal(|| "depends_on".to_string());
+    let mut picker_kind: Signal<String> = use_signal(|| "depends_on".to_string());
     #[cfg_attr(not(target_arch = "wasm32"), allow(unused_mut))]
     let mut picker_reason: Signal<String> = use_signal(String::new);
     #[cfg_attr(not(target_arch = "wasm32"), allow(unused_mut))]
@@ -321,9 +314,7 @@ fn handle_picker_input(
         let promise = js_sys::Promise::new(&mut |resolve, _| {
             web_sys::window()
                 .unwrap()
-                .set_timeout_with_callback_and_timeout_and_arguments_0(
-                    &resolve, 300,
-                )
+                .set_timeout_with_callback_and_timeout_and_arguments_0(&resolve, 300)
                 .unwrap();
         });
         let _ = wasm_bindgen_futures::JsFuture::from(promise).await;
@@ -375,7 +366,7 @@ fn confirm_add_edge(
             Ok(()) => {
                 open.set(false);
                 fetch_trigger.with_mut(|value| *value += 1);
-            },
+            }
             Err(error) => {
                 picker_error.set(Some(if error.starts_with("cycle_detected:") {
                     "Adding this edge would create a dependency cycle. Choose a different target."
@@ -383,7 +374,7 @@ fn confirm_add_edge(
                 } else {
                     error
                 }));
-            },
+            }
         }
     });
 }

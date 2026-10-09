@@ -1,16 +1,10 @@
 use std::collections::HashSet;
 
 use serde_json::Value;
-use ticket_api::workflow::{
-    WorkflowModel,
-    apply_board_filter,
-};
+use ticket_api::workflow::{WorkflowModel, apply_board_filter};
 use uuid::Uuid;
 
-use super::{
-    types::*,
-    *,
-};
+use super::{types::*, *};
 
 impl TicketServer {
     pub(crate) async fn next_tickets_tool(
@@ -43,10 +37,8 @@ impl TicketServer {
         ) = self
             .with_store_ext(&workspace, |store| {
                 let board_snap = store.board_show(None).ok();
-                let tickets =
-                    store.list(None, None, None).map_err(Self::store_err)?;
-                let filtered_scope =
-                    WorkflowModel::filter_scope(&tickets, filter.as_deref());
+                let tickets = store.list(None, None, None).map_err(Self::store_err)?;
+                let filtered_scope = WorkflowModel::filter_scope(&tickets, filter.as_deref());
                 let model = WorkflowModel::build(
                     store,
                     tickets,
@@ -58,29 +50,24 @@ impl TicketServer {
                     .as_deref()
                     .map(|r| Self::resolve_uuid_for_read(store, r))
                     .transpose()?;
-                let root_scope = root_id.and_then(|rid| {
-                    model.root_blocker_scope(rid).map(|scope| (rid, scope))
-                });
+                let root_scope =
+                    root_id.and_then(|rid| model.root_blocker_scope(rid).map(|scope| (rid, scope)));
                 let root_remaining_blockers = root_scope
                     .as_ref()
                     .map(|(_, scope)| scope.remaining_blockers.clone());
 
-                let candidate_scope = intersect_option_scopes(
-                    filtered_scope,
-                    root_remaining_blockers,
-                );
+                let candidate_scope =
+                    intersect_option_scopes(filtered_scope, root_remaining_blockers);
 
-                let mut candidates =
-                    model.actionable_candidate_ids(candidate_scope.as_ref());
+                let mut candidates = model.actionable_candidate_ids(candidate_scope.as_ref());
                 model.sort_candidate_ids(&mut candidates);
-                let board_filtered =
-                    apply_board_filter(candidates, board_snap.as_ref(), false);
+                let board_filtered = apply_board_filter(candidates, board_snap.as_ref(), false);
                 let full_frontier_count = board_filtered.candidates.len();
                 let mut candidates = board_filtered.candidates;
                 match limit {
                     Some(limit) => candidates.truncate(limit),
                     None if root_scope.is_none() => candidates.truncate(20),
-                    None => {},
+                    None => {}
                 }
 
                 let empty_satisfied = HashSet::new();
@@ -153,8 +140,7 @@ fn intersect_option_scopes(
     b: Option<HashSet<Uuid>>,
 ) -> Option<HashSet<Uuid>> {
     match (a, b) {
-        (Some(set_a), Some(set_b)) =>
-            Some(set_a.intersection(&set_b).copied().collect()),
+        (Some(set_a), Some(set_b)) => Some(set_a.intersection(&set_b).copied().collect()),
         (Some(set_a), None) => Some(set_a),
         (None, Some(set_b)) => Some(set_b),
         (None, None) => None,
@@ -249,10 +235,7 @@ mod tests {
     use std::collections::BTreeMap;
 
     use serde_json::Value;
-    use ticket_api::{
-        model::filesystem::ScanRoot,
-        storage::store::TicketStore,
-    };
+    use ticket_api::{model::filesystem::ScanRoot, storage::store::TicketStore};
 
     use super::*;
 
@@ -277,7 +260,10 @@ mod tests {
         let workspace_root = temp.path().join("workspace");
         let parent_root = workspace_root.join(".workflow-tools").join("ticket");
         let parent = TicketStore::init(&parent_root).expect("parent store");
-        let child_root = workspace_root.join("child").join(".workflow-tools").join("ticket");
+        let child_root = workspace_root
+            .join("child")
+            .join(".workflow-tools")
+            .join("ticket");
         let child = TicketStore::init(&child_root).expect("child store");
         let blocker_id = child
             .create(
@@ -312,8 +298,8 @@ mod tests {
         drop(child);
         drop(parent);
 
-        let store = open_canonical_store(&parent_root)
-            .expect("apply workspace policy at MCP startup");
+        let store =
+            open_canonical_store(&parent_root).expect("apply workspace policy at MCP startup");
         drop(store);
 
         let server = TicketServer::new(parent_root);
@@ -342,7 +328,11 @@ mod tests {
     async fn next_tickets_missing_root_reports_all_scanned_workspaces() {
         let temp = tempfile::tempdir().expect("tempdir");
         let parent = TicketStore::init(temp.path()).expect("parent store");
-        let child_root = temp.path().join("child").join(".workflow-tools").join("ticket");
+        let child_root = temp
+            .path()
+            .join("child")
+            .join(".workflow-tools")
+            .join("ticket");
         TicketStore::init(&child_root).expect("child store");
         parent
             .add_scan_root(ScanRoot {

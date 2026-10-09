@@ -1,29 +1,15 @@
 use std::sync::Arc;
 
 use axum::{
-    body::{
-        Body,
-        to_bytes,
-    },
-    http::{
-        Request,
-        StatusCode,
-    },
+    body::{Body, to_bytes},
+    http::{Request, StatusCode},
 };
 use serde_json::Value;
 use tower::ServiceExt;
 
-use ticket::serve::{
-    AppState,
-    StreamBroker,
-    WorkspaceRegistry,
-    routes::build_router,
-};
+use ticket::serve::{AppState, StreamBroker, WorkspaceRegistry, routes::build_router};
 
-async fn get_json(
-    app: axum::Router,
-    uri: &str,
-) -> (StatusCode, Value) {
+async fn get_json(app: axum::Router, uri: &str) -> (StatusCode, Value) {
     let response = app
         .oneshot(Request::builder().uri(uri).body(Body::empty()).unwrap())
         .await
@@ -45,14 +31,11 @@ async fn read_probes_do_not_create_missing_ticket_store_root() {
         "fixture should start without .workflow-tools/ticket"
     );
 
-    let registry =
-        Arc::new(WorkspaceRegistry::single(missing_store_root.clone()));
+    let registry = Arc::new(WorkspaceRegistry::single(missing_store_root.clone()));
     let workspace = registry.primary_workspace_name().to_string();
-    let app =
-        build_router(AppState::new(registry, Arc::new(StreamBroker::new())));
+    let app = build_router(AppState::new(registry, Arc::new(StreamBroker::new())));
 
-    let (workspaces_status, workspaces_payload) =
-        get_json(app.clone(), "/api/workspaces").await;
+    let (workspaces_status, workspaces_payload) = get_json(app.clone(), "/api/workspaces").await;
     assert_eq!(workspaces_status, StatusCode::OK);
     assert_eq!(
         workspaces_payload["active_workspace"].as_str(),
@@ -64,8 +47,7 @@ async fn read_probes_do_not_create_missing_ticket_store_root() {
     );
 
     let (tickets_status, _tickets_payload) =
-        get_json(app, &format!("/api/tickets?workspace={workspace}&limit=10"))
-            .await;
+        get_json(app, &format!("/api/tickets?workspace={workspace}&limit=10")).await;
     assert_eq!(
         tickets_status,
         StatusCode::NOT_FOUND,

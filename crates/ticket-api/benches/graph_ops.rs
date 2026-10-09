@@ -20,30 +20,15 @@
 //! 360 tickets + ~630 edges, matching production workspace size.
 //! The BFS tree from root visits exactly 39 nodes at depth ≤ 4.
 
-use criterion::{
-    BenchmarkId,
-    Criterion,
-    Throughput,
-    criterion_group,
-    criterion_main,
-};
+use criterion::{BenchmarkId, Criterion, Throughput, criterion_group, criterion_main};
 use std::{
-    collections::{
-        HashMap,
-        VecDeque,
-    },
-    sync::{
-        Arc,
-        OnceLock,
-    },
+    collections::{HashMap, VecDeque},
+    sync::{Arc, OnceLock},
     thread,
 };
 use tempfile::TempDir;
 use ticket_api::{
-    model::{
-        edge::EdgeRecord,
-        filesystem::ScanRoot,
-    },
+    model::{edge::EdgeRecord, filesystem::ScanRoot},
     storage::store::TicketStore,
 };
 use uuid::Uuid;
@@ -187,21 +172,14 @@ fn fixture() -> &'static Fixture {
 // ── BFS helpers (mirrors graph.rs) ────────────────────────────────────────────
 
 fn build_adjacency(edges: &[EdgeRecord]) -> HashMap<Uuid, Vec<AdjEntry>> {
-    let mut adj: HashMap<Uuid, Vec<AdjEntry>> =
-        HashMap::with_capacity(edges.len() * 2);
+    let mut adj: HashMap<Uuid, Vec<AdjEntry>> = HashMap::with_capacity(edges.len() * 2);
     for e in edges {
-        adj.entry(e.from).or_default().push((
-            e.to,
-            e.from,
-            e.to,
-            e.kind.clone(),
-        ));
-        adj.entry(e.to).or_default().push((
-            e.from,
-            e.from,
-            e.to,
-            e.kind.clone(),
-        ));
+        adj.entry(e.from)
+            .or_default()
+            .push((e.to, e.from, e.to, e.kind.clone()));
+        adj.entry(e.to)
+            .or_default()
+            .push((e.from, e.from, e.to, e.kind.clone()));
     }
     adj
 }
@@ -305,35 +283,28 @@ fn bench_pipeline_concurrent(c: &mut Criterion) {
     let mut group = c.benchmark_group("pipeline_concurrent");
     for &conc in &[2usize, 4, 8, 16, 32] {
         group.throughput(Throughput::Elements(conc as u64));
-        group.bench_with_input(
-            BenchmarkId::from_parameter(conc),
-            &conc,
-            |b, &conc| {
-                b.iter(|| {
-                    let barrier = Arc::new(std::sync::Barrier::new(conc));
-                    let handles: Vec<_> = (0..conc)
-                        .map(|_| {
-                            let store = Arc::clone(&store);
-                            let bar = Arc::clone(&barrier);
-                            thread::spawn(move || {
-                                bar.wait(); // synchronized start
-                                let edges = store.list_all_edges().unwrap();
-                                let adj = build_adjacency(&edges);
-                                let visited = run_bfs(&adj, root, 4);
-                                let ids: Vec<Uuid> =
-                                    visited.keys().copied().collect();
-                                criterion::black_box(
-                                    store.get_indexed_many(&ids).unwrap(),
-                                )
-                            })
+        group.bench_with_input(BenchmarkId::from_parameter(conc), &conc, |b, &conc| {
+            b.iter(|| {
+                let barrier = Arc::new(std::sync::Barrier::new(conc));
+                let handles: Vec<_> = (0..conc)
+                    .map(|_| {
+                        let store = Arc::clone(&store);
+                        let bar = Arc::clone(&barrier);
+                        thread::spawn(move || {
+                            bar.wait(); // synchronized start
+                            let edges = store.list_all_edges().unwrap();
+                            let adj = build_adjacency(&edges);
+                            let visited = run_bfs(&adj, root, 4);
+                            let ids: Vec<Uuid> = visited.keys().copied().collect();
+                            criterion::black_box(store.get_indexed_many(&ids).unwrap())
                         })
-                        .collect();
-                    for h in handles {
-                        h.join().unwrap();
-                    }
-                })
-            },
-        );
+                    })
+                    .collect();
+                for h in handles {
+                    h.join().unwrap();
+                }
+            })
+        });
     }
     group.finish();
 }

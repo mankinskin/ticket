@@ -7,9 +7,4 @@ mod operations;
 #[path = "args/workspace.rs"]
 mod workspace;
 
-pub use self::{
-    board::*,
-    core::*,
-    operations::*,
-    workspace::*,
-};
+pub use self::{board::*, core::*, operations::*, workspace::*};

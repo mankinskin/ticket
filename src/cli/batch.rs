@@ -1,12 +1,6 @@
-use serde_json::{
-    Value,
-    json,
-};
+use serde_json::{Value, json};
 
-use ticket_api::{
-    error::StorageError,
-    storage::TicketStore,
-};
+use ticket_api::{error::StorageError, storage::TicketStore};
 
 use super::*;
 
@@ -18,10 +12,7 @@ mod batch_undo_impl;
 use self::{
     batch_dispatch_impl::batch_dispatch,
     batch_undo_impl::{
-        BatchUndoOp,
-        apply_batch_undo,
-        batch_undo_from_result,
-        capture_batch_undo_context,
+        BatchUndoOp, apply_batch_undo, batch_undo_from_result, capture_batch_undo_context,
     },
 };
 
@@ -35,9 +26,8 @@ struct BatchLineParser {
 }
 
 fn parse_batch_line(line: &str) -> Result<TicketCommandCli, CliRunError> {
-    let mut tokens = shell_words::split(line).map_err(|e| {
-        CliRunError::InvalidExecPayload(format!("cannot parse line: {e}"))
-    })?;
+    let mut tokens = shell_words::split(line)
+        .map_err(|e| CliRunError::InvalidExecPayload(format!("cannot parse line: {e}")))?;
     if tokens.is_empty() {
         return Err(CliRunError::InvalidExecPayload(
             "empty command line".to_string(),
@@ -50,15 +40,11 @@ fn parse_batch_line(line: &str) -> Result<TicketCommandCli, CliRunError> {
 }
 
 fn read_cli_batch_commands(
-    file: Option<std::path::PathBuf>
+    file: Option<std::path::PathBuf>,
 ) -> Result<Vec<TicketCommandCli>, CliRunError> {
     use std::{
         fs::File,
-        io::{
-            self,
-            BufRead,
-            BufReader,
-        },
+        io::{self, BufRead, BufReader},
     };
 
     let lines: Vec<String> = if let Some(path) = file {
@@ -87,9 +73,8 @@ fn read_cli_batch_commands(
         if trimmed.is_empty() || trimmed.starts_with('#') {
             continue;
         }
-        let cmd = parse_batch_line(trimmed).map_err(|e| {
-            CliRunError::InvalidExecPayload(format!("line {}: {e}", i + 1))
-        })?;
+        let cmd = parse_batch_line(trimmed)
+            .map_err(|e| CliRunError::InvalidExecPayload(format!("line {}: {e}", i + 1)))?;
         cmds.push(cmd);
     }
     Ok(cmds)
@@ -108,13 +93,13 @@ fn execute_cli_batch(
 
         match batch_dispatch(cmd, store) {
             Ok(result) => {
-                if let Some(undo) = undo_context.and_then(|context| {
-                    batch_undo_from_result(context, &result, store)
-                }) {
+                if let Some(undo) =
+                    undo_context.and_then(|context| batch_undo_from_result(context, &result, store))
+                {
                     undo_stack.push(undo);
                 }
                 results.push(result);
-            },
+            }
             Err(e) => {
                 return Ok(batch_error_response(
                     results.len(),
@@ -123,17 +108,14 @@ fn execute_cli_batch(
                     undo_stack,
                     store,
                 ));
-            },
+            }
         }
     }
 
     Ok(batch_success_response(results))
 }
 
-pub(crate) fn cmd_batch(
-    args: BatchArgs,
-    store: &TicketStore,
-) -> Result<Value, CliRunError> {
+pub(crate) fn cmd_batch(args: BatchArgs, store: &TicketStore) -> Result<Value, CliRunError> {
     let cmds = read_cli_batch_commands(args.file)?;
     if cmds.is_empty() {
         return Ok(batch_success_response(Vec::new()));
@@ -169,10 +151,7 @@ fn batch_error_response(
     })
 }
 
-fn rollback_batch(
-    undo_stack: Vec<BatchUndoOp>,
-    store: &TicketStore,
-) -> Vec<String> {
+fn rollback_batch(undo_stack: Vec<BatchUndoOp>, store: &TicketStore) -> Vec<String> {
     let mut rollback_errors = Vec::new();
     for undo in undo_stack.into_iter().rev() {
         apply_batch_undo(undo, store, &mut rollback_errors);

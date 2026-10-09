@@ -1,28 +1,15 @@
 //! Workspace registry: maps workspace names to `TicketStore` instances.
 
 use std::{
-    collections::{
-        HashMap,
-        HashSet,
-    },
-    path::{
-        Path,
-        PathBuf,
-    },
-    sync::{
-        Arc,
-        Condvar,
-        Mutex,
-    },
+    collections::{HashMap, HashSet},
+    path::{Path, PathBuf},
+    sync::{Arc, Condvar, Mutex},
 };
 
 use ticket_api::{
     error::StorageError,
     model::filesystem::TICKET_MANIFEST_FILE,
-    storage::{
-        indexed::IndexedTicket,
-        store::TicketStore,
-    },
+    storage::{indexed::IndexedTicket, store::TicketStore},
 };
 use uuid::Uuid;
 
@@ -167,9 +154,7 @@ impl WorkspaceRegistry {
         let mut matches = self
             .workspaces
             .iter()
-            .filter_map(|(name, entry)| {
-                (entry.label == workspace).then(|| name.clone())
-            })
+            .filter_map(|(name, entry)| (entry.label == workspace).then(|| name.clone()))
             .collect::<Vec<_>>();
         matches.sort();
 
@@ -205,10 +190,8 @@ impl WorkspaceRegistry {
             let Some(store) = self.get(&workspace) else {
                 continue;
             };
-            let canonical_workspace = canonical_workspace_name_for_index_root(
-                &store.index_root,
-                &workspace,
-            );
+            let canonical_workspace =
+                canonical_workspace_name_for_index_root(&store.index_root, &workspace);
             let found = store.get_indexed_many(ids)?;
             for (id, ticket) in found {
                 let candidate = ResolvedIndexedTicket {
@@ -219,15 +202,11 @@ impl WorkspaceRegistry {
 
                 match resolved.get_mut(&id) {
                     Some(current)
-                        if !prefer_resolved_ticket(
-                            active_workspace,
-                            current,
-                            &candidate,
-                        ) => {},
+                        if !prefer_resolved_ticket(active_workspace, current, &candidate) => {}
                     Some(current) => *current = candidate,
                     None => {
                         resolved.insert(id, candidate);
-                    },
+                    }
                 }
             }
         }
@@ -236,20 +215,14 @@ impl WorkspaceRegistry {
     }
 
     /// Return `true` if a workspace with the given name is registered.
-    pub fn contains(
-        &self,
-        name: &str,
-    ) -> bool {
+    pub fn contains(&self, name: &str) -> bool {
         self.workspaces.contains_key(name)
     }
 
     /// Get or lazily open the `TicketStore` for `workspace`.
     ///
     /// Returns `None` if the workspace name is not registered.
-    pub fn get(
-        &self,
-        workspace: &str,
-    ) -> Option<Arc<TicketStore>> {
+    pub fn get(&self, workspace: &str) -> Option<Arc<TicketStore>> {
         let path = self.workspaces.get(workspace)?.path.clone();
 
         {
@@ -269,9 +242,7 @@ impl WorkspaceRegistry {
                     break;
                 }
                 opening = self.opening_cv.wait(opening).unwrap();
-                if let Some(existing) =
-                    self.stores.lock().unwrap().get(workspace).cloned()
-                {
+                if let Some(existing) = self.stores.lock().unwrap().get(workspace).cloned() {
                     return Some(existing);
                 }
             }
@@ -283,7 +254,7 @@ impl WorkspaceRegistry {
             Err(e) => {
                 tracing::warn!(workspace, error = %e, "failed to open workspace store");
                 None
-            },
+            }
         };
 
         let result = {
@@ -303,9 +274,7 @@ impl WorkspaceRegistry {
         self.opening_cv.notify_all();
 
         if result.is_none() {
-            if let Some(existing) =
-                self.stores.lock().unwrap().get(workspace).cloned()
-            {
+            if let Some(existing) = self.stores.lock().unwrap().get(workspace).cloned() {
                 return Some(existing);
             }
         }
@@ -359,7 +328,7 @@ fn extend_related_paths(
 }
 
 fn discover_descendant_workspace_paths(
-    store: &TicketStore
+    store: &TicketStore,
 ) -> Vec<(String, WorkspaceEntry, Option<String>)> {
     let Ok(scan_roots) = store.list_scan_roots() else {
         return Vec::new();
@@ -374,13 +343,9 @@ fn discover_descendant_workspace_paths(
             if index_root == store.index_root {
                 return None;
             }
-            let label =
-                workspace_label_for_index_root(&index_root, &root.label);
+            let label = workspace_label_for_index_root(&index_root, &root.label);
             Some((
-                canonical_workspace_name_for_index_root(
-                    &index_root,
-                    &root.label,
-                ),
+                canonical_workspace_name_for_index_root(&index_root, &root.label),
                 WorkspaceEntry {
                     path: index_root,
                     label,
@@ -391,10 +356,7 @@ fn discover_descendant_workspace_paths(
         .collect()
 }
 
-fn legacy_path_alias(
-    active_workspace_root: &Path,
-    scan_root: &Path,
-) -> Option<String> {
+fn legacy_path_alias(active_workspace_root: &Path, scan_root: &Path) -> Option<String> {
     let store_root = store_root_for_scan_root(scan_root)?;
     let workspace_root = workspace_root_for_index_root(&store_root);
     let relative = workspace_root
@@ -406,9 +368,7 @@ fn legacy_path_alias(
     relative.contains('/').then_some(relative)
 }
 
-fn discover_ancestor_workspace_paths(
-    store: &TicketStore
-) -> Vec<(String, WorkspaceEntry)> {
+fn discover_ancestor_workspace_paths(store: &TicketStore) -> Vec<(String, WorkspaceEntry)> {
     let active_workspace_root = workspace_root_for_store(store);
 
     let mut current = active_workspace_root.parent();
@@ -452,15 +412,12 @@ pub(crate) fn workspace_root_for_index_root(index_root: &Path) -> &Path {
                 .parent()
                 .and_then(Path::parent)
                 .unwrap_or(index_root)
-        },
+        }
         _ => index_root,
     }
 }
 
-pub(crate) fn canonical_workspace_name_for_index_root(
-    index_root: &Path,
-    fallback: &str,
-) -> String {
+pub(crate) fn canonical_workspace_name_for_index_root(index_root: &Path, fallback: &str) -> String {
     let label = workspace_label_for_index_root(index_root, fallback);
     format!(
         "{label}--{}",
@@ -468,10 +425,7 @@ pub(crate) fn canonical_workspace_name_for_index_root(
     )
 }
 
-pub(crate) fn workspace_label_for_index_root(
-    index_root: &Path,
-    fallback: &str,
-) -> String {
+pub(crate) fn workspace_label_for_index_root(index_root: &Path, fallback: &str) -> String {
     workspace_root_for_index_root(index_root)
         .file_name()
         .and_then(|name| name.to_str())
@@ -494,8 +448,7 @@ fn detect_store_root(dir: &std::path::Path) -> Option<PathBuf> {
         return Some(dir.to_path_buf());
     }
 
-    let canonical =
-        memory_kernel::workspace::canonical_store_root(dir, ".ticket");
+    let canonical = memory_kernel::workspace::canonical_store_root(dir, ".ticket");
     if canonical.join("tickets.db").is_file() || has_ticket_manifest(&canonical) {
         return Some(canonical);
     }

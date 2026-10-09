@@ -1,30 +1,13 @@
 use std::{
-    collections::{
-        BTreeMap,
-        BTreeSet,
-    },
-    fs::{
-        self,
-        File,
-        OpenOptions,
-    },
-    io::{
-        BufRead,
-        BufReader,
-        Write,
-    },
-    path::{
-        Path,
-        PathBuf,
-    },
+    collections::{BTreeMap, BTreeSet},
+    fs::{self, File, OpenOptions},
+    io::{BufRead, BufReader, Write},
+    path::{Path, PathBuf},
 };
 
 use chrono::Utc;
 use fs4::fs_std::FileExt;
-use serde::{
-    Deserialize,
-    Serialize,
-};
+use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use uuid::Uuid;
 
@@ -32,18 +15,11 @@ use crate::{
     error::StorageError,
     model::{
         filesystem::{
-            TICKET_ASSETS_DIR,
-            TICKET_HISTORY_FILE,
-            TICKET_LOCK_FILE,
-            TICKET_MANIFEST_FILE,
-            TICKET_PARTS_DIR,
-            parse_ticket_manifest_toml,
+            TICKET_ASSETS_DIR, TICKET_HISTORY_FILE, TICKET_LOCK_FILE, TICKET_MANIFEST_FILE,
+            TICKET_PARTS_DIR, parse_ticket_manifest_toml,
         },
         parts::classify_part_kind,
-        ticket::{
-            TicketManifest,
-            TicketManifestExt,
-        },
+        ticket::{TicketManifest, TicketManifestExt},
     },
 };
 
@@ -98,10 +74,7 @@ impl TicketFs {
         if final_dir.exists() {
             return Err(StorageError::Io(std::io::Error::new(
                 std::io::ErrorKind::AlreadyExists,
-                format!(
-                    "ticket folder already exists: {}",
-                    final_dir.display()
-                ),
+                format!("ticket folder already exists: {}", final_dir.display()),
             )));
         }
 
@@ -126,12 +99,12 @@ impl TicketFs {
     pub fn read(ticket_path: &Path) -> Result<TicketManifest, StorageError> {
         let manifest_path = ticket_path.join(TICKET_MANIFEST_FILE);
         let content = fs::read_to_string(&manifest_path)?;
-        parse_ticket_manifest_toml(manifest_path.clone(), &content).map_err(
-            |d| StorageError::ParseError {
+        parse_ticket_manifest_toml(manifest_path.clone(), &content).map_err(|d| {
+            StorageError::ParseError {
                 path: d.path,
                 reason: d.reason,
-            },
-        )
+            }
+        })
     }
 
     /// Apply a field patch to the manifest on disk.
@@ -166,10 +139,9 @@ impl TicketFs {
             }
             // Apply state change.
             if let Some(state) = new_state {
-                manifest.extra.insert(
-                    "state".to_string(),
-                    Value::String(state.to_string()),
-                );
+                manifest
+                    .extra
+                    .insert("state".to_string(), Value::String(state.to_string()));
             }
             write_manifest(ticket_path, &manifest)?;
             Ok(manifest)
@@ -187,7 +159,7 @@ impl TicketFs {
     ///
     /// Returns `(valid_paths, parse_diagnostics)`.
     pub fn scan_root(
-        scan_root: &Path
+        scan_root: &Path,
     ) -> Result<
         (
             Vec<TicketScanEntry>,
@@ -209,13 +181,10 @@ impl TicketFs {
         Ok((valid, diags))
     }
 
-    fn scan_root_dir(
-        scan_root: &Path
-    ) -> Result<Option<fs::ReadDir>, StorageError> {
+    fn scan_root_dir(scan_root: &Path) -> Result<Option<fs::ReadDir>, StorageError> {
         match fs::read_dir(scan_root) {
             Ok(read_dir) => Ok(Some(read_dir)),
-            Err(error) if error.kind() == std::io::ErrorKind::NotFound =>
-                Ok(None),
+            Err(error) if error.kind() == std::io::ErrorKind::NotFound => Ok(None),
             Err(error) => Err(StorageError::Io(error)),
         }
     }
@@ -231,7 +200,7 @@ impl TicketFs {
 
         match load_scan_entry(candidate.id, path, candidate.manifest_path) {
             Ok(Some(entry)) => valid.push(entry),
-            Ok(None) => {},
+            Ok(None) => {}
             Err(diag) => diags.push(diag),
         }
     }
@@ -241,9 +210,7 @@ impl TicketFs {
     /// Read all history revisions for a ticket (oldest first).
     ///
     /// Returns an empty vec if no `history.ndjson` exists yet.
-    pub fn read_history(
-        ticket_path: &Path
-    ) -> Result<Vec<HistoryRevision>, StorageError> {
+    pub fn read_history(ticket_path: &Path) -> Result<Vec<HistoryRevision>, StorageError> {
         let path = ticket_path.join(TICKET_HISTORY_FILE);
         if !path.exists() {
             return Ok(Vec::new());
@@ -269,7 +236,7 @@ impl TicketFs {
                         error = %error,
                         "skipping malformed history.ndjson line"
                     );
-                },
+                }
             }
         }
         Ok(revisions)
@@ -295,8 +262,7 @@ impl TicketFs {
         };
         let line = serde_json::to_string(&entry)
             .map_err(|e| StorageError::Serialization(e.to_string()))?;
-        let mut file =
-            OpenOptions::new().create(true).append(true).open(&path)?;
+        let mut file = OpenOptions::new().create(true).append(true).open(&path)?;
         writeln!(file, "{}", line)?;
         Ok(rev)
     }
@@ -332,14 +298,10 @@ impl TicketFs {
     /// (`TicketStore::enforce_description_write_gate`) before this is
     /// reached — this is a crate-private low-level primitive with no
     /// external entry point (spec 24b3d22b, ticket f9e70385, AC7).
-    pub(crate) fn write_description(
-        ticket_path: &Path,
-        text: &str,
-    ) -> Result<(), StorageError> {
+    pub(crate) fn write_description(ticket_path: &Path, text: &str) -> Result<(), StorageError> {
         let lock_path = ticket_path.join(TICKET_LOCK_FILE);
         let lock_file = acquire_lock(&lock_path)?;
-        let result = fs::write(ticket_path.join("description.md"), text)
-            .map_err(StorageError::Io);
+        let result = fs::write(ticket_path.join("description.md"), text).map_err(StorageError::Io);
         release_lock(&lock_file, &lock_path);
         result
     }
@@ -385,8 +347,7 @@ impl TicketFs {
         let mut parts = Vec::with_capacity(entries.len());
         let mut referenced_paths: BTreeSet<String> = BTreeSet::new();
         for entry in entries {
-            let content = fs::read_to_string(ticket_path.join(&entry.path))
-                .unwrap_or_default();
+            let content = fs::read_to_string(ticket_path.join(&entry.path)).unwrap_or_default();
             referenced_paths.insert(entry.path.clone());
             parts.push(LoadedPart {
                 id: entry.id,
@@ -400,8 +361,7 @@ impl TicketFs {
             });
         }
 
-        let orphans =
-            find_orphan_part_files(ticket_path, &referenced_paths)?;
+        let orphans = find_orphan_part_files(ticket_path, &referenced_paths)?;
         Ok(PartsLoadReport { parts, orphans })
     }
 
@@ -448,15 +408,12 @@ impl TicketFs {
 
             if let Some(entry) = parts.iter().find(|p| p.id == part_id) {
                 let rel_path = entry.path.clone();
-                let prior =
-                    fs::read_to_string(ticket_path.join(&rel_path)).ok();
+                let prior = fs::read_to_string(ticket_path.join(&rel_path)).ok();
                 fs::write(ticket_path.join(&rel_path), content)?;
                 return Ok((manifest, prior));
             }
 
-            if parts.is_empty()
-                && part_id == implicit_objective_part_id(manifest.id)
-            {
+            if parts.is_empty() && part_id == implicit_objective_part_id(manifest.id) {
                 let prior = Self::read_description(ticket_path);
                 fs::write(ticket_path.join("description.md"), content)?;
                 return Ok((manifest, prior));
@@ -582,7 +539,6 @@ impl TicketFs {
         result
     }
 
-
     /// f9e70385, AC1/AC5), invoked exclusively from the state-transition
     /// path (`TicketStore::update_with_options`) whenever a ticket enters
     /// or leaves `ready`. This is the sanctioned freeze/unfreeze
@@ -614,15 +570,12 @@ impl TicketFs {
 
             if freeze {
                 for &kind in crate::model::parts::PLANNING_PART_KINDS {
-                    if let Some(part) =
-                        parts.iter_mut().find(|p| p.kind == kind)
-                    {
+                    if let Some(part) = parts.iter_mut().find(|p| p.kind == kind) {
                         part.frozen = true;
                         continue;
                     }
                     let content = if kind == "objective" {
-                        Self::read_description(ticket_path)
-                            .unwrap_or_default()
+                        Self::read_description(ticket_path).unwrap_or_default()
                     } else {
                         String::new()
                     };
@@ -645,10 +598,9 @@ impl TicketFs {
                     .and_then(Value::as_u64)
                     .unwrap_or(0)
                     + 1;
-                manifest.extra.insert(
-                    "plan_revision".to_string(),
-                    Value::Number(revision.into()),
-                );
+                manifest
+                    .extra
+                    .insert("plan_revision".to_string(), Value::Number(revision.into()));
             } else {
                 for part in parts.iter_mut() {
                     part.frozen = false;
@@ -664,7 +616,6 @@ impl TicketFs {
         result
     }
 
-
     pub fn update_edge_field(
         ticket_path: &Path,
         edge_kind: &str,
@@ -676,8 +627,7 @@ impl TicketFs {
 
         let result = (|| -> Result<(TicketManifest, bool), StorageError> {
             let mut manifest = Self::read(ticket_path)?;
-            let mut targets =
-                parse_edge_targets(manifest.extra.get(edge_kind), edge_kind)?;
+            let mut targets = parse_edge_targets(manifest.extra.get(edge_kind), edge_kind)?;
 
             let changed = if present {
                 targets.insert(target.to_string())
@@ -691,9 +641,7 @@ impl TicketFs {
                 } else {
                     manifest.extra.insert(
                         edge_kind.to_string(),
-                        Value::Array(
-                            targets.into_iter().map(Value::String).collect(),
-                        ),
+                        Value::Array(targets.into_iter().map(Value::String).collect()),
                     );
                 }
                 write_manifest(ticket_path, &manifest)?;
@@ -748,18 +696,12 @@ pub struct PartsLoadReport {
 impl PartsLoadReport {
     /// Address a part by its stable `id` — the only addressing key; kind and
     /// manifest index are never used for lookup (AC3).
-    pub fn find(
-        &self,
-        id: Uuid,
-    ) -> Option<&LoadedPart> {
+    pub fn find(&self, id: Uuid) -> Option<&LoadedPart> {
         self.parts.iter().find(|part| part.id == id)
     }
 
     /// All parts of a given `kind`, in manifest order.
-    pub fn of_kind<'a>(
-        &'a self,
-        kind: &'a str,
-    ) -> impl Iterator<Item = &'a LoadedPart> {
+    pub fn of_kind<'a>(&'a self, kind: &'a str) -> impl Iterator<Item = &'a LoadedPart> {
         self.parts.iter().filter(move |part| part.kind == kind)
     }
 }
@@ -824,12 +766,12 @@ fn load_scan_entry(
     id: Uuid,
     path: PathBuf,
     manifest_path: PathBuf,
-) -> Result<Option<TicketScanEntry>, crate::model::filesystem::ParseDiagnostic>
-{
+) -> Result<Option<TicketScanEntry>, crate::model::filesystem::ParseDiagnostic> {
     match TicketFs::read(&path) {
         Ok(manifest) => Ok(Some(TicketScanEntry { id, path, manifest })),
-        Err(StorageError::ParseError { path, reason }) =>
-            Err(crate::model::filesystem::ParseDiagnostic { path, reason }),
+        Err(StorageError::ParseError { path, reason }) => {
+            Err(crate::model::filesystem::ParseDiagnostic { path, reason })
+        }
         Err(error) => Err(crate::model::filesystem::ParseDiagnostic {
             path: manifest_path,
             reason: error.to_string(),
@@ -839,12 +781,8 @@ fn load_scan_entry(
 
 // ── helpers ───────────────────────────────────────────────────────────────────
 
-fn write_manifest(
-    dir: &Path,
-    manifest: &TicketManifest,
-) -> Result<(), StorageError> {
-    let toml_str =
-        crate::model::manifest_format::format_manifest_toml(manifest);
+fn write_manifest(dir: &Path, manifest: &TicketManifest) -> Result<(), StorageError> {
+    let toml_str = crate::model::manifest_format::format_manifest_toml(manifest);
     let path = dir.join(TICKET_MANIFEST_FILE);
     fs::write(&path, toml_str)?;
     Ok(())
@@ -862,7 +800,7 @@ fn find_orphan_part_files(
         Ok(read_dir) => read_dir,
         Err(error) if error.kind() == std::io::ErrorKind::NotFound => {
             return Ok(Vec::new());
-        },
+        }
         Err(error) => return Err(StorageError::Io(error)),
     };
 
@@ -872,8 +810,7 @@ fn find_orphan_part_files(
         if !path.is_file() {
             continue;
         }
-        let Some(file_name) = path.file_name().and_then(|n| n.to_str())
-        else {
+        let Some(file_name) = path.file_name().and_then(|n| n.to_str()) else {
             continue;
         };
         let relative = format!("{TICKET_PARTS_DIR}/{file_name}");
@@ -920,10 +857,7 @@ fn acquire_lock(lock_path: &Path) -> Result<File, StorageError> {
     Ok(file)
 }
 
-fn release_lock(
-    file: &File,
-    lock_path: &Path,
-) {
+fn release_lock(file: &File, lock_path: &Path) {
     let _ = file.unlock();
     let _ = fs::remove_file(lock_path);
 }

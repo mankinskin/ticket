@@ -3,8 +3,7 @@ use std::collections::BTreeMap;
 use crate::types::TicketSummary;
 
 const DRAFT_KEY: &str = "draft_new_ticket";
-pub(crate) const PRIORITY_OPTIONS: &[&str] =
-    &["", "none", "low", "medium", "high", "critical"];
+pub(crate) const PRIORITY_OPTIONS: &[&str] = &["", "none", "low", "medium", "high", "critical"];
 
 #[derive(Debug, Clone, serde::Serialize, serde::Deserialize, PartialEq)]
 pub(crate) struct DraftState {
@@ -56,12 +55,7 @@ impl DraftState {
                     object
                         .iter()
                         .filter(|(key, _)| !is_core_field(key))
-                        .map(|(key, value)| {
-                            (
-                                key.clone(),
-                                value.as_str().unwrap_or("").to_string(),
-                            )
-                        })
+                        .map(|(key, value)| (key.clone(), value.as_str().unwrap_or("").to_string()))
                         .collect()
                 })
                 .unwrap_or_default(),

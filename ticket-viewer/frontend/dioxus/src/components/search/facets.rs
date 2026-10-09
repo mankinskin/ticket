@@ -51,10 +51,7 @@ pub(super) fn render_facet_chips(
     }
 }
 
-fn render_state_chip(
-    state: String,
-    mut state_filter: Signal<Option<String>>,
-) -> Element {
+fn render_state_chip(state: String, mut state_filter: Signal<Option<String>>) -> Element {
     let active = *state_filter.read() == Some(state.clone());
     let (bg, fg) = crate::types::state_colors(&state);
     let chip_border = if active {
@@ -88,10 +85,7 @@ fn render_state_chip(
     }
 }
 
-fn render_type_chip(
-    ticket_type: String,
-    mut type_filter: Signal<Option<String>>,
-) -> Element {
+fn render_type_chip(ticket_type: String, mut type_filter: Signal<Option<String>>) -> Element {
     let active = *type_filter.read() == Some(ticket_type.clone());
     let chip_bg = if active { "#2d2d5a" } else { "#252540" };
     let chip_border = if active {

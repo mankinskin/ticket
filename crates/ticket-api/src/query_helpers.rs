@@ -2,16 +2,10 @@ use uuid::Uuid;
 
 use crate::{
     error::StorageError,
-    storage::{
-        indexed::IndexedTicket,
-        store::TicketStore,
-        ticket_fs::TicketFs,
-    },
+    storage::{indexed::IndexedTicket, store::TicketStore, ticket_fs::TicketFs},
 };
 
-pub fn parse_where_filters(
-    clauses: &[String]
-) -> Result<Vec<(String, String)>, String> {
+pub fn parse_where_filters(clauses: &[String]) -> Result<Vec<(String, String)>, String> {
     let mut filters = Vec::new();
     for clause in clauses {
         let Some((key, value)) = clause.split_once('=') else {
@@ -41,10 +35,7 @@ pub fn apply_field_filters(
         .collect()
 }
 
-pub fn resolve_uuid_with_prefix(
-    store: &TicketStore,
-    input: &str,
-) -> Result<Uuid, StorageError> {
+pub fn resolve_uuid_with_prefix(store: &TicketStore, input: &str) -> Result<Uuid, StorageError> {
     if let Ok(uuid) = Uuid::parse_str(input) {
         return Ok(uuid);
     }
@@ -76,12 +67,8 @@ pub fn resolve_uuid_with_prefix(
     }
 }
 
-fn ticket_matches_field_filters(
-    ticket: &IndexedTicket,
-    filters: &[(String, String)],
-) -> bool {
-    let needs_manifest =
-        filters.iter().any(|(key, _)| !is_indexed_ticket_field(key));
+fn ticket_matches_field_filters(ticket: &IndexedTicket, filters: &[(String, String)]) -> bool {
+    let needs_manifest = filters.iter().any(|(key, _)| !is_indexed_ticket_field(key));
     let manifest = if needs_manifest {
         TicketFs::read(&ticket.path).ok()
     } else {
@@ -89,13 +76,11 @@ fn ticket_matches_field_filters(
     };
 
     filters.iter().all(|(key, expected)| {
-        indexed_ticket_field(ticket, key)
-            .or_else(|| {
-                manifest.as_ref().and_then(|entity| {
-                    entity.extra.get(key).and_then(|value| value.as_str())
-                })
-            })
-            == Some(expected.as_str())
+        indexed_ticket_field(ticket, key).or_else(|| {
+            manifest
+                .as_ref()
+                .and_then(|entity| entity.extra.get(key).and_then(|value| value.as_str()))
+        }) == Some(expected.as_str())
     })
 }
 
@@ -103,10 +88,7 @@ fn is_indexed_ticket_field(key: &str) -> bool {
     matches!(key, "state" | "type" | "title")
 }
 
-fn indexed_ticket_field<'a>(
-    ticket: &'a IndexedTicket,
-    key: &str,
-) -> Option<&'a str> {
+fn indexed_ticket_field<'a>(ticket: &'a IndexedTicket, key: &str) -> Option<&'a str> {
     match key {
         "state" => ticket.state.as_deref(),
         "type" => Some(ticket.type_id.as_str()),

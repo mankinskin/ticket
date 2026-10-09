@@ -2,23 +2,13 @@ use std::collections::BTreeMap;
 
 use super::*;
 use crate::cli::{
-    BoardArgs,
-    BoardCommand,
-    IdArgs,
-    ListArgs,
-    ScanArgs,
-    TextArgs,
-    WorkspaceArgs,
-    WorkspaceCommand,
+    BoardArgs, BoardCommand, IdArgs, ListArgs, ScanArgs, TextArgs, WorkspaceArgs, WorkspaceCommand,
 };
 use tempfile::tempdir;
 use ticket_api::storage::index::RedbIndexStore;
 use uuid::Uuid;
 
-fn run_git(
-    directory: &Path,
-    arguments: &[&str],
-) {
+fn run_git(directory: &Path, arguments: &[&str]) {
     let output = std::process::Command::new("git")
         .args(arguments)
         .current_dir(directory)
@@ -69,9 +59,19 @@ fn create_worktree_fixture() -> (tempfile::TempDir, PathBuf, PathBuf, String) {
             "HEAD",
         ],
     );
-    std::fs::create_dir_all(worktree.join(".workflow-tools").join("ticket").join("tickets")).unwrap();
+    std::fs::create_dir_all(
+        worktree
+            .join(".workflow-tools")
+            .join("ticket")
+            .join("tickets"),
+    )
+    .unwrap();
     std::fs::write(
-        worktree.join(".workflow-tools").join("ticket").join("tickets").join("copied.txt"),
+        worktree
+            .join(".workflow-tools")
+            .join("ticket")
+            .join("tickets")
+            .join("copied.txt"),
         "populated but indexless\n",
     )
     .unwrap();
@@ -109,8 +109,19 @@ fn dispatch_board_check_in_uses_main_store_for_managed_worktree() {
     .unwrap();
 
     assert_eq!(payload["ticket_id"], ticket_id);
-    assert!(!worktree.join(".workflow-tools").join("ticket").join("tickets.db").exists());
-    assert!(main.join(".workflow-tools").join("ticket").join("tickets.db").is_file());
+    assert!(
+        !worktree
+            .join(".workflow-tools")
+            .join("ticket")
+            .join("tickets.db")
+            .exists()
+    );
+    assert!(
+        main.join(".workflow-tools")
+            .join("ticket")
+            .join("tickets.db")
+            .is_file()
+    );
     let store = TicketStore::open(&main).unwrap();
     assert_eq!(store.board_show(None).unwrap().entries.len(), 1);
 }
@@ -153,8 +164,7 @@ fn dispatch_board_rejects_malformed_worktree_metadata() {
     assert!(error.to_string().contains("invalid board workspace"));
 }
 
-fn create_nested_ticket_fixture()
--> (tempfile::TempDir, PathBuf, PathBuf, String) {
+fn create_nested_ticket_fixture() -> (tempfile::TempDir, PathBuf, PathBuf, String) {
     let dir = tempdir().unwrap();
     let repo = dir.path().join("repo");
     let child = repo.join("memory-api");
@@ -203,8 +213,7 @@ fn resolve_index_root_prefers_explicit_workspace_root() {
     std::fs::create_dir_all(repo.join(".workflow-tools").join("ticket")).unwrap();
     std::fs::create_dir_all(child.join(".workflow-tools").join("ticket")).unwrap();
 
-    let resolved =
-        resolve_index_root_from(None, Some(&child), None, Some(&repo)).unwrap();
+    let resolved = resolve_index_root_from(None, Some(&child), None, Some(&repo)).unwrap();
 
     assert_eq!(resolved, child.join(".workflow-tools").join("ticket"));
 }
@@ -236,13 +245,14 @@ fn create_rejects_ambient_workspace_aliases_before_store_open() {
 
 #[test]
 fn init_requires_explicit_workspace_or_store_root() {
-    let error =
-        dispatch(TicketCommandCli::Init, None, None, None, false, false)
+    let error = dispatch(TicketCommandCli::Init, None, None, None, false, false)
         .expect_err("init must not select an ambient workspace");
 
-    assert!(error
-        .to_string()
-        .contains("store initialization requires explicit"));
+    assert!(
+        error
+            .to_string()
+            .contains("store initialization requires explicit")
+    );
 }
 
 #[test]
@@ -253,7 +263,8 @@ fn resolve_workspace_root_keeps_explicit_nested_workspace_bounded() {
     std::fs::create_dir_all(repo.join(".workflow-tools").join("ticket")).unwrap();
     std::fs::create_dir_all(&child).unwrap();
 
-    let resolved = resolve_workspace_root(&repo.join(".workflow-tools").join("ticket"), Some(&child));
+    let resolved =
+        resolve_workspace_root(&repo.join(".workflow-tools").join("ticket"), Some(&child));
 
     assert_eq!(resolved, child);
 }
@@ -287,10 +298,12 @@ fn dispatch_create_writes_only_to_the_explicit_child_workspace() {
     .unwrap();
 
     assert_eq!(payload["id"], ticket_id.to_string());
-    assert!(TicketStore::open_in_workspace(&child)
-        .unwrap()
-        .get(&ticket_id)
-        .is_ok());
+    assert!(
+        TicketStore::open_in_workspace(&child)
+            .unwrap()
+            .get(&ticket_id)
+            .is_ok()
+    );
     assert!(matches!(
         parent_store.get(&ticket_id),
         Err(ticket_api::error::StorageError::NotFound(_))

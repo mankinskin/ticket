@@ -3,18 +3,8 @@ use std::path::PathBuf;
 use thiserror::Error;
 
 use crate::execution::{
-    provider::{
-        ProviderError,
-        StartSubagentRequest,
-        StartSubagentResponse,
-        SubagentProvider,
-    },
-    sandbox::{
-        SandboxError,
-        SandboxHandle,
-        SandboxManager,
-        SandboxSpec,
-    },
+    provider::{ProviderError, StartSubagentRequest, StartSubagentResponse, SubagentProvider},
+    sandbox::{SandboxError, SandboxHandle, SandboxManager, SandboxSpec},
 };
 
 #[derive(Debug, Error)]
@@ -56,32 +46,18 @@ pub struct AssignmentRunReceipt {
 }
 
 pub trait SandboxProvisioner {
-    fn provision(
-        &self,
-        spec: &SandboxSpec,
-    ) -> Result<SandboxHandle, SandboxError>;
-    fn cleanup(
-        &self,
-        spec: &SandboxSpec,
-        handle: &SandboxHandle,
-    ) -> Result<(), SandboxError>;
+    fn provision(&self, spec: &SandboxSpec) -> Result<SandboxHandle, SandboxError>;
+    fn cleanup(&self, spec: &SandboxSpec, handle: &SandboxHandle) -> Result<(), SandboxError>;
 }
 
 pub struct GitSandboxProvisioner;
 
 impl SandboxProvisioner for GitSandboxProvisioner {
-    fn provision(
-        &self,
-        spec: &SandboxSpec,
-    ) -> Result<SandboxHandle, SandboxError> {
+    fn provision(&self, spec: &SandboxSpec) -> Result<SandboxHandle, SandboxError> {
         SandboxManager::provision(spec)
     }
 
-    fn cleanup(
-        &self,
-        spec: &SandboxSpec,
-        handle: &SandboxHandle,
-    ) -> Result<(), SandboxError> {
+    fn cleanup(&self, spec: &SandboxSpec, handle: &SandboxHandle) -> Result<(), SandboxError> {
         SandboxManager::cleanup(spec, handle)
     }
 }
@@ -101,11 +77,7 @@ where
     P: SubagentProvider,
     S: SandboxProvisioner,
 {
-    pub fn new(
-        provider: P,
-        sandbox: S,
-        config: RunnerConfig,
-    ) -> Self {
+    pub fn new(provider: P, sandbox: S, config: RunnerConfig) -> Self {
         Self {
             provider,
             sandbox,
@@ -139,15 +111,14 @@ where
         let StartSubagentResponse { run_id, status } = match provider_resp {
             Ok(resp) => resp,
             Err(err) => {
-                if let Err(cleanup_error) = self.sandbox.cleanup(&spec, &handle)
-                {
+                if let Err(cleanup_error) = self.sandbox.cleanup(&spec, &handle) {
                     return Err(RunnerError::CleanupAfterProviderError {
                         provider_error: err.to_string(),
                         cleanup_error,
                     });
                 }
                 return Err(RunnerError::Provider(err));
-            },
+            }
         };
 
         Ok(AssignmentRunReceipt {
@@ -163,32 +134,16 @@ where
 mod tests {
     use std::{
         path::PathBuf,
-        sync::{
-            Arc,
-            Mutex,
-        },
+        sync::{Arc, Mutex},
     };
 
     use crate::execution::{
-        provider::{
-            ProviderError,
-            StartSubagentRequest,
-            StartSubagentResponse,
-            SubagentProvider,
-        },
+        provider::{ProviderError, StartSubagentRequest, StartSubagentResponse, SubagentProvider},
         runner::{
-            AssignmentRunRequest,
-            AssignmentRunner,
-            GitSandboxProvisioner,
-            RunnerConfig,
-            RunnerError,
-            SandboxProvisioner,
+            AssignmentRunRequest, AssignmentRunner, GitSandboxProvisioner, RunnerConfig,
+            RunnerError, SandboxProvisioner,
         },
-        sandbox::{
-            SandboxError,
-            SandboxHandle,
-            SandboxSpec,
-        },
+        sandbox::{SandboxError, SandboxHandle, SandboxSpec},
     };
 
     struct FakeProvider {
@@ -226,10 +181,7 @@ mod tests {
     }
 
     impl SandboxProvisioner for FakeSandbox {
-        fn provision(
-            &self,
-            _spec: &SandboxSpec,
-        ) -> Result<SandboxHandle, SandboxError> {
+        fn provision(&self, _spec: &SandboxSpec) -> Result<SandboxHandle, SandboxError> {
             Ok(self.handle.clone())
         }
 

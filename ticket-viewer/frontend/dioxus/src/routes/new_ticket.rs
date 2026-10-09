@@ -1,9 +1,6 @@
 use dioxus::prelude::*;
 
-use crate::{
-    components::create_ticket::CreateTicketModal,
-    routes::Route,
-};
+use crate::{components::create_ticket::CreateTicketModal, routes::Route};
 
 #[component]
 pub fn NewTicketPage(workspace: String) -> Element {

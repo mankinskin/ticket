@@ -1,9 +1,7 @@
 use std::process::Command;
 
 use ticket_api::contracts::command_schema::{
-    COMMAND_SCHEMA_VERSION,
-    export_command_schema,
-    export_command_schema_json,
+    COMMAND_SCHEMA_VERSION, export_command_schema, export_command_schema_json,
 };
 
 #[test]
@@ -37,11 +35,9 @@ fn command_schema_export_is_stable() {
 
 #[test]
 fn command_schema_json_is_machine_readable() {
-    let json =
-        export_command_schema_json().expect("schema export should serialize");
+    let json = export_command_schema_json().expect("schema export should serialize");
 
-    let parsed: serde_json::Value =
-        serde_json::from_str(&json).expect("json should parse");
+    let parsed: serde_json::Value = serde_json::from_str(&json).expect("json should parse");
     assert_eq!(parsed["version"], COMMAND_SCHEMA_VERSION);
     assert_eq!(parsed["command_namespace"], "ticket");
     assert!(parsed["commands"].is_array());
@@ -63,10 +59,9 @@ fn command_schema_toon_is_machine_readable() {
         String::from_utf8_lossy(&out.stderr),
     );
 
-    let rendered =
-        String::from_utf8(out.stdout).expect("toon output should be utf-8");
-    let parsed: serde_json::Value = toon_format::decode_default(&rendered)
-        .expect("toon output should decode");
+    let rendered = String::from_utf8(out.stdout).expect("toon output should be utf-8");
+    let parsed: serde_json::Value =
+        toon_format::decode_default(&rendered).expect("toon output should decode");
 
     assert!(parsed["request_id"].is_string());
     assert_eq!(parsed["payload"]["command"], "export_command_schema");

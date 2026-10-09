@@ -8,16 +8,9 @@ use serde_json::Value;
 
 // Re-use the server under test.
 use ticket::server::{
-    BoardCheckInInput,
-    BoardCheckOutInput,
-    BoardCleanApplyInput,
-    BoardCleanPreviewInput,
-    BoardConfigureInput,
-    BoardHeartbeatInput,
-    BoardHistoryInput,
-    BoardRenameFileInput,
-    BoardShowInput,
-    BoardUpdateFilesInput,
+    BoardCheckInInput, BoardCheckOutInput, BoardCleanApplyInput, BoardCleanPreviewInput,
+    BoardConfigureInput, BoardHeartbeatInput, BoardHistoryInput, BoardRenameFileInput,
+    BoardShowInput, BoardUpdateFilesInput,
 };
 
 #[path = "integration_board_mcp/cross_interface.rs"]
@@ -25,12 +18,7 @@ mod cross_interface;
 #[path = "integration_board_mcp/support.rs"]
 mod support;
 
-use support::{
-    extract_text,
-    make_sandbox,
-    seed_ticket,
-    ws,
-};
+use support::{extract_text, make_sandbox, seed_ticket, ws};
 
 // ── tests ────────────────────────────────────────────────────────────────────
 
@@ -163,8 +151,7 @@ async fn board_configure_round_trip_mcp() {
         .expect("configure read ok");
     let text = extract_text(&result);
     let json: Value = serde_json::from_str(&text).expect("valid json");
-    let original_max_wip =
-        json["config"]["max_wip"].as_u64().expect("max_wip present");
+    let original_max_wip = json["config"]["max_wip"].as_u64().expect("max_wip present");
 
     // Write a new value.
     let new_wip = original_max_wip + 2;

@@ -1,20 +1,8 @@
-use chrono::{
-    DateTime,
-    Datelike,
-    Timelike,
-    Utc,
-};
-use serde_json::{
-    Value,
-    json,
-};
+use chrono::{DateTime, Datelike, Timelike, Utc};
+use serde_json::{Value, json};
 use std::fmt::Write as FmtWrite;
 use ticket_api::storage::board::{
-    BoardConfig,
-    BoardEntry,
-    BoardEntryStatus,
-    BoardHistorySnapshot,
-    BoardSnapshot,
+    BoardConfig, BoardEntry, BoardEntryStatus, BoardHistorySnapshot, BoardSnapshot,
 };
 use uuid::Uuid;
 pub(super) struct BoardDisplay {
@@ -51,10 +39,7 @@ pub(crate) struct BoardRecommendation {
     pub dependee_count: usize,
     pub created_at: String,
 }
-pub(super) fn entry_to_json(
-    entry: &BoardEntry,
-    config: &BoardConfig,
-) -> Value {
+pub(super) fn entry_to_json(entry: &BoardEntry, config: &BoardConfig) -> Value {
     let age_secs = heartbeat_age_secs(entry, Utc::now());
     json!({
         "entry_id": entry.entry_id,
@@ -100,10 +85,7 @@ pub(super) fn board_display_entry_to_json(entry: &BoardDisplayEntry) -> Value {
         "branch": entry.branch,
     })
 }
-pub(super) fn render_board_human(
-    snap: &BoardSnapshot,
-    display: &BoardDisplay,
-) -> String {
+pub(super) fn render_board_human(snap: &BoardSnapshot, display: &BoardDisplay) -> String {
     let mut out = String::new();
     write_summary(&mut out, snap);
     write_actions(&mut out, &display.actions);
@@ -121,10 +103,7 @@ pub(super) fn render_board_history_human(
     write_history_entries(&mut out, &display.entries);
     out
 }
-fn write_summary(
-    out: &mut String,
-    snap: &BoardSnapshot,
-) {
+fn write_summary(out: &mut String, snap: &BoardSnapshot) {
     let _ = writeln!(
         out,
         "Board: [{}/{} active] [{} stale{}] [{} conflict{}]",
@@ -139,10 +118,7 @@ fn write_summary(
 fn warning_suffix(count: u32) -> &'static str {
     if count > 0 { " ⚠" } else { "" }
 }
-fn write_actions(
-    out: &mut String,
-    actions: &[String],
-) {
+fn write_actions(out: &mut String, actions: &[String]) {
     if actions.is_empty() {
         return;
     }
@@ -152,24 +128,29 @@ fn write_actions(
         let _ = writeln!(out, "  {}. {action}", index + 1);
     }
 }
-fn write_current_work(
-    out: &mut String,
-    current_work: &[BoardDisplayEntry],
-) {
+fn write_current_work(out: &mut String, current_work: &[BoardDisplayEntry]) {
     let _ = writeln!(out);
     let _ = writeln!(out, "Current Work:");
     if current_work.is_empty() {
         let _ = writeln!(out, "  (no active board entries)");
         return;
     }
-    let has_worktree_metadata = current_work.iter().any(|entry| {
-        entry.worktree_path.is_some() || entry.branch.is_some()
-    });
+    let has_worktree_metadata = current_work
+        .iter()
+        .any(|entry| entry.worktree_path.is_some() || entry.branch.is_some());
     if has_worktree_metadata {
         let _ = writeln!(
             out,
             "  {:<10}  {:<8}  {:<24}  {:<14}  {:<16}  {:<16}  {:<16}  {:<18}  {:>6}",
-            "STATUS", "TICKET", "TITLE", "AGENT", "SESSION", "BRANCH", "WORKTREE", "INTENT", "HB AGE"
+            "STATUS",
+            "TICKET",
+            "TITLE",
+            "AGENT",
+            "SESSION",
+            "BRANCH",
+            "WORKTREE",
+            "INTENT",
+            "HB AGE"
         );
         let _ = writeln!(out, "  {}", "-".repeat(150));
         for entry in current_work {
@@ -217,10 +198,7 @@ fn write_current_work(
 fn short_worktree_indicator(path: &str) -> &str {
     path.rsplit(['/', '\\']).next().unwrap_or(path)
 }
-pub(crate) fn write_next_up(
-    out: &mut String,
-    recommended_next: &[BoardRecommendation],
-) {
+pub(crate) fn write_next_up(out: &mut String, recommended_next: &[BoardRecommendation]) {
     let _ = writeln!(out);
     let _ = writeln!(out, "Next Up:");
     if recommended_next.is_empty() {
@@ -257,10 +235,7 @@ pub(crate) fn write_next_up(
         let _ = writeln!(out, "  ticket_id: {}", recommendation.ticket_id,);
     }
 }
-fn write_history_summary(
-    out: &mut String,
-    snap: &BoardHistorySnapshot,
-) {
+fn write_history_summary(out: &mut String, snap: &BoardHistorySnapshot) {
     let _ = writeln!(out);
     let _ = writeln!(
         out,
@@ -295,17 +270,11 @@ fn write_history_summary(
         );
     }
 }
-fn write_history_entries(
-    out: &mut String,
-    entries: &[BoardDisplayEntry],
-) {
+fn write_history_entries(out: &mut String, entries: &[BoardDisplayEntry]) {
     let _ = writeln!(out);
     let _ = writeln!(out, "Completed Work:");
     if entries.is_empty() {
-        let _ = writeln!(
-            out,
-            "  (no completed board history in the current window)"
-        );
+        let _ = writeln!(out, "  (no completed board history in the current window)");
         return;
     }
     let _ = writeln!(
@@ -332,10 +301,7 @@ fn write_history_entries(
         );
     }
 }
-fn write_warnings(
-    out: &mut String,
-    warnings: &[String],
-) {
+fn write_warnings(out: &mut String, warnings: &[String]) {
     if warnings.is_empty() {
         return;
     }
@@ -357,10 +323,7 @@ fn write_file_ownership(
         let _ = writeln!(out, "  {path}  →  {}", agents.join(", "));
     }
 }
-pub(super) fn heartbeat_age_secs(
-    entry: &BoardEntry,
-    now: DateTime<Utc>,
-) -> u64 {
+pub(super) fn heartbeat_age_secs(entry: &BoardEntry, now: DateTime<Utc>) -> u64 {
     (now - entry.last_heartbeat).num_seconds().max(0) as u64
 }
 pub(super) fn entry_status(
@@ -368,9 +331,7 @@ pub(super) fn entry_status(
     config: &BoardConfig,
     age_secs: u64,
 ) -> &'static str {
-    if entry.status == BoardEntryStatus::Active
-        && age_secs > config.stale_after_secs
-    {
+    if entry.status == BoardEntryStatus::Active && age_secs > config.stale_after_secs {
         return "stale";
     }
     match &entry.status {
@@ -400,10 +361,7 @@ fn format_pretty_created_at(created_at: &str) -> String {
         timestamp.minute()
     )
 }
-fn truncate_field(
-    value: &str,
-    width: usize,
-) -> String {
+fn truncate_field(value: &str, width: usize) -> String {
     if value.len() > width {
         format!("{}…", &value[..width - 1])
     } else {

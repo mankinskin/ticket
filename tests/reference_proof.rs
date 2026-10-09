@@ -26,7 +26,7 @@ mod fixture {
         pub fn setup() -> Self {
             let temp_dir = tempfile::tempdir().expect("temp dir");
             let store_path = temp_dir.path().join(".workflow-tools").join("ticket");
-            
+
             // Initialize the ticket store
             ticket::storage::TicketStore::init(&store_path).expect("init store");
 
@@ -59,14 +59,10 @@ mod fixture {
 #[cfg(feature = "cli")]
 mod cli_proof {
     use transport_harness::{
-        HarnessError,
-        Output,
+        HarnessError, Output,
         cli::{
             self,
-            clap::{
-                self,
-                Parser,
-            },
+            clap::{self, Parser},
         },
     };
 
@@ -92,16 +88,18 @@ mod cli_proof {
     fn dispatch(command: TicketCommand) -> Result<Output, HarnessError> {
         match command.op {
             Op::Get { id, store_path } => {
-                let store = ticket::storage::TicketStore::open(std::path::Path::new(&store_path))
-                    .map_err(|e| HarnessError::domain(format!("failed to open store: {e}")))?;
-                
-                let id = id.parse::<uuid::Uuid>()
+                let store =
+                    ticket::storage::TicketStore::open(std::path::Path::new(&store_path))
+                        .map_err(|e| HarnessError::domain(format!("failed to open store: {e}")))?;
+
+                let id = id
+                    .parse::<uuid::Uuid>()
                     .map_err(|e| HarnessError::domain(format!("invalid UUID: {e}")))?;
-                
+
                 let ticket = store
                     .get(&id)
                     .map_err(|e| HarnessError::domain(format!("ticket not found: {e}")))?;
-                
+
                 Output::json(&ticket)
             }
         }
@@ -111,7 +109,7 @@ mod cli_proof {
     fn cli_get_success_emits_one_json_line() {
         let test_store = TestStore::setup();
         let mut buffer = Vec::new();
-        
+
         cli::run_from(
             [
                 "ticket-cli",
@@ -125,7 +123,7 @@ mod cli_proof {
             dispatch,
         )
         .expect("cli dispatch should succeed");
-        
+
         let output = String::from_utf8(buffer).expect("valid utf8");
         assert!(output.contains(&test_store.test_ticket_id));
         assert!(output.contains("Test Ticket"));
@@ -135,7 +133,7 @@ mod cli_proof {
     fn cli_get_unknown_id_returns_domain_error() {
         let test_store = TestStore::setup();
         let mut buffer = Vec::new();
-        
+
         let error = cli::run_from(
             [
                 "ticket-cli",
@@ -149,7 +147,7 @@ mod cli_proof {
             dispatch,
         )
         .expect_err("unknown id should fail");
-        
+
         assert!(matches!(error, HarnessError::Domain(_)));
         assert!(error.to_string().contains("ticket not found"));
     }
@@ -161,25 +159,11 @@ mod cli_proof {
 mod mcp_proof {
     use serde::Deserialize;
     use transport_harness::mcp::rmcp::{
-        self as rmcp,
-        ErrorData as McpError,
-        ServerHandler,
-        handler::server::{
-            tool::ToolRouter,
-            wrapper::Parameters,
-        },
-        model::{
-            CallToolResult,
-            Content,
-            RawContent,
-        },
-        schemars::{
-            self,
-            JsonSchema,
-        },
-        tool,
-        tool_handler,
-        tool_router,
+        self as rmcp, ErrorData as McpError, ServerHandler,
+        handler::server::{tool::ToolRouter, wrapper::Parameters},
+        model::{CallToolResult, Content, RawContent},
+        schemars::{self, JsonSchema},
+        tool, tool_handler, tool_router,
     };
 
     use super::fixture::TestStore;
@@ -212,18 +196,21 @@ mod mcp_proof {
             Parameters(args): Parameters<GetArgs>,
         ) -> Result<CallToolResult, McpError> {
             let store = ticket::storage::TicketStore::open(std::path::Path::new(&self.store_path))
-                .map_err(|e| McpError::invalid_params(format!("failed to open store: {e}"), None))?;
-            
-            let id = args.id.parse::<uuid::Uuid>()
+                .map_err(|e| {
+                    McpError::invalid_params(format!("failed to open store: {e}"), None)
+                })?;
+
+            let id = args
+                .id
+                .parse::<uuid::Uuid>()
                 .map_err(|e| McpError::invalid_params(format!("invalid UUID: {e}"), None))?;
-            
+
             let ticket = store
                 .get(&id)
                 .map_err(|e| McpError::invalid_params(format!("ticket not found: {e}"), None))?;
-            
-            let json = serde_json::to_string(&ticket)
-                .expect("ticket should serialize");
-            
+
+            let json = serde_json::to_string(&ticket).expect("ticket should serialize");
+
             Ok(CallToolResult::success(vec![Content::text(json)]))
         }
     }
@@ -243,14 +230,14 @@ mod mcp_proof {
     async fn mcp_get_tool_success() {
         let test_store = TestStore::setup();
         let server = TestTicketServer::new(test_store.store_path.display().to_string());
-        
+
         let result = server
             .get(Parameters(GetArgs {
                 id: test_store.test_ticket_id.clone(),
             }))
             .await
             .expect("tool call should succeed");
-        
+
         let output = text_of(&result);
         assert!(output.contains(&test_store.test_ticket_id));
         assert!(output.contains("Test Ticket"));
@@ -260,14 +247,14 @@ mod mcp_proof {
     async fn mcp_get_tool_unknown_id_errors() {
         let test_store = TestStore::setup();
         let server = TestTicketServer::new(test_store.store_path.display().to_string());
-        
+
         let error = server
             .get(Parameters(GetArgs {
                 id: "00000000-0000-0000-0000-000000000000".to_string(),
             }))
             .await
             .expect_err("unknown id should error");
-        
+
         assert!(format!("{error:?}").contains("ticket not found"));
     }
 }
@@ -278,30 +265,20 @@ mod mcp_proof {
 mod http_proof {
     use tower::ServiceExt;
     use transport_harness::http::{
-        HttpError,
-        Router,
-        StatusCode,
+        HttpError, Router, StatusCode,
         axum::{
             Json,
-            body::{
-                Body,
-                to_bytes,
-            },
+            body::{Body, to_bytes},
             extract::Path,
             http::Request,
-            response::{
-                IntoResponse,
-                Response,
-            },
+            response::{IntoResponse, Response},
             routing::get,
         },
     };
 
     use super::fixture::TestStore;
 
-    async fn get_ticket(
-        Path((store_path, id)): Path<(String, String)>,
-    ) -> Response {
+    async fn get_ticket(Path((store_path, id)): Path<(String, String)>) -> Response {
         let store = match ticket::storage::TicketStore::open(std::path::Path::new(&store_path)) {
             Ok(store) => store,
             Err(e) => {
@@ -310,10 +287,10 @@ mod http_proof {
                     "store_error",
                     format!("failed to open store: {e}"),
                 )
-                .into_response()
+                .into_response();
             }
         };
-        
+
         let id = match id.parse::<uuid::Uuid>() {
             Ok(id) => id,
             Err(e) => {
@@ -322,10 +299,10 @@ mod http_proof {
                     "invalid_id",
                     format!("invalid UUID: {e}"),
                 )
-                .into_response()
+                .into_response();
             }
         };
-        
+
         match store.get(&id) {
             Ok(ticket) => Json(ticket).into_response(),
             Err(e) => HttpError::new(
@@ -353,17 +330,20 @@ mod http_proof {
         let test_store = TestStore::setup();
         let store_path_str = test_store.store_path.display().to_string();
         let store_path_encoded = urlencoding::encode(&store_path_str);
-        
+
         let response = test_router()
             .oneshot(
                 Request::builder()
-                    .uri(format!("/ticket/{}/{}", store_path_encoded, test_store.test_ticket_id))
+                    .uri(format!(
+                        "/ticket/{}/{}",
+                        store_path_encoded, test_store.test_ticket_id
+                    ))
                     .body(Body::empty())
                     .expect("request should build"),
             )
             .await
             .expect("router should respond");
-        
+
         assert_eq!(response.status(), StatusCode::OK);
         let json = body_json(response).await;
         assert_eq!(json["id"], test_store.test_ticket_id);
@@ -375,20 +355,28 @@ mod http_proof {
         let test_store = TestStore::setup();
         let store_path_str = test_store.store_path.display().to_string();
         let store_path_encoded = urlencoding::encode(&store_path_str);
-        
+
         let response = test_router()
             .oneshot(
                 Request::builder()
-                    .uri(format!("/ticket/{}/00000000-0000-0000-0000-000000000000", store_path_encoded))
+                    .uri(format!(
+                        "/ticket/{}/00000000-0000-0000-0000-000000000000",
+                        store_path_encoded
+                    ))
                     .body(Body::empty())
                     .expect("request should build"),
             )
             .await
             .expect("router should respond");
-        
+
         assert_eq!(response.status(), StatusCode::NOT_FOUND);
         let json = body_json(response).await;
         assert_eq!(json["code"], "not_found");
-        assert!(json["message"].as_str().unwrap().contains("ticket not found"));
+        assert!(
+            json["message"]
+                .as_str()
+                .unwrap()
+                .contains("ticket not found")
+        );
     }
 }

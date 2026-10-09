@@ -1,30 +1,16 @@
-use std::path::{
-    Path,
-    PathBuf,
-};
+use std::path::{Path, PathBuf};
 
-use serde_json::{
-    Value,
-    json,
-};
+use serde_json::{Value, json};
 use ticket_api::{
     storage::TicketStore,
     workspace_policy::{
-        WorkspacePolicy,
-        load_workspace_policy,
-        load_workspace_policy_file,
-        save_workspace_policy,
+        WorkspacePolicy, load_workspace_policy, load_workspace_policy_file, save_workspace_policy,
     },
 };
 
 use crate::cli::{
-    CliRunError,
-    WorkspaceArgs,
-    WorkspaceCommand,
-    WorkspacePatternArgs,
-    WorkspacePatternCommand,
-    WorkspacePolicyArgs,
-    WorkspacePolicyCommand,
+    CliRunError, WorkspaceArgs, WorkspaceCommand, WorkspacePatternArgs, WorkspacePatternCommand,
+    WorkspacePolicyArgs, WorkspacePolicyCommand,
 };
 
 pub(crate) fn cmd_workspace(
@@ -33,14 +19,16 @@ pub(crate) fn cmd_workspace(
 ) -> Result<Value, CliRunError> {
     let workspace_root = workspace_root_of(store);
     match args.command {
-        WorkspaceCommand::Policy(policy_args) =>
-            cmd_workspace_policy(policy_args, &workspace_root),
-        WorkspaceCommand::Ignore(pattern_args) =>
-            cmd_workspace_patterns("ignore", pattern_args, &workspace_root),
-        WorkspaceCommand::Include(pattern_args) =>
-            cmd_workspace_patterns("include", pattern_args, &workspace_root),
-        WorkspaceCommand::Rescan { apply_policy } =>
-            cmd_workspace_rescan(apply_policy, store, &workspace_root),
+        WorkspaceCommand::Policy(policy_args) => cmd_workspace_policy(policy_args, &workspace_root),
+        WorkspaceCommand::Ignore(pattern_args) => {
+            cmd_workspace_patterns("ignore", pattern_args, &workspace_root)
+        }
+        WorkspaceCommand::Include(pattern_args) => {
+            cmd_workspace_patterns("include", pattern_args, &workspace_root)
+        }
+        WorkspaceCommand::Rescan { apply_policy } => {
+            cmd_workspace_rescan(apply_policy, store, &workspace_root)
+        }
         WorkspaceCommand::Roots => cmd_workspace_roots(store),
         WorkspaceCommand::PruneRoots => cmd_workspace_prune_roots(store),
     }
@@ -90,7 +78,7 @@ fn cmd_workspace_policy(
                 "workspace_root": workspace_root.display().to_string(),
                 "policy": policy_to_json(&policy),
             }))
-        },
+        }
         WorkspacePolicyCommand::Set {
             include_descendants,
             include_ancestors,
@@ -113,7 +101,7 @@ fn cmd_workspace_policy(
                 "workspace_root": workspace_root.display().to_string(),
                 "policy": policy_to_json(&policy),
             }))
-        },
+        }
     }
 }
 
@@ -131,13 +119,13 @@ fn cmd_workspace_patterns(
                 list.push(pattern);
             }
             (format!("workspace_{kind}_add"), changed)
-        },
+        }
         WorkspacePatternCommand::Remove { pattern } => {
             let list = pattern_list_mut(kind, &mut policy);
             let before = list.len();
             list.retain(|entry| entry != &pattern);
             (format!("workspace_{kind}_remove"), list.len() != before)
-        },
+        }
     };
     save_policy(workspace_root, &policy)?;
     Ok(json!({
@@ -149,10 +137,7 @@ fn cmd_workspace_patterns(
     }))
 }
 
-fn pattern_list_mut<'a>(
-    kind: &str,
-    policy: &'a mut WorkspacePolicy,
-) -> &'a mut Vec<String> {
+fn pattern_list_mut<'a>(kind: &str, policy: &'a mut WorkspacePolicy) -> &'a mut Vec<String> {
     match kind {
         "ignore" => &mut policy.ignore_workspaces,
         _ => &mut policy.include_overrides,
@@ -203,16 +188,16 @@ fn cmd_workspace_roots(store: &TicketStore) -> Result<Value, CliRunError> {
     }))
 }
 
-fn cmd_workspace_prune_roots(
-    store: &TicketStore,
-) -> Result<Value, CliRunError> {
+fn cmd_workspace_prune_roots(store: &TicketStore) -> Result<Value, CliRunError> {
     let pruned = store.prune_worktree_scan_roots()?;
     let roots = pruned
         .into_iter()
-        .map(|root| json!({
-            "path": root.path.display().to_string(),
-            "label": root.label,
-        }))
+        .map(|root| {
+            json!({
+                "path": root.path.display().to_string(),
+                "label": root.label,
+            })
+        })
         .collect::<Vec<_>>();
     Ok(json!({
         "command": "workspace_prune_roots",
@@ -222,13 +207,8 @@ fn cmd_workspace_prune_roots(
     }))
 }
 
-fn save_policy(
-    workspace_root: &Path,
-    policy: &WorkspacePolicy,
-) -> Result<(), CliRunError> {
+fn save_policy(workspace_root: &Path, policy: &WorkspacePolicy) -> Result<(), CliRunError> {
     save_workspace_policy(workspace_root, policy).map_err(|error| {
-        CliRunError::BadRequest(format!(
-            "failed to write workspace-policy.toml: {error}"
-        ))
+        CliRunError::BadRequest(format!("failed to write workspace-policy.toml: {error}"))
     })
 }

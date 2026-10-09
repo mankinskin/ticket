@@ -6,23 +6,13 @@
 
 mod common;
 
-use std::{
-    collections::BTreeMap,
-    sync::Arc,
-};
+use std::{collections::BTreeMap, sync::Arc};
 
 use tempfile::TempDir;
+use ticket::serve::stream::{HookEmitter, StreamBroker, event::SseEvent};
 use ticket_api::{
-    model::{
-        edge::EdgeRecord,
-        filesystem::ScanRoot,
-    },
+    model::{edge::EdgeRecord, filesystem::ScanRoot},
     storage::store::TicketStore,
-};
-use ticket::serve::stream::{
-    HookEmitter,
-    StreamBroker,
-    event::SseEvent,
 };
 
 fn open_store_with_broker(
@@ -69,7 +59,7 @@ fn ticket_create_emits_upsert_event() {
         SseEvent::TicketUpsert(p) => {
             assert_eq!(p.workspace, ws);
             assert_eq!(p.ticket.title.as_deref(), Some("My ticket"));
-        },
+        }
         other => panic!("expected TicketUpsert, got {other:?}"),
     }
 }
@@ -113,7 +103,7 @@ fn ticket_delete_emits_delete_event() {
         SseEvent::TicketDelete(p) => {
             assert_eq!(p.id, id);
             assert_eq!(p.workspace, ws);
-        },
+        }
         other => panic!("expected TicketDelete, got {other:?}"),
     }
 }
@@ -177,7 +167,7 @@ fn add_edge_emits_edge_upsert_event() {
             assert_eq!(p.edge.from, from);
             assert_eq!(p.edge.to, to);
             assert_eq!(p.edge.kind, "depends_on");
-        },
+        }
         other => panic!("expected EdgeUpsert, got {other:?}"),
     }
 }

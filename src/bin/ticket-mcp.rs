@@ -1,9 +1,6 @@
 #![recursion_limit = "256"]
 
-use ticket::server::{
-    self,
-    open_canonical_store,
-};
+use ticket::server::{self, open_canonical_store};
 
 use std::path::PathBuf;
 
@@ -11,7 +8,10 @@ use memory_kernel::runtime::init_transport_tracing;
 
 #[tokio::main]
 async fn main() {
-    if std::env::args().skip(1).any(|arg| matches!(arg.as_str(), "-h" | "--help")) {
+    if std::env::args()
+        .skip(1)
+        .any(|arg| matches!(arg.as_str(), "-h" | "--help"))
+    {
         println!("Ticket MCP server\n\nUsage: ticket-mcp");
         return;
     }

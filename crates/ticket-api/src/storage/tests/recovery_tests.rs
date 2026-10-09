@@ -23,8 +23,7 @@ fn open_or_init_profiled_reports_bootstrap_scan_timings() {
     let _ = fs::remove_file(index_root.join("tickets.db-wal"));
     let _ = fs::remove_dir_all(index_root.join("search_index"));
 
-    let (rebuilt, report) =
-        TicketStore::open_or_init_profiled(dir.path()).unwrap();
+    let (rebuilt, report) = TicketStore::open_or_init_profiled(dir.path()).unwrap();
 
     assert!(report.initialized_store);
     assert!(
@@ -151,8 +150,7 @@ fn scan_force_backfills_legacy_db_only_edges_into_ticket_manifests() {
         )
         .unwrap();
 
-    let legacy_index =
-        RedbIndexStore::open(&store.index_root.join("tickets.db")).unwrap();
+    let legacy_index = RedbIndexStore::open(&store.index_root.join("tickets.db")).unwrap();
     legacy_index
         .insert_edge(&EdgeRecord {
             from: source_id,

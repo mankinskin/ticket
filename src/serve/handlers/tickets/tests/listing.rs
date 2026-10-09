@@ -1,35 +1,19 @@
 use axum::{
     body::to_bytes,
-    extract::{
-        Extension,
-        Path,
-        Query,
-        State,
-    },
+    extract::{Extension, Path, Query, State},
     http::StatusCode,
 };
-use std::{
-    collections::BTreeMap,
-    sync::Arc,
-};
+use std::{collections::BTreeMap, sync::Arc};
 use ticket_api::storage::search::TantivySearchIndex;
 use uuid::Uuid;
 use viewer_api::error::RequestIdExt;
 
 use super::{
     super::{
-        TicketAssetParam,
-        TicketIdParam,
-        WorkspaceParam,
-        get_ticket,
-        get_ticket_asset,
-        get_ticket_description,
-        get_ticket_history,
-        list_ticket_files,
-        list_tickets,
+        TicketAssetParam, TicketIdParam, WorkspaceParam, get_ticket, get_ticket_asset,
+        get_ticket_description, get_ticket_history, list_ticket_files, list_tickets,
     },
-    make_state,
-    make_store,
+    make_state, make_store,
 };
 
 #[tokio::test]
@@ -74,8 +58,7 @@ async fn search_list_uses_persisted_updated_at() {
     let bytes = to_bytes(response.into_body(), 1024 * 1024)
         .await
         .expect("read body");
-    let payload: serde_json::Value =
-        serde_json::from_slice(&bytes).expect("json body");
+    let payload: serde_json::Value = serde_json::from_slice(&bytes).expect("json body");
 
     let got = payload["items"][0]["updated_at"]
         .as_str()
@@ -128,8 +111,7 @@ async fn search_list_drops_unresolved_tantivy_only_hits() {
     let bytes = to_bytes(response.into_body(), 1024 * 1024)
         .await
         .expect("read body");
-    let payload: serde_json::Value =
-        serde_json::from_slice(&bytes).expect("json body");
+    let payload: serde_json::Value = serde_json::from_slice(&bytes).expect("json body");
     let items = payload["items"].as_array().expect("items array");
 
     assert!(
@@ -186,8 +168,7 @@ async fn search_list_matches_description_body_content() {
     let bytes = to_bytes(response.into_body(), 1024 * 1024)
         .await
         .expect("read body");
-    let payload: serde_json::Value =
-        serde_json::from_slice(&bytes).expect("json body");
+    let payload: serde_json::Value = serde_json::from_slice(&bytes).expect("json body");
     let items = payload["items"].as_array().expect("items array");
     let matching_id = matching_id.to_string();
 
@@ -243,8 +224,7 @@ async fn search_list_matches_substring_partial_terms() {
     let bytes = to_bytes(response.into_body(), 1024 * 1024)
         .await
         .expect("read body");
-    let payload: serde_json::Value =
-        serde_json::from_slice(&bytes).expect("json body");
+    let payload: serde_json::Value = serde_json::from_slice(&bytes).expect("json body");
     let items = payload["items"].as_array().expect("items array");
     let matching_id = matching_id.to_string();
 
@@ -300,8 +280,7 @@ async fn search_list_supports_id_field_predicates() {
     let bytes = to_bytes(response.into_body(), 1024 * 1024)
         .await
         .expect("read body");
-    let payload: serde_json::Value =
-        serde_json::from_slice(&bytes).expect("json body");
+    let payload: serde_json::Value = serde_json::from_slice(&bytes).expect("json body");
     let items = payload["items"].as_array().expect("items array");
     let matching_id = matching_id.to_string();
 
@@ -357,8 +336,7 @@ async fn search_list_supports_title_field_substring_predicates() {
     let bytes = to_bytes(response.into_body(), 1024 * 1024)
         .await
         .expect("read body");
-    let payload: serde_json::Value =
-        serde_json::from_slice(&bytes).expect("json body");
+    let payload: serde_json::Value = serde_json::from_slice(&bytes).expect("json body");
     let items = payload["items"].as_array().expect("items array");
     let matching_id = matching_id.to_string();
 
@@ -414,8 +392,7 @@ async fn state_only_list_filters_items() {
     let bytes = to_bytes(response.into_body(), 1024 * 1024)
         .await
         .expect("read body");
-    let payload: serde_json::Value =
-        serde_json::from_slice(&bytes).expect("json body");
+    let payload: serde_json::Value = serde_json::from_slice(&bytes).expect("json body");
     let items = payload["items"].as_array().expect("items array");
     let ready_id = ready_id.to_string();
 

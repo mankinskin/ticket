@@ -1,27 +1,15 @@
-use std::collections::{
-    BTreeMap,
-    HashSet,
-    VecDeque,
-};
+use std::collections::{BTreeMap, HashSet, VecDeque};
 
-use chrono::{
-    DateTime,
-    Utc,
-};
+use chrono::{DateTime, Utc};
 use std::time::Instant;
 use uuid::Uuid;
 
-use crate::{
-    error::StorageError,
-    storage::indexed::WorkflowFacts,
-};
+use crate::{error::StorageError, storage::indexed::WorkflowFacts};
 
 use super::TicketStore;
 
 impl TicketStore {
-    pub(super) fn rebuild_workflow_facts(
-        &self
-    ) -> Result<BTreeMap<String, u64>, StorageError> {
+    pub(super) fn rebuild_workflow_facts(&self) -> Result<BTreeMap<String, u64>, StorageError> {
         let overall_started = Instant::now();
         let mut timings = BTreeMap::new();
         let clear_started = Instant::now();
@@ -47,11 +35,7 @@ impl TicketStore {
             Some(&mut timings),
         )?;
 
-        add_timing(
-            &mut timings,
-            "workflow.recompute_total_ms",
-            overall_started,
-        );
+        add_timing(&mut timings, "workflow.recompute_total_ms", overall_started);
 
         Ok(timings)
     }
@@ -62,9 +46,7 @@ impl TicketStore {
         progress: bool,
         changed_at: DateTime<Utc>,
     ) -> Result<(), StorageError> {
-        self.refresh_workflow_facts_for_roots_with_timings(
-            root_ids, progress, changed_at,
-        )?;
+        self.refresh_workflow_facts_for_roots_with_timings(root_ids, progress, changed_at)?;
         Ok(())
     }
 
@@ -98,26 +80,17 @@ impl TicketStore {
         Ok(timings)
     }
 
-    pub(super) fn state_rank_for_type(
-        &self,
-        type_id: &str,
-        state: Option<&str>,
-    ) -> usize {
+    pub(super) fn state_rank_for_type(&self, type_id: &str, state: Option<&str>) -> usize {
         let Some(state) = state else {
             return 0;
         };
         self.schema_registry
             .get(type_id)
-            .and_then(|schema| {
-                schema.states.iter().position(|value| value == state)
-            })
+            .and_then(|schema| schema.states.iter().position(|value| value == state))
             .unwrap_or(0)
     }
 
-    fn affected_workflow_slice(
-        &self,
-        root_ids: &[Uuid],
-    ) -> Result<HashSet<Uuid>, StorageError> {
+    fn affected_workflow_slice(&self, root_ids: &[Uuid]) -> Result<HashSet<Uuid>, StorageError> {
         let mut queue = VecDeque::from(root_ids.to_vec());
         let mut visited = HashSet::new();
         let mut affected = HashSet::new();
@@ -187,28 +160,22 @@ impl TicketStore {
                 .filter(|dependency_id| {
                     dependencies
                         .get(dependency_id)
-                        .map(|dependency| {
-                            !is_done_state(dependency.state.as_deref())
-                        })
+                        .map(|dependency| !is_done_state(dependency.state.as_deref()))
                         .unwrap_or(true)
                 })
                 .count();
 
             if let Some(map) = timings.as_deref_mut() {
-                add_timing(
-                    map,
-                    "workflow.compute_unresolved_ms",
-                    unresolved_started,
-                );
+                add_timing(map, "workflow.compute_unresolved_ms", unresolved_started);
             }
 
             let old_facts = existing.get(ticket_id);
             let became_actionable_at = if unresolved_dependency_count == 0 {
                 match old_facts {
-                    Some(facts) if facts.unresolved_dependency_count > 0 =>
-                        Some(progress_at.unwrap_or(ticket.updated_at)),
-                    Some(facts) =>
-                        facts.became_actionable_at.or(Some(ticket.created_at)),
+                    Some(facts) if facts.unresolved_dependency_count > 0 => {
+                        Some(progress_at.unwrap_or(ticket.updated_at))
+                    }
+                    Some(facts) => facts.became_actionable_at.or(Some(ticket.created_at)),
                     None => Some(ticket.created_at),
                 }
             } else {
@@ -217,9 +184,7 @@ impl TicketStore {
             let last_blocker_progress_at = if unresolved_dependency_count == 0 {
                 None
             } else {
-                progress_at.or_else(|| {
-                    old_facts.and_then(|facts| facts.last_blocker_progress_at)
-                })
+                progress_at.or_else(|| old_facts.and_then(|facts| facts.last_blocker_progress_at))
             };
 
             let write_started = Instant::now();
@@ -241,11 +206,7 @@ impl TicketStore {
     }
 }
 
-fn add_timing(
-    timings: &mut BTreeMap<String, u64>,
-    key: &str,
-    started: Instant,
-) {
+fn add_timing(timings: &mut BTreeMap<String, u64>, key: &str, started: Instant) {
     let elapsed = started.elapsed().as_millis() as u64;
     *timings.entry(key.to_string()).or_insert(0) += elapsed;
 }

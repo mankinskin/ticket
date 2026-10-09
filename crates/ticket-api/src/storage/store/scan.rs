@@ -1,9 +1,4 @@
-use std::{
-    collections::HashSet,
-    fs,
-    path::Path,
-    time::Instant,
-};
+use std::{collections::HashSet, fs, path::Path, time::Instant};
 
 use chrono::Utc;
 use tracing::field::Empty;
@@ -14,23 +9,15 @@ use crate::{
     model::{
         edge::EdgeRecord,
         filesystem::{
-            ParseDiagnostic,
-            PersistedScanRoot,
-            PolicyDecision,
-            ScanRoot,
-            ScanRootMetadata,
-            ScanRootSource,
-            TICKET_MANIFEST_FILE,
+            ParseDiagnostic, PersistedScanRoot, PolicyDecision, ScanRoot, ScanRootMetadata,
+            ScanRootSource, TICKET_MANIFEST_FILE,
         },
     },
     storage::{
         index::RedbIndexStore,
         indexed::IndexedTicket,
         search::SearchDocumentInput,
-        ticket_fs::{
-            TicketFs,
-            TicketScanEntry,
-        },
+        ticket_fs::{TicketFs, TicketScanEntry},
     },
 };
 
@@ -51,10 +38,7 @@ pub struct ScanReport {
 }
 
 impl TicketStore {
-    pub(super) fn is_external_worktree_path(
-        &self,
-        path: &Path,
-    ) -> bool {
+    pub(super) fn is_external_worktree_path(&self, path: &Path) -> bool {
         match (
             Self::worktree_scope(path),
             Self::worktree_scope(&self.index_root),
@@ -81,10 +65,7 @@ impl TicketStore {
         None
     }
 
-    pub fn add_scan_root(
-        &self,
-        root: ScanRoot,
-    ) -> Result<(), StorageError> {
+    pub fn add_scan_root(&self, root: ScanRoot) -> Result<(), StorageError> {
         let path = self.resolve_scan_root_path(&root.path);
         if self.is_external_worktree_path(&path) {
             return Err(StorageError::Other(format!(
@@ -124,15 +105,14 @@ impl TicketStore {
 
     /// Delete persisted sibling-worktree scan roots that can outlive the
     /// worktree and leave stale indexed ticket paths behind.
-    pub fn prune_worktree_scan_roots(
-        &self,
-    ) -> Result<Vec<ScanRoot>, StorageError> {
+    pub fn prune_worktree_scan_roots(&self) -> Result<Vec<ScanRoot>, StorageError> {
         let persisted = self.index.list_scan_roots()?;
         let paths: Vec<_> = persisted
             .iter()
             .filter_map(|root| {
                 let path = self.resolve_scan_root_path(&root.path);
-                self.is_external_worktree_path(&path).then_some(root.path.clone())
+                self.is_external_worktree_path(&path)
+                    .then_some(root.path.clone())
             })
             .collect();
         self.index.remove_scan_roots(&paths)?;
@@ -167,9 +147,7 @@ impl TicketStore {
     /// List persisted scan roots together with their auditability metadata.
     ///
     /// Paths are resolved and de-duplicated exactly like [`list_scan_roots`].
-    pub fn list_scan_roots_with_metadata(
-        &self
-    ) -> Result<Vec<PersistedScanRoot>, StorageError> {
+    pub fn list_scan_roots_with_metadata(&self) -> Result<Vec<PersistedScanRoot>, StorageError> {
         let mut seen = HashSet::new();
         let mut roots = Vec::new();
 
@@ -201,16 +179,14 @@ impl TicketStore {
         &self,
         workspace_root: &Path,
     ) -> Result<ScanReport, StorageError> {
-        let policy =
-            crate::workspace_policy::load_workspace_policy(workspace_root);
+        let policy = crate::workspace_policy::load_workspace_policy(workspace_root);
 
-        let allowed =
-            crate::workspace::discover_workspace_scan_roots_with_policy(
-                workspace_root,
-                crate::workspace::TICKET_INDEX_DIR,
-                "tickets",
-                &policy,
-            );
+        let allowed = crate::workspace::discover_workspace_scan_roots_with_policy(
+            workspace_root,
+            crate::workspace::TICKET_INDEX_DIR,
+            "tickets",
+            &policy,
+        );
         let allowed_paths: HashSet<std::path::PathBuf> = allowed
             .iter()
             .map(|root| self.resolve_scan_root_path(&root.path))
@@ -245,10 +221,7 @@ impl TicketStore {
         self.scan(true)
     }
 
-    pub fn scan(
-        &self,
-        reindex: bool,
-    ) -> Result<ScanReport, StorageError> {
+    pub fn scan(&self, reindex: bool) -> Result<ScanReport, StorageError> {
         let span = tracing::debug_span!(
             target: STORE_TRACE_TARGET,
             "ticket_store_scan",
@@ -286,10 +259,7 @@ impl TicketStore {
         Ok(report)
     }
 
-    pub fn reconcile_known_tickets(
-        &self,
-        ticket_ids: &[Uuid],
-    ) -> Result<ScanReport, StorageError> {
+    pub fn reconcile_known_tickets(&self, ticket_ids: &[Uuid]) -> Result<ScanReport, StorageError> {
         let overall_started = Instant::now();
         let mut phase_timings_ms = std::collections::BTreeMap::new();
         phase_timings_ms.insert(
@@ -348,34 +318,28 @@ impl TicketStore {
 
         for id in unique_ids {
             let existing = self.get_indexed(&id)?;
-            let entry =
-                resolve_known_ticket_entry(id, existing.as_ref(), &roots)?;
+            let entry = resolve_known_ticket_entry(id, existing.as_ref(), &roots)?;
             match entry {
                 Some(entry) => {
                     integrated += 1;
-                    if let Some(update) =
-                        integrate_entry(&self.index, entry, false)?
-                    {
+                    if let Some(update) = integrate_entry(&self.index, entry, false)? {
                         *phase_timings_ms
-                            .entry(
-                                "integration.description_read_ms".to_string(),
-                            )
+                            .entry("integration.description_read_ms".to_string())
                             .or_insert(0) += update.description_read_ms;
                         indexed_updates.push(update.indexed);
                         edge_updates.extend(update.edges);
                         search_documents.push(update.search_document);
                         workflow_root_ids.insert(id);
                     }
-                },
-                None =>
+                }
+                None => {
                     if let Some(ticket) = existing {
-                        diagnostics.push(stale_reconciliation_diagnostic(
-                            &ticket, &roots,
-                        ));
+                        diagnostics.push(stale_reconciliation_diagnostic(&ticket, &roots));
                         stale_ids.push(id);
                         workflow_root_ids.insert(id);
                         pruned += 1;
-                    },
+                    }
+                }
             }
         }
 
@@ -406,21 +370,13 @@ impl TicketStore {
         let prune_started = Instant::now();
         self.index.remove_tickets_batch(&stale_ids)?;
         self.search.remove_batch(&stale_ids)?;
-        record_phase_timing(
-            &mut phase_timings_ms,
-            "prune_stale_ms",
-            prune_started,
-        );
+        record_phase_timing(&mut phase_timings_ms, "prune_stale_ms", prune_started);
 
         let workflow_started = Instant::now();
         let mut roots = workflow_root_ids.into_iter().collect::<Vec<_>>();
         roots.sort_unstable();
-        let workflow_timings = self
-            .refresh_workflow_facts_for_roots_with_timings(
-                &roots,
-                false,
-                Utc::now(),
-            )?;
+        let workflow_timings =
+            self.refresh_workflow_facts_for_roots_with_timings(&roots, false, Utc::now())?;
         merge_phase_totals(&mut phase_timings_ms, workflow_timings);
         record_phase_timing(
             &mut phase_timings_ms,
@@ -433,11 +389,7 @@ impl TicketStore {
             "targeted_reconcile_known_ms",
             targeted_started,
         );
-        record_phase_timing(
-            &mut phase_timings_ms,
-            "scan_total_ms",
-            overall_started,
-        );
+        record_phase_timing(&mut phase_timings_ms, "scan_total_ms", overall_started);
 
         Ok(ScanReport {
             integrated,
@@ -449,10 +401,7 @@ impl TicketStore {
         })
     }
 
-    fn scan_once(
-        &self,
-        reindex: bool,
-    ) -> Result<ScanReport, StorageError> {
+    fn scan_once(&self, reindex: bool) -> Result<ScanReport, StorageError> {
         let _span_guard = tracing::debug_span!(
             target: STORE_TRACE_TARGET,
             "ticket_store_scan_once",
@@ -567,9 +516,7 @@ impl TicketStore {
             for entry in entries {
                 let entry_id = entry.id;
                 disk_ids.insert(entry_id);
-                if let Some(update) =
-                    integrate_entry(&self.index, entry, reindex)?
-                {
+                if let Some(update) = integrate_entry(&self.index, entry, reindex)? {
                     *phase_timings_ms
                         .entry("integration.description_read_ms".to_string())
                         .or_insert(0) += update.description_read_ms;
@@ -621,8 +568,7 @@ impl TicketStore {
         let prune_started = Instant::now();
         for ticket in self.index.list_tickets()? {
             if !disk_ids.contains(&ticket.id) {
-                diagnostics
-                    .push(stale_reconciliation_diagnostic(&ticket, &roots));
+                diagnostics.push(stale_reconciliation_diagnostic(&ticket, &roots));
                 stale_ids.push(ticket.id);
                 workflow_root_ids.insert(ticket.id);
                 pruned += 1;
@@ -630,11 +576,7 @@ impl TicketStore {
         }
         self.index.remove_tickets_batch(&stale_ids)?;
         self.search.remove_batch(&stale_ids)?;
-        record_phase_timing(
-            &mut phase_timings_ms,
-            "prune_stale_ms",
-            prune_started,
-        );
+        record_phase_timing(&mut phase_timings_ms, "prune_stale_ms", prune_started);
 
         let workflow_started = Instant::now();
         let workflow_timings = if reindex {
@@ -642,11 +584,7 @@ impl TicketStore {
         } else {
             let mut roots = workflow_root_ids.into_iter().collect::<Vec<_>>();
             roots.sort_unstable();
-            self.refresh_workflow_facts_for_roots_with_timings(
-                &roots,
-                false,
-                Utc::now(),
-            )?
+            self.refresh_workflow_facts_for_roots_with_timings(&roots, false, Utc::now())?
         };
         merge_phase_totals(&mut phase_timings_ms, workflow_timings);
         record_phase_timing(
@@ -673,9 +611,7 @@ impl TicketStore {
         })
     }
 
-    fn backfill_file_backed_edges_from_index(
-        &self
-    ) -> Result<(), StorageError> {
+    fn backfill_file_backed_edges_from_index(&self) -> Result<(), StorageError> {
         for edge in self.index.list_all_edges()? {
             if !is_file_backed_edge_kind(&edge.kind) {
                 continue;
@@ -688,21 +624,13 @@ impl TicketStore {
                 continue;
             }
 
-            TicketFs::update_edge_field(
-                &source.path,
-                &edge.kind,
-                edge.to,
-                true,
-            )?;
+            TicketFs::update_edge_field(&source.path, &edge.kind, edge.to, true)?;
         }
 
         Ok(())
     }
 
-    pub fn integrate_orphan(
-        &self,
-        path: &Path,
-    ) -> Result<bool, StorageError> {
+    pub fn integrate_orphan(&self, path: &Path) -> Result<bool, StorageError> {
         let id: Uuid = match path
             .file_name()
             .and_then(|name| name.to_str())

@@ -3,20 +3,11 @@ use std::collections::BTreeMap;
 use dioxus::prelude::*;
 
 use crate::{
-    api::{
-        HttpTicketBackend,
-        TicketBackend,
-    },
-    types::{
-        BatchCommand,
-        BatchRequest,
-    },
+    api::{HttpTicketBackend, TicketBackend},
+    types::{BatchCommand, BatchRequest},
 };
 
-use super::model::{
-    BulkOp,
-    CommandResult,
-};
+use super::model::{BulkOp, CommandResult};
 
 pub(crate) fn toggle_pending_op(
     mut pending_op: Signal<Option<BulkOp>>,
@@ -56,19 +47,16 @@ pub(crate) fn apply_batch_operation(
                 results.set(build_results(&request.commands, &response.status));
                 running.set(false);
                 pending_op.set(None);
-            },
+            }
             Err(error) => {
                 global_error.set(Some(error));
                 running.set(false);
-            },
+            }
         }
     });
 }
 
-fn build_commands(
-    ids: &[String],
-    op: &BulkOp,
-) -> Vec<BatchCommand> {
+fn build_commands(ids: &[String], op: &BulkOp) -> Vec<BatchCommand> {
     ids.iter()
         .map(|id| match op {
             BulkOp::SetState(state) => BatchCommand::Update {
@@ -95,10 +83,7 @@ fn build_commands(
         .collect()
 }
 
-fn build_results(
-    commands: &[BatchCommand],
-    status: &str,
-) -> Vec<CommandResult> {
+fn build_results(commands: &[BatchCommand], status: &str) -> Vec<CommandResult> {
     commands
         .iter()
         .map(|command| CommandResult {

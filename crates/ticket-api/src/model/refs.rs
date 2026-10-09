@@ -8,19 +8,12 @@
 //! a foreign kind already present never fails — see
 //! `memory_kernel::model::entity::EntityManifest::refs`.
 
-use memory_kernel::model::{
-    index_entry::ContentKind,
-    urn::Urn,
-};
+use memory_kernel::model::{index_entry::ContentKind, urn::Urn};
 
-use crate::error::{
-    SchemaValidationError,
-    StorageError,
-};
+use crate::error::{SchemaValidationError, StorageError};
 
 /// The closed set of ref kinds accepted at write time.
-pub const REF_KINDS: &[&str] =
-    &["spec", "test_execution", "log", "rule", "file", "commit"];
+pub const REF_KINDS: &[&str] = &["spec", "test_execution", "log", "rule", "file", "commit"];
 
 /// Returns `true` when `kind` is one of [`REF_KINDS`].
 pub fn is_known_ref_kind(kind: &str) -> bool {
@@ -34,10 +27,7 @@ fn invalid_kind_err(kind: &str) -> StorageError {
     })
 }
 
-fn invalid_urn_err(
-    kind: &str,
-    urn: &str,
-) -> StorageError {
+fn invalid_urn_err(kind: &str, urn: &str) -> StorageError {
     StorageError::Validation(SchemaValidationError::InvalidRefUrn {
         kind: kind.to_string(),
         urn: urn.to_string(),
@@ -55,38 +45,32 @@ pub fn validate_ref_kind(kind: &str) -> Result<(), StorageError> {
 
 /// Validate that `urn` has the shape expected for `kind`. `kind` must
 /// already be a member of [`REF_KINDS`] (call [`validate_ref_kind`] first).
-pub fn validate_ref_urn(
-    kind: &str,
-    urn: &str,
-) -> Result<(), StorageError> {
+pub fn validate_ref_urn(kind: &str, urn: &str) -> Result<(), StorageError> {
     match kind {
         "spec" => {
             let parsed = Urn::parse(urn).map_err(|_| invalid_urn_err(kind, urn))?;
             if parsed.store != ContentKind::Spec {
                 return Err(invalid_urn_err(kind, urn));
             }
-        },
+        }
         "rule" => {
             let parsed = Urn::parse(urn).map_err(|_| invalid_urn_err(kind, urn))?;
             if parsed.store != ContentKind::Rule {
                 return Err(invalid_urn_err(kind, urn));
             }
-        },
+        }
         "test_execution" => {
-            validate_ce_shape(urn, "test-execution")
-                .map_err(|_| invalid_urn_err(kind, urn))?;
-        },
+            validate_ce_shape(urn, "test-execution").map_err(|_| invalid_urn_err(kind, urn))?;
+        }
         "log" => {
-            validate_ce_shape(urn, "log")
-                .map_err(|_| invalid_urn_err(kind, urn))?;
-        },
+            validate_ce_shape(urn, "log").map_err(|_| invalid_urn_err(kind, urn))?;
+        }
         "file" => {
-            validate_repo_relative_path(urn)
-                .map_err(|_| invalid_urn_err(kind, urn))?;
-        },
+            validate_repo_relative_path(urn).map_err(|_| invalid_urn_err(kind, urn))?;
+        }
         "commit" => {
             validate_commit_sha(urn).map_err(|_| invalid_urn_err(kind, urn))?;
-        },
+        }
         _ => return Err(invalid_kind_err(kind)),
     }
     Ok(())
@@ -95,10 +79,7 @@ pub fn validate_ref_urn(
 /// Validate and construct a ref entry, applying both kind and URN-shape
 /// validation. The single write-time entry point for callers that add a
 /// new `[[refs]]` entry.
-pub fn validate_new_ref(
-    kind: &str,
-    urn: &str,
-) -> Result<(), StorageError> {
+pub fn validate_new_ref(kind: &str, urn: &str) -> Result<(), StorageError> {
     validate_ref_kind(kind)?;
     validate_ref_urn(kind, urn)?;
     Ok(())
@@ -107,10 +88,7 @@ pub fn validate_new_ref(
 /// Loose `ce://<workspace>/<store-slug>/<id>` shape check for kinds whose
 /// entity id is not a UUID (test executions and logs use free-form string
 /// ids), so this does not reuse the strict [`Urn`] parser.
-fn validate_ce_shape(
-    urn: &str,
-    expected_store_slug: &str,
-) -> Result<(), ()> {
+fn validate_ce_shape(urn: &str, expected_store_slug: &str) -> Result<(), ()> {
     let rest = urn.strip_prefix("ce://").ok_or(())?;
     let segments: Vec<&str> = rest.split('/').collect();
     if segments.len() != 3 {
@@ -179,8 +157,11 @@ mod tests {
         assert!(validate_ref_urn("spec", &ok).is_ok());
         assert!(validate_ref_urn("spec", "not-a-urn").is_err());
         assert!(
-            validate_ref_urn("spec", &format!("ce://default/ticket/{}", uuid::Uuid::new_v4()))
-                .is_err()
+            validate_ref_urn(
+                "spec",
+                &format!("ce://default/ticket/{}", uuid::Uuid::new_v4())
+            )
+            .is_err()
         );
     }
 
@@ -192,7 +173,9 @@ mod tests {
 
     #[test]
     fn file_ref_rejects_absolute_and_traversal_paths() {
-        assert!(validate_ref_urn("file", "memory-api/crates/ticket-api/src/storage/store.rs").is_ok());
+        assert!(
+            validate_ref_urn("file", "memory-api/crates/ticket-api/src/storage/store.rs").is_ok()
+        );
         assert!(validate_ref_urn("file", "/etc/passwd").is_err());
         assert!(validate_ref_urn("file", "../secrets.toml").is_err());
         assert!(validate_ref_urn("file", "a\\b.rs").is_err());

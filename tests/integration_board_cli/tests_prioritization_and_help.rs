@@ -6,12 +6,10 @@ fn next_and_board_prefer_newer_tickets_before_older_ones() {
     let newer = create_ticket(&s, "Zulu newer candidate");
 
     for ticket_id in [&older, &newer] {
-        let ready =
-            s.ticket_json(&["update", ticket_id, "--to-state", "planned"]);
+        let ready = s.ticket_json(&["update", ticket_id, "--to-state", "planned"]);
         assert_eq!(ready["status"], "ok");
 
-        let priority =
-            s.ticket_json(&["update", ticket_id, "--field", "priority=high"]);
+        let priority = s.ticket_json(&["update", ticket_id, "--field", "priority=high"]);
         assert_eq!(priority["status"], "ok");
     }
 
@@ -36,12 +34,10 @@ fn next_and_board_prefer_more_dependees_before_newer_tickets() {
     let dependent_two = create_ticket(&s, "Dependent two");
 
     for ticket_id in [&older_more_dependees, &newer_fewer_dependees] {
-        let ready =
-            s.ticket_json(&["update", ticket_id, "--to-state", "planned"]);
+        let ready = s.ticket_json(&["update", ticket_id, "--to-state", "planned"]);
         assert_eq!(ready["status"], "ok");
 
-        let priority =
-            s.ticket_json(&["update", ticket_id, "--field", "priority=high"]);
+        let priority = s.ticket_json(&["update", ticket_id, "--field", "priority=high"]);
         assert_eq!(priority["status"], "ok");
     }
 
@@ -69,8 +65,7 @@ fn next_and_board_prefer_more_dependees_before_newer_tickets() {
 }
 
 #[test]
-fn next_and_board_prefer_recently_actionable_candidates_and_surface_timing_metadata()
- {
+fn next_and_board_prefer_recently_actionable_candidates_and_surface_timing_metadata() {
     let s = Sandbox::new();
     assert_eq!(s.ticket_json(&["init"])["status"], "ok");
     let recently_actionable = create_ticket(&s, "Alpha recently actionable");
@@ -78,18 +73,15 @@ fn next_and_board_prefer_recently_actionable_candidates_and_surface_timing_metad
     let transient_blocker = create_ticket(&s, "Transient blocker");
 
     for ticket_id in [&recently_actionable, &steadier_newer] {
-        let ready =
-            s.ticket_json(&["update", ticket_id, "--to-state", "planned"]);
+        let ready = s.ticket_json(&["update", ticket_id, "--to-state", "planned"]);
         assert_eq!(ready["status"], "ok");
 
-        let priority =
-            s.ticket_json(&["update", ticket_id, "--field", "priority=high"]);
+        let priority = s.ticket_json(&["update", ticket_id, "--field", "priority=high"]);
         assert_eq!(priority["status"], "ok");
     }
 
     for state in ["planned", "in-implementation", "in-review"] {
-        let updated =
-            s.ticket_json(&["update", &transient_blocker, "--to-state", state]);
+        let updated = s.ticket_json(&["update", &transient_blocker, "--to-state", state]);
         assert_eq!(updated["status"], "ok");
     }
 
@@ -135,18 +127,12 @@ fn next_and_board_promote_convergence_before_unrelated_ready_work() {
     assert_eq!(unrelated_ready_state["status"], "ok");
 
     for state in ["planned", "in-implementation", "in-review"] {
-        let dependent_state = s.ticket_json(&[
-            "update",
-            &advanced_dependent,
-            "--to-state",
-            state,
-        ]);
+        let dependent_state = s.ticket_json(&["update", &advanced_dependent, "--to-state", state]);
         assert_eq!(dependent_state["status"], "ok");
     }
 
     for ticket_id in [&lagging_prerequisite, &unrelated_ready] {
-        let priority =
-            s.ticket_json(&["update", ticket_id, "--field", "priority=high"]);
+        let priority = s.ticket_json(&["update", ticket_id, "--field", "priority=high"]);
         assert_eq!(priority["status"], "ok");
     }
 
@@ -292,8 +278,7 @@ fn update_board_check_in_without_agent_fails() {
     let s = Sandbox::new();
     let ticket_id = create_ticket(&s, "Missing agent ticket");
 
-    let (code, _stderr) =
-        s.ticket_fail(&["update", &ticket_id, "--board-check-in"]);
+    let (code, _stderr) = s.ticket_fail(&["update", &ticket_id, "--board-check-in"]);
     assert!(
         code != 0,
         "should exit non-zero when --board-agent is missing"

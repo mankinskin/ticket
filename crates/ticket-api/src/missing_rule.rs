@@ -1,16 +1,8 @@
-use std::{
-    collections::BTreeMap,
-    path::Path,
-};
+use std::{collections::BTreeMap, path::Path};
 
 use feedback_api::{
-    EntityFeedbackStore,
-    EntityUrn,
-    FeedbackEntry,
-    FeedbackNoteKind,
-    FeedbackProvenance,
-    FeedbackRating,
-    FeedbackSource,
+    EntityFeedbackStore, EntityUrn, FeedbackEntry, FeedbackNoteKind, FeedbackProvenance,
+    FeedbackRating, FeedbackSource,
 };
 use serde_json::Value;
 use uuid::Uuid;
@@ -37,7 +29,10 @@ pub fn handle_missing_rule_match(
     }
 
     let ticket_id = Uuid::new_v4();
-    let title = format!("[missing-rule] Add missing rule for situation: {}", query_text);
+    let title = format!(
+        "[missing-rule] Add missing rule for situation: {}",
+        query_text
+    );
     let description = format!(
         "A session situation query returned no matching rule.\n\n### Query:\n- `{}`\n\n### Context tags:\n- {:?}",
         query_text, context_tags

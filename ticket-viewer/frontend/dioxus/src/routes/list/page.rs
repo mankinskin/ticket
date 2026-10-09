@@ -1,57 +1,31 @@
 use dioxus::prelude::*;
 
 use viewer_api_dioxus::{
-    FilterToggleButton,
-    HamburgerIcon,
-    Layout,
-    LayoutMode,
-    Overlay,
-    PageHeader,
-    Projection,
-    Sidebar,
-    ThemeSettings,
-    SIDEBAR_MOBILE_BREAKPOINT_PX,
+    FilterToggleButton, HamburgerIcon, Layout, LayoutMode, Overlay, PageHeader, Projection,
+    Sidebar, ThemeSettings, SIDEBAR_MOBILE_BREAKPOINT_PX,
 };
 
 use crate::{
-    api::{
-        HttpTicketBackend,
-        TicketBackend,
-    },
+    api::{HttpTicketBackend, TicketBackend},
     components::{
         batch_panel::BatchPanel,
         search::SearchBar,
         ticket_tree::TicketTree,
-        workflow_explorer::{
-            WorkflowExplorer,
-            WorkflowSidebarMode,
-        },
+        workflow_explorer::{WorkflowExplorer, WorkflowSidebarMode},
     },
     routes::Route,
     sse::use_sse,
-    types::{
-        TicketRef,
-        TicketSummary,
-    },
+    types::{TicketRef, TicketSummary},
 };
 
 use super::{
     helpers::{
-        apply_select_all,
-        close_mobile_or_toggle_sidebar,
-        handle_file_selection,
-        initial_window_width,
-        sidebar_button_state,
-        toggle_batch_selection,
-        toggle_sidebar_button,
+        apply_select_all, close_mobile_or_toggle_sidebar, handle_file_selection,
+        initial_window_width, sidebar_button_state, toggle_batch_selection, toggle_sidebar_button,
         toggle_ticket_selection,
     },
-    panels::{
-        render_empty_main_panel,
-        render_selected_main_panel,
-    },
-    DETAIL_COLLAPSE_PX,
-    GRAPH_COLLAPSE_PX,
+    panels::{render_empty_main_panel, render_selected_main_panel},
+    DETAIL_COLLAPSE_PX, GRAPH_COLLAPSE_PX,
 };
 
 #[component]
@@ -71,11 +45,9 @@ pub fn TicketListPage(workspace: String) -> Element {
     #[cfg_attr(not(target_arch = "wasm32"), allow(unused_mut))]
     let mut show_theme_settings = use_signal(|| false);
     #[cfg_attr(not(target_arch = "wasm32"), allow(unused_mut))]
-    let mut workflow_mode: Signal<Option<WorkflowSidebarMode>> =
-        use_signal(|| None);
+    let mut workflow_mode: Signal<Option<WorkflowSidebarMode>> = use_signal(|| None);
     #[cfg_attr(not(target_arch = "wasm32"), allow(unused_mut))]
-    let mut workflow_root_ticket: Signal<Option<TicketRef>> =
-        use_signal(|| None);
+    let mut workflow_root_ticket: Signal<Option<TicketRef>> = use_signal(|| None);
 
     #[cfg_attr(not(target_arch = "wasm32"), allow(unused_mut))]
     let mut tickets: Signal<Vec<TicketSummary>> = use_signal(Vec::new);
@@ -90,8 +62,7 @@ pub fn TicketListPage(workspace: String) -> Element {
     #[cfg_attr(not(target_arch = "wasm32"), allow(unused_mut))]
     let mut graph_root_ticket: Signal<Option<TicketRef>> = use_signal(|| None);
     #[cfg_attr(not(target_arch = "wasm32"), allow(unused_mut))]
-    let mut graph_content_ticket: Signal<Option<TicketRef>> =
-        use_signal(|| None);
+    let mut graph_content_ticket: Signal<Option<TicketRef>> = use_signal(|| None);
     use_effect(move || {
         let next_selected = selected_ticket.read().clone();
         match next_selected {
@@ -104,7 +75,7 @@ pub fn TicketListPage(workspace: String) -> Element {
                 if root_needs_reset {
                     graph_root_ticket.set(Some(ticket_ref));
                 }
-            },
+            }
             None => graph_root_ticket.set(None),
         }
         graph_content_ticket.set(None);
@@ -130,23 +101,19 @@ pub fn TicketListPage(workspace: String) -> Element {
     #[cfg_attr(not(target_arch = "wasm32"), allow(unused_mut))]
     let mut view_mode: Signal<String> = use_signal(|| "split".to_string());
     #[cfg_attr(not(target_arch = "wasm32"), allow(unused_mut))]
-    let mut graph_layout_mode: Signal<LayoutMode> =
-        use_signal(|| LayoutMode::Hierarchical3D);
+    let mut graph_layout_mode: Signal<LayoutMode> = use_signal(|| LayoutMode::Hierarchical3D);
     #[cfg_attr(not(target_arch = "wasm32"), allow(unused_mut))]
-    let mut graph_projection: Signal<Projection> =
-        use_signal(|| Projection::Orthographic);
+    let mut graph_projection: Signal<Projection> = use_signal(|| Projection::Orthographic);
     #[cfg_attr(not(target_arch = "wasm32"), allow(unused_mut))]
     let mut graph_panel_width: Signal<f64> = use_signal(|| 320.0_f64);
     #[cfg_attr(not(target_arch = "wasm32"), allow(unused_mut))]
     let mut detail_panel_width: Signal<f64> = use_signal(|| 240.0_f64);
     #[cfg_attr(not(target_arch = "wasm32"), allow(unused_mut))]
-    let mut selected_file: Signal<Option<(TicketRef, String)>> =
-        use_signal(|| None);
+    let mut selected_file: Signal<Option<(TicketRef, String)>> = use_signal(|| None);
     #[cfg_attr(not(target_arch = "wasm32"), allow(unused_mut))]
     let mut window_width: Signal<u32> = use_signal(initial_window_width);
     #[cfg(target_arch = "wasm32")]
-    let mut resize_guard: Signal<Option<gloo_events::EventListener>> =
-        use_signal(|| None);
+    let mut resize_guard: Signal<Option<gloo_events::EventListener>> = use_signal(|| None);
     #[cfg_attr(not(target_arch = "wasm32"), allow(unused_mut))]
     let mut detail_panel_override: Signal<Option<bool>> = use_signal(|| None);
     #[cfg_attr(not(target_arch = "wasm32"), allow(unused_mut))]
@@ -168,11 +135,7 @@ pub fn TicketListPage(workspace: String) -> Element {
                     if *workspace_label_request_seq.peek() != request_seq {
                         return;
                     }
-                    workspace_label.set(
-                        response
-                            .label_for_name(&workspace)
-                            .unwrap_or(workspace),
-                    );
+                    workspace_label.set(response.label_for_name(&workspace).unwrap_or(workspace));
                 }
             });
         });
@@ -207,12 +170,7 @@ pub fn TicketListPage(workspace: String) -> Element {
                 };
                 let state = if state.is_empty() { None } else { Some(state) };
                 match backend
-                    .list_tickets(
-                        &workspace,
-                        state.as_deref(),
-                        query.as_deref(),
-                        Some(200),
-                    )
+                    .list_tickets(&workspace, state.as_deref(), query.as_deref(), Some(200))
                     .await
                 {
                     Ok(response) => {
@@ -222,7 +180,7 @@ pub fn TicketListPage(workspace: String) -> Element {
                         tickets.set(response.items);
                         loading.set(false);
                         silent_refresh.set(false);
-                    },
+                    }
                     Err(error) => {
                         if *list_request_seq.peek() != request_seq {
                             return;
@@ -230,7 +188,7 @@ pub fn TicketListPage(workspace: String) -> Element {
                         list_error.set(Some(error));
                         loading.set(false);
                         silent_refresh.set(false);
-                    },
+                    }
                 }
             });
         });
@@ -254,8 +212,7 @@ pub fn TicketListPage(workspace: String) -> Element {
         use_effect(move || {
             let tickets = tickets.read();
             for ticket in tickets.iter().take(PREFETCH_N) {
-                let ticket_ref =
-                    ticket.resolved_ticket_ref(&workspace_prefetch);
+                let ticket_ref = ticket.resolved_ticket_ref(&workspace_prefetch);
                 service.ensure_fetched(&ticket_ref.workspace, &ticket_ref.id);
             }
         });
@@ -264,16 +221,15 @@ pub fn TicketListPage(workspace: String) -> Element {
     #[cfg(target_arch = "wasm32")]
     use_effect(move || {
         if let Some(window) = web_sys::window() {
-            let listener =
-                gloo_events::EventListener::new(&window, "resize", move |_| {
-                    if let Some(window) = web_sys::window() {
-                        if let Ok(inner_width) = window.inner_width() {
-                            if let Some(value) = inner_width.as_f64() {
-                                window_width.set(value as u32);
-                            }
+            let listener = gloo_events::EventListener::new(&window, "resize", move |_| {
+                if let Some(window) = web_sys::window() {
+                    if let Ok(inner_width) = window.inner_width() {
+                        if let Some(value) = inner_width.as_f64() {
+                            window_width.set(value as u32);
                         }
                     }
-                });
+                }
+            });
             resize_guard.set(Some(listener));
         }
     });
@@ -290,8 +246,7 @@ pub fn TicketListPage(workspace: String) -> Element {
     let graph_panel_collapsed = graph_panel_override
         .read()
         .unwrap_or(window_width_value < GRAPH_COLLAPSE_PX);
-    let sidebar_is_mobile =
-        (window_width_value as f64) <= SIDEBAR_MOBILE_BREAKPOINT_PX;
+    let sidebar_is_mobile = (window_width_value as f64) <= SIDEBAR_MOBILE_BREAKPOINT_PX;
     let (sidebar_button_active, sidebar_button_label) = sidebar_button_state(
         sidebar_is_mobile,
         *mobile_sidebar_open.read(),
@@ -299,8 +254,7 @@ pub fn TicketListPage(workspace: String) -> Element {
     );
     let selected_ticket_ref = selected_ticket_snapshot.clone();
     let workspace_title = workspace_label.read().clone();
-    let workspace_subtitle =
-        (workspace_title != workspace).then(|| workspace.clone());
+    let workspace_subtitle = (workspace_title != workspace).then(|| workspace.clone());
 
     rsx! {
         SearchBar {

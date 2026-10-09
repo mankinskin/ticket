@@ -1,19 +1,10 @@
 use super::TicketStore;
 use crate::{
-    error::{
-        ProtocolError,
-        StorageError,
-    },
+    error::{ProtocolError, StorageError},
     model::ticket::TicketManifest,
-    storage::{
-        index::RedbIndexStore,
-        indexed::IndexedTicket,
-    },
+    storage::{index::RedbIndexStore, indexed::IndexedTicket},
 };
-use serde::{
-    Deserialize,
-    Serialize,
-};
+use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use std::collections::BTreeMap;
 use uuid::Uuid;
@@ -100,9 +91,7 @@ impl TicketStore {
         );
         patch.insert(
             "required_checks".to_string(),
-            Value::Array(
-                required_checks.into_iter().map(Value::String).collect(),
-            ),
+            Value::Array(required_checks.into_iter().map(Value::String).collect()),
         );
         patch.insert(
             "assignment_id".to_string(),
@@ -146,8 +135,7 @@ impl TicketStore {
             .get("validator_id")
             .and_then(|value| value.as_str())
             .unwrap_or("");
-        if !recorded_validator.is_empty() && recorded_validator != validator_id
-        {
+        if !recorded_validator.is_empty() && recorded_validator != validator_id {
             return Err(ProtocolError::ValidateAssignmentMismatch.into());
         }
 
@@ -256,9 +244,7 @@ impl TicketStore {
         );
         patch.insert(
             "assignment_chain".to_string(),
-            Value::Array(
-                assignment_chain.into_iter().map(Value::String).collect(),
-            ),
+            Value::Array(assignment_chain.into_iter().map(Value::String).collect()),
         );
 
         self.update(ticket_id, patch, Some(&[]), Some("done"), None, None)
@@ -276,22 +262,15 @@ impl TicketStore {
             .collect();
 
         if candidates.is_empty() {
-            return Err(ProtocolError::ReleaseTargetNotFound(
-                release_target.to_string(),
-            )
-            .into());
+            return Err(ProtocolError::ReleaseTargetNotFound(release_target.to_string()).into());
         }
 
         let mut gates = BTreeMap::new();
         let mut blocking_reasons = Vec::new();
 
         for gate in required_gates {
-            let (status, reason) = evaluate_gate(
-                gate.as_str(),
-                &candidates,
-                release_target,
-                &self.index,
-            )?;
+            let (status, reason) =
+                evaluate_gate(gate.as_str(), &candidates, release_target, &self.index)?;
             if let Some(reason) = reason {
                 blocking_reasons.push(format!("{gate}: {reason}"));
             }
@@ -316,8 +295,7 @@ impl TicketStore {
             return Err(ProtocolError::ReleaseMergeMetadataMissing.into());
         }
 
-        let gate_outcome =
-            self.release_gate_check(release_target, required_gates)?;
+        let gate_outcome = self.release_gate_check(release_target, required_gates)?;
         let failing_gates: Vec<_> = gate_outcome
             .gates
             .iter()
@@ -389,7 +367,7 @@ fn evaluate_gate(
                     Some("some tickets are not yet done".to_string()),
                 ))
             }
-        },
+        }
         "R2" | "R3" | "R4" => Ok((GateStatus::Pass, None)),
         unknown => Ok((
             GateStatus::Fail,

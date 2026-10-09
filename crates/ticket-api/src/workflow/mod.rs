@@ -8,30 +8,19 @@
 
 use std::{
     cmp::Ordering,
-    collections::{
-        HashMap,
-        HashSet,
-        VecDeque,
-    },
+    collections::{HashMap, HashSet, VecDeque},
 };
 
-use chrono::{
-    DateTime,
-    Utc,
-};
+use chrono::{DateTime, Utc};
 use serde::Serialize;
 use uuid::Uuid;
 
 use crate::{
-    BoardEntryStatus,
-    BoardSnapshot,
+    BoardEntryStatus, BoardSnapshot,
     error::StorageError,
     model::edge::EdgeRecord,
     storage::{
-        indexed::{
-            IndexedTicket,
-            WorkflowFacts,
-        },
+        indexed::{IndexedTicket, WorkflowFacts},
         store::TicketStore,
         ticket_fs::TicketFs,
     },
@@ -143,9 +132,8 @@ impl WorkflowModel {
         let state_index = build_state_index(store);
         let priorities = read_priorities(&tickets);
         let efforts = read_efforts(&tickets);
-        let workflow_facts = store.get_workflow_facts_many(
-            &tickets.iter().map(|ticket| ticket.id).collect::<Vec<_>>(),
-        )?;
+        let workflow_facts = store
+            .get_workflow_facts_many(&tickets.iter().map(|ticket| ticket.id).collect::<Vec<_>>())?;
         Ok(Self::build_from_parts(
             tickets,
             all_edges,
@@ -156,66 +144,39 @@ impl WorkflowModel {
         ))
     }
 
-    pub fn ticket(
-        &self,
-        ticket_id: &Uuid,
-    ) -> Option<&IndexedTicket> {
+    pub fn ticket(&self, ticket_id: &Uuid) -> Option<&IndexedTicket> {
         self.tickets.get(ticket_id)
     }
 
-    pub fn priority(
-        &self,
-        ticket_id: &Uuid,
-    ) -> Option<&str> {
+    pub fn priority(&self, ticket_id: &Uuid) -> Option<&str> {
         self.priorities.get(ticket_id).map(String::as_str)
     }
 
-    pub fn priority_or_none(
-        &self,
-        ticket_id: &Uuid,
-    ) -> &str {
+    pub fn priority_or_none(&self, ticket_id: &Uuid) -> &str {
         self.priority(ticket_id).unwrap_or("none")
     }
 
-    pub fn effort(
-        &self,
-        ticket_id: &Uuid,
-    ) -> Option<u64> {
+    pub fn effort(&self, ticket_id: &Uuid) -> Option<u64> {
         self.efforts.get(ticket_id).copied()
     }
 
-    pub fn metrics(
-        &self,
-        ticket_id: &Uuid,
-    ) -> Option<&TicketConvergenceMetrics> {
+    pub fn metrics(&self, ticket_id: &Uuid) -> Option<&TicketConvergenceMetrics> {
         self.metrics.get(ticket_id)
     }
 
-    pub fn dependency_count(
-        &self,
-        ticket_id: &Uuid,
-    ) -> usize {
+    pub fn dependency_count(&self, ticket_id: &Uuid) -> usize {
         self.dependency_counts.get(ticket_id).copied().unwrap_or(0)
     }
 
-    pub fn dependee_count(
-        &self,
-        ticket_id: &Uuid,
-    ) -> usize {
+    pub fn dependee_count(&self, ticket_id: &Uuid) -> usize {
         self.dependee_counts.get(ticket_id).copied().unwrap_or(0)
     }
 
-    pub fn unresolved_dependencies(
-        &self,
-        ticket_id: &Uuid,
-    ) -> Option<&[Uuid]> {
+    pub fn unresolved_dependencies(&self, ticket_id: &Uuid) -> Option<&[Uuid]> {
         self.unresolved_deps.get(ticket_id).map(Vec::as_slice)
     }
 
-    pub fn actionable_candidate_ids(
-        &self,
-        scope: Option<&HashSet<Uuid>>,
-    ) -> Vec<Uuid> {
+    pub fn actionable_candidate_ids(&self, scope: Option<&HashSet<Uuid>>) -> Vec<Uuid> {
         self.actionable_candidate_ids_with_satisfied(scope, &HashSet::new())
     }
 
@@ -237,10 +198,7 @@ impl WorkflowModel {
             .collect()
     }
 
-    pub fn eligible_candidate_ids(
-        &self,
-        scope: Option<&HashSet<Uuid>>,
-    ) -> Vec<Uuid> {
+    pub fn eligible_candidate_ids(&self, scope: Option<&HashSet<Uuid>>) -> Vec<Uuid> {
         self.tickets
             .values()
             .filter(|ticket| scope.is_none_or(|ids| ids.contains(&ticket.id)))
@@ -249,27 +207,18 @@ impl WorkflowModel {
             .collect()
     }
 
-    pub fn sort_candidate_ids(
-        &self,
-        candidates: &mut [Uuid],
-    ) {
-        candidates
-            .sort_by(|left, right| self.compare_candidate_ids(*left, *right));
+    pub fn sort_candidate_ids(&self, candidates: &mut [Uuid]) {
+        candidates.sort_by(|left, right| self.compare_candidate_ids(*left, *right));
     }
 
     /// Return the set of ticket IDs whose title starts with `filter`, or `None`
     /// when no filter is supplied.  Adapters should call this instead of
     /// re-implementing title-prefix filtering locally.
-    pub fn filter_scope(
-        tickets: &[IndexedTicket],
-        filter: Option<&str>,
-    ) -> Option<HashSet<Uuid>> {
+    pub fn filter_scope(tickets: &[IndexedTicket], filter: Option<&str>) -> Option<HashSet<Uuid>> {
         filter.map(|prefix| {
             tickets
                 .iter()
-                .filter(|t| {
-                    t.title.as_deref().unwrap_or("").starts_with(prefix)
-                })
+                .filter(|t| t.title.as_deref().unwrap_or("").starts_with(prefix))
                 .map(|t| t.id)
                 .collect()
         })
@@ -277,10 +226,7 @@ impl WorkflowModel {
 
     /// Collect all transitive reverse dependents that directly or indirectly
     /// rely on the supplied ticket.
-    pub fn reverse_dependents(
-        &self,
-        root_id: Uuid,
-    ) -> HashSet<Uuid> {
+    pub fn reverse_dependents(&self, root_id: Uuid) -> HashSet<Uuid> {
         let mut visited = HashSet::new();
         let mut dependents = HashSet::new();
         let mut queue = VecDeque::from([root_id]);
@@ -290,9 +236,7 @@ impl WorkflowModel {
                 continue;
             }
 
-            for dependent in
-                self.reverse_map.get(&current).into_iter().flatten()
-            {
+            for dependent in self.reverse_map.get(&current).into_iter().flatten() {
                 if dependents.insert(*dependent) {
                     queue.push_back(*dependent);
                 }
@@ -307,10 +251,7 @@ impl WorkflowModel {
         &self,
         dependent_ids: &HashSet<Uuid>,
     ) -> HashSet<Uuid> {
-        self.remaining_blockers_for_dependents_with_satisfied(
-            dependent_ids,
-            &HashSet::new(),
-        )
+        self.remaining_blockers_for_dependents_with_satisfied(dependent_ids, &HashSet::new())
     }
 
     /// Return the unresolved prerequisite ids for a dependent set while
@@ -322,9 +263,7 @@ impl WorkflowModel {
     ) -> HashSet<Uuid> {
         dependent_ids
             .iter()
-            .flat_map(|ticket_id| {
-                self.unresolved_dependencies_excluding(ticket_id, satisfied_ids)
-            })
+            .flat_map(|ticket_id| self.unresolved_dependencies_excluding(ticket_id, satisfied_ids))
             .collect()
     }
 
@@ -346,20 +285,14 @@ impl WorkflowModel {
     ///
     /// This returns the unresolved blocker tree beneath the supplied root,
     /// plus descendant blocker ids and summary counts.
-    pub fn root_blocker_scope(
-        &self,
-        root_id: Uuid,
-    ) -> Option<RootBlockerScope> {
+    pub fn root_blocker_scope(&self, root_id: Uuid) -> Option<RootBlockerScope> {
         let tree = self.blocker_tree(root_id)?;
         let remaining_blockers = collect_blocker_descendants(&tree);
         let blocked_dependencies = remaining_blockers
             .iter()
             .filter(|ticket_id| {
                 !self
-                    .unresolved_dependencies_excluding(
-                        ticket_id,
-                        &HashSet::new(),
-                    )
+                    .unresolved_dependencies_excluding(ticket_id, &HashSet::new())
                     .is_empty()
             })
             .count();
@@ -373,19 +306,13 @@ impl WorkflowModel {
     }
 
     /// Build an upstream blocker tree from unresolved `depends_on` edges.
-    pub fn blocker_tree(
-        &self,
-        root_id: Uuid,
-    ) -> Option<WorkflowTreeNode> {
+    pub fn blocker_tree(&self, root_id: Uuid) -> Option<WorkflowTreeNode> {
         let mut path = HashSet::new();
         self.build_blocker_tree_node(root_id, &mut path)
     }
 
     /// Return the frontier leaf ids for an upstream blocker tree.
-    pub fn blocker_frontier_leaf_ids(
-        &self,
-        root_id: Uuid,
-    ) -> Vec<Uuid> {
+    pub fn blocker_frontier_leaf_ids(&self, root_id: Uuid) -> Vec<Uuid> {
         self.blocker_tree(root_id)
             .map(|tree| tree.frontier_leaf_ids)
             .unwrap_or_default()
@@ -414,20 +341,14 @@ impl WorkflowModel {
     }
 
     /// Build a downstream unlock tree while treating the root id as satisfied.
-    pub fn unlock_tree(
-        &self,
-        root_id: Uuid,
-    ) -> Option<WorkflowTreeNode> {
+    pub fn unlock_tree(&self, root_id: Uuid) -> Option<WorkflowTreeNode> {
         let satisfied_ids = HashSet::from([root_id]);
         self.unlock_tree_with_satisfied(root_id, &satisfied_ids)
     }
 
     /// Return the frontier leaf ids for a downstream unlock tree while
     /// treating the root id as satisfied.
-    pub fn unlock_frontier_leaf_ids(
-        &self,
-        root_id: Uuid,
-    ) -> Vec<Uuid> {
+    pub fn unlock_frontier_leaf_ids(&self, root_id: Uuid) -> Vec<Uuid> {
         let satisfied_ids = HashSet::from([root_id]);
         self.unlock_frontier_leaf_ids_with_satisfied(root_id, &satisfied_ids)
     }
@@ -442,10 +363,7 @@ impl WorkflowModel {
             .map(Vec::as_slice)
     }
 
-    pub fn state_rank(
-        &self,
-        state: Option<&str>,
-    ) -> usize {
+    pub fn state_rank(&self, state: Option<&str>) -> usize {
         state
             .and_then(|value| self.state_index.get(value).copied())
             .unwrap_or(0)
@@ -463,8 +381,7 @@ impl WorkflowModel {
             return self.finalize_tree_node(ticket_id, 0, false, Vec::new(), 1);
         }
 
-        let child_ids =
-            self.unresolved_dependencies_excluding(&ticket_id, &HashSet::new());
+        let child_ids = self.unresolved_dependencies_excluding(&ticket_id, &HashSet::new());
         let remaining_blocker_count = child_ids.len();
         let children = child_ids
             .into_iter()
@@ -515,9 +432,7 @@ impl WorkflowModel {
             && is_candidate_state(ticket.state.as_deref());
         let children = child_ids
             .into_iter()
-            .filter_map(|child_id| {
-                self.build_unlock_tree_node(child_id, satisfied_ids, true, path)
-            })
+            .filter_map(|child_id| self.build_unlock_tree_node(child_id, satisfied_ids, true, path))
             .collect::<Vec<_>>();
 
         path.remove(&ticket_id);
@@ -578,31 +493,22 @@ impl WorkflowModel {
             is_frontier,
             dependency_count: metrics.dependency_count,
             immediate_dependees: metrics.immediate_dependees,
-            transitive_reverse_dependents: metrics
-                .transitive_reverse_dependents,
-            affected_reverse_dependent_reach: metrics
-                .affected_reverse_dependent_reach,
+            transitive_reverse_dependents: metrics.transitive_reverse_dependents,
+            affected_reverse_dependent_reach: metrics.affected_reverse_dependent_reach,
             dependency_state_gap: metrics.dependency_state_gap,
         })
     }
 
-    fn sort_tree_nodes(
-        &self,
-        nodes: &mut [WorkflowTreeNode],
-    ) {
+    fn sort_tree_nodes(&self, nodes: &mut [WorkflowTreeNode]) {
         nodes.sort_by(|left, right| {
             left.unresolved_frontier_leaf_count
                 .cmp(&right.unresolved_frontier_leaf_count)
-                .then_with(|| {
-                    left.blocker_distance.cmp(&right.blocker_distance)
-                })
+                .then_with(|| left.blocker_distance.cmp(&right.blocker_distance))
                 .then_with(|| {
                     effort_sort_key(self.effort(&left.ticket_id))
                         .cmp(&effort_sort_key(self.effort(&right.ticket_id)))
                 })
-                .then_with(|| {
-                    right.dependency_state_gap.cmp(&left.dependency_state_gap)
-                })
+                .then_with(|| right.dependency_state_gap.cmp(&left.dependency_state_gap))
                 .then_with(|| {
                     right
                         .affected_reverse_dependent_reach
@@ -614,8 +520,7 @@ impl WorkflowModel {
                         .cmp(&left.transitive_reverse_dependents)
                 })
                 .then_with(|| {
-                    priority_weight(&left.priority)
-                        .cmp(&priority_weight(&right.priority))
+                    priority_weight(&left.priority).cmp(&priority_weight(&right.priority))
                 })
                 .then_with(|| {
                     left.title
@@ -651,12 +556,8 @@ impl WorkflowModel {
             &reverse_map,
             &workflow_facts,
         );
-        let inversions_by_dependent = compute_dependency_state_inversions(
-            &tickets,
-            &all_edges,
-            &state_index,
-            &metrics,
-        );
+        let inversions_by_dependent =
+            compute_dependency_state_inversions(&tickets, &all_edges, &state_index, &metrics);
 
         Self {
             tickets,
@@ -672,11 +573,7 @@ impl WorkflowModel {
         }
     }
 
-    fn compare_candidate_ids(
-        &self,
-        left: Uuid,
-        right: Uuid,
-    ) -> Ordering {
+    fn compare_candidate_ids(&self, left: Uuid, right: Uuid) -> Ordering {
         let Some(left_ticket) = self.tickets.get(&left) else {
             return Ordering::Greater;
         };
@@ -684,8 +581,7 @@ impl WorkflowModel {
             return Ordering::Less;
         };
         let left_metrics = self.metrics.get(&left).cloned().unwrap_or_default();
-        let right_metrics =
-            self.metrics.get(&right).cloned().unwrap_or_default();
+        let right_metrics = self.metrics.get(&right).cloned().unwrap_or_default();
 
         right_metrics
             .max_affected_dependent_state_index
@@ -702,8 +598,7 @@ impl WorkflowModel {
                     .cmp(&left_metrics.affected_reverse_dependent_reach)
             })
             .then_with(|| {
-                effort_sort_key(self.effort(&left))
-                    .cmp(&effort_sort_key(self.effort(&right)))
+                effort_sort_key(self.effort(&left)).cmp(&effort_sort_key(self.effort(&right)))
             })
             .then_with(|| {
                 right_metrics
@@ -729,9 +624,7 @@ impl WorkflowModel {
                     .cmp(&left_metrics.immediate_dependees)
             })
             .then_with(|| right_ticket.created_at.cmp(&left_ticket.created_at))
-            .then_with(|| {
-                ticket_title(left_ticket).cmp(ticket_title(right_ticket))
-            })
+            .then_with(|| ticket_title(left_ticket).cmp(ticket_title(right_ticket)))
             .then_with(|| left.cmp(&right))
     }
 }
@@ -769,10 +662,7 @@ pub fn apply_board_filter(
     let excluded_by_board = snapshot
         .entries
         .iter()
-        .filter(|entry| {
-            tracked_by_board(&entry.status)
-                && candidate_ids.contains(&entry.ticket_id)
-        })
+        .filter(|entry| tracked_by_board(&entry.status) && candidate_ids.contains(&entry.ticket_id))
         .map(|entry| BoardExcludedCandidate {
             ticket_id: entry.ticket_id,
             agent_id: entry.agent_id.clone(),
@@ -822,7 +712,11 @@ fn board_warnings(board_snap: Option<&BoardSnapshot>) -> Vec<String> {
         warnings.push(format!(
             "{} stale board entr{} — heartbeat has expired; run board heartbeat or clean.",
             snapshot.stale_count,
-            if snapshot.stale_count == 1 { "y" } else { "ies" }
+            if snapshot.stale_count == 1 {
+                "y"
+            } else {
+                "ies"
+            }
         ));
     }
 
@@ -854,10 +748,7 @@ fn collect_blocker_descendants(root: &WorkflowTreeNode) -> HashSet<Uuid> {
     ids
 }
 
-fn collect_tree_node_ids(
-    node: &WorkflowTreeNode,
-    ids: &mut HashSet<Uuid>,
-) {
+fn collect_tree_node_ids(node: &WorkflowTreeNode, ids: &mut HashSet<Uuid>) {
     ids.insert(node.ticket_id);
     for child in &node.children {
         collect_tree_node_ids(child, ids);

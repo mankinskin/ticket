@@ -5,10 +5,7 @@
 
 mod common;
 
-use common::{
-    TicketCommands,
-    TicketSandbox as Sandbox,
-};
+use common::{TicketCommands, TicketSandbox as Sandbox};
 
 // ---------------------------------------------------------------------------
 // history

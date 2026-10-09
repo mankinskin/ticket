@@ -1,39 +1,20 @@
 use axum::{
-    extract::{
-        Extension,
-        Path,
-        Query,
-        State,
-    },
+    extract::{Extension, Path, Query, State},
     http::StatusCode,
-    response::{
-        IntoResponse,
-        Json,
-        Response,
-    },
+    response::{IntoResponse, Json, Response},
 };
 use uuid::Uuid;
 
-use viewer_api::error::{
-    ApiError,
-    RequestIdExt,
-};
+use viewer_api::error::{ApiError, RequestIdExt};
 
 use crate::serve::{
     AppState,
-    error::{
-        storage_err,
-        task_join_err,
-    },
+    error::{storage_err, task_join_err},
     registry::ResolvedIndexedTicket,
 };
 
 use super::types::{
-    TicketAssetParam,
-    TicketAssetResponse,
-    TicketFileEntry,
-    TicketFilesResponse,
-    TicketIdParam,
+    TicketAssetParam, TicketAssetResponse, TicketFileEntry, TicketFilesResponse, TicketIdParam,
     TicketRef,
 };
 
@@ -48,11 +29,10 @@ pub async fn list_ticket_files(
     Path(id): Path<Uuid>,
     Query(params): Query<TicketIdParam>,
 ) -> Response {
-    let (workspace, store) =
-        match resolve_workspace_request(&state, &params.workspace, &rid.0) {
-            Ok(resolved) => resolved,
-            Err(response) => return response,
-        };
+    let (workspace, store) = match resolve_workspace_request(&state, &params.workspace, &rid.0) {
+        Ok(resolved) => resolved,
+        Err(response) => return response,
+    };
     let state = state.clone();
     let request_id = rid.0.clone();
     let task_request_id = request_id.clone();
@@ -109,11 +89,10 @@ pub async fn get_ticket_asset(
     Path(id): Path<Uuid>,
     Query(params): Query<TicketAssetParam>,
 ) -> Response {
-    let (workspace, store) =
-        match resolve_workspace_request(&state, &params.workspace, &rid.0) {
-            Ok(resolved) => resolved,
-            Err(response) => return response,
-        };
+    let (workspace, store) = match resolve_workspace_request(&state, &params.workspace, &rid.0) {
+        Ok(resolved) => resolved,
+        Err(response) => return response,
+    };
     let state = state.clone();
     let request_id = rid.0.clone();
     let task_request_id = request_id.clone();
@@ -166,8 +145,7 @@ fn resolve_ticket(
         .resolve_indexed_many(active_workspace, &[id])
         .map_err(|error| storage_err(error, request_id))?;
     resolved.remove(&id).ok_or_else(|| {
-        ApiError::not_found("ticket", request_id)
-            .into_response_with_status(StatusCode::NOT_FOUND)
+        ApiError::not_found("ticket", request_id).into_response_with_status(StatusCode::NOT_FOUND)
     })
 }
 
@@ -203,13 +181,7 @@ fn resolve_ticket_with_preferred_source(
     };
     let local_ticket_ref = match local_ticket
         .as_ref()
-        .map(|ticket| {
-            super::types::ticket_ref_from_indexed(
-                store,
-                active_workspace,
-                ticket,
-            )
-        })
+        .map(|ticket| super::types::ticket_ref_from_indexed(store, active_workspace, ticket))
         .transpose()
     {
         Ok(ticket_ref) => ticket_ref,
@@ -249,8 +221,7 @@ fn should_prefer_local_ticket(
     local_ticket_ref: Option<&TicketRef>,
     resolved_ticket: &ResolvedIndexedTicket,
 ) -> bool {
-    let (Some(ticket), Some(ticket_ref)) = (local_ticket, local_ticket_ref)
-    else {
+    let (Some(ticket), Some(ticket_ref)) = (local_ticket, local_ticket_ref) else {
         return false;
     };
 
@@ -263,8 +234,7 @@ fn should_use_local_ticket(
     ticket: &ticket_api::storage::indexed::IndexedTicket,
     ticket_ref: &TicketRef,
 ) -> bool {
-    ticket_ref.workspace != active_workspace
-        && ticket.path.join("ticket.toml").is_file()
+    ticket_ref.workspace != active_workspace && ticket.path.join("ticket.toml").is_file()
 }
 
 fn resolve_asset_path(
@@ -278,10 +248,7 @@ fn resolve_asset_path(
 
     let canonical_file = match ticket_dir.join(requested_path).canonicalize() {
         Ok(path) => path,
-        Err(_) =>
-            return Err(
-                (StatusCode::NOT_FOUND, "file not found").into_response()
-            ),
+        Err(_) => return Err((StatusCode::NOT_FOUND, "file not found").into_response()),
     };
 
     if !canonical_file.starts_with(&canonical_dir) {
@@ -291,9 +258,7 @@ fn resolve_asset_path(
     Ok(canonical_file)
 }
 
-fn read_asset_content(
-    asset_path: &std::path::Path
-) -> Result<String, Response> {
+fn read_asset_content(asset_path: &std::path::Path) -> Result<String, Response> {
     std::fs::read_to_string(asset_path)
         .map_err(|_| (StatusCode::NOT_FOUND, "file not found").into_response())
 }

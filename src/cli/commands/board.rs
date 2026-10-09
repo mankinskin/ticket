@@ -1,63 +1,36 @@
 use std::collections::HashMap;
 
 use chrono::Utc;
-use serde_json::{
-    Value,
-    json,
-};
+use serde_json::{Value, json};
 use uuid::Uuid;
 
 use ticket_api::storage::{
     TicketStore,
     board::{
-        BoardConfig,
-        BoardEntry,
-        BoardEntryStatus,
-        BoardError,
-        BoardHistorySnapshot,
-        BoardSnapshot,
+        BoardConfig, BoardEntry, BoardEntryStatus, BoardError, BoardHistorySnapshot, BoardSnapshot,
     },
 };
 
-use crate::cli::{
-    BoardArgs,
-    BoardCleanCommand,
-    BoardCommand,
-    CliRunError,
-};
+use crate::cli::{BoardArgs, BoardCleanCommand, BoardCommand, CliRunError};
 
 use super::resolve_uuid_prefix;
 
 mod render;
 
-pub(crate) use self::render::{
-    BoardRecommendation,
-    write_next_up,
-};
+pub(crate) use self::render::{BoardRecommendation, write_next_up};
 
 use self::render::{
-    BoardDisplay,
-    BoardDisplayEntry,
-    BoardHistoryDisplay,
-    board_display_entry_to_json,
-    config_to_json,
-    entry_status,
-    entry_to_json,
-    heartbeat_age_secs,
-    render_board_history_human,
+    BoardDisplay, BoardDisplayEntry, BoardHistoryDisplay, board_display_entry_to_json,
+    config_to_json, entry_status, entry_to_json, heartbeat_age_secs, render_board_history_human,
     render_board_human,
 };
 
 // ── entry point ────────────────────────────────────────────────────────────────
 
-pub(crate) fn cmd_board(
-    args: BoardArgs,
-    store: &TicketStore,
-) -> Result<Value, CliRunError> {
+pub(crate) fn cmd_board(args: BoardArgs, store: &TicketStore) -> Result<Value, CliRunError> {
     match args.command {
         BoardCommand::Show { agent } => cmd_board_show(agent.as_deref(), store),
-        BoardCommand::History { agent } =>
-            cmd_board_history(agent.as_deref(), store),
+        BoardCommand::History { agent } => cmd_board_history(agent.as_deref(), store),
         BoardCommand::Worktrees => cmd_board_worktrees(store),
         BoardCommand::CheckIn {
             id,
@@ -79,10 +52,10 @@ pub(crate) fn cmd_board(
             branch,
             store,
         ),
-        BoardCommand::CheckOut { id, agent, reason } =>
-            cmd_board_check_out(id, agent, reason, store),
-        BoardCommand::Heartbeat { entry_id } =>
-            cmd_board_heartbeat(entry_id, store),
+        BoardCommand::CheckOut { id, agent, reason } => {
+            cmd_board_check_out(id, agent, reason, store)
+        }
+        BoardCommand::Heartbeat { entry_id } => cmd_board_heartbeat(entry_id, store),
         BoardCommand::Configure {
             max_wip,
             stale_after_secs,
@@ -94,8 +67,9 @@ pub(crate) fn cmd_board(
             store,
         ),
         BoardCommand::Clean(clean_args) => match clean_args.command {
-            BoardCleanCommand::Preview { include_stale } =>
-                cmd_board_clean_preview(include_stale, store),
+            BoardCleanCommand::Preview { include_stale } => {
+                cmd_board_clean_preview(include_stale, store)
+            }
             BoardCleanCommand::Apply {
                 token,
                 include_stale,
@@ -118,10 +92,7 @@ pub(crate) fn cmd_board(
 
 // ── show ──────────────────────────────────────────────────────────────────────
 
-fn cmd_board_show(
-    agent: Option<&str>,
-    store: &TicketStore,
-) -> Result<Value, CliRunError> {
+fn cmd_board_show(agent: Option<&str>, store: &TicketStore) -> Result<Value, CliRunError> {
     let mut snap = store.board_show(agent)?;
 
     // When an agent is supplied, also refresh heartbeats for that agent's active
@@ -181,10 +152,7 @@ fn cmd_board_show(
     }))
 }
 
-fn cmd_board_history(
-    agent: Option<&str>,
-    store: &TicketStore,
-) -> Result<Value, CliRunError> {
+fn cmd_board_history(agent: Option<&str>, store: &TicketStore) -> Result<Value, CliRunError> {
     let snap = store.board_history(agent)?;
     let display = build_board_history_display(&snap, store)?;
     let entries: Vec<Value> = display
@@ -231,7 +199,11 @@ fn cmd_board_worktrees(store: &TicketStore) -> Result<Value, CliRunError> {
                 sessions,
                 agents,
                 tickets,
-                if worktree.conflicted { "  CONFLICT" } else { "" },
+                if worktree.conflicted {
+                    "  CONFLICT"
+                } else {
+                    ""
+                },
             ));
         }
     }
@@ -268,9 +240,7 @@ fn build_board_display(
 
     let current_work: Vec<BoardDisplayEntry> = current_work
         .into_iter()
-        .map(|entry| {
-            build_display_entry(entry, &snap.config, &ticket_summaries)
-        })
+        .map(|entry| build_display_entry(entry, &snap.config, &ticket_summaries))
         .collect();
 
     let actions = build_actions(snap, &current_work);
@@ -289,17 +259,13 @@ fn build_board_history_display(
     let entries = snap
         .entries
         .iter()
-        .map(|entry| {
-            build_display_entry(entry, &snap.config, &ticket_summaries)
-        })
+        .map(|entry| build_display_entry(entry, &snap.config, &ticket_summaries))
         .collect();
 
     Ok(BoardHistoryDisplay { entries })
 }
 
-fn load_ticket_summaries(
-    store: &TicketStore
-) -> Result<HashMap<Uuid, TicketSummary>, CliRunError> {
+fn load_ticket_summaries(store: &TicketStore) -> Result<HashMap<Uuid, TicketSummary>, CliRunError> {
     Ok(store
         .list(None, None, None)?
         .into_iter()
@@ -343,9 +309,7 @@ fn build_display_entry(
     }
 }
 
-pub(crate) fn parse_board_recommendation(
-    value: &Value
-) -> Option<BoardRecommendation> {
+pub(crate) fn parse_board_recommendation(value: &Value) -> Option<BoardRecommendation> {
     Some(BoardRecommendation {
         rank: value.get("rank")?.as_u64()? as usize,
         ticket_id: value.get("id")?.as_str()?.to_string(),
@@ -385,10 +349,7 @@ pub(crate) fn parse_board_recommendation(
     })
 }
 
-fn build_actions(
-    snap: &BoardSnapshot,
-    current_work: &[BoardDisplayEntry],
-) -> Vec<String> {
+fn build_actions(snap: &BoardSnapshot, current_work: &[BoardDisplayEntry]) -> Vec<String> {
     let mut actions = Vec::new();
 
     if snap.conflict_count > 0 {
@@ -414,10 +375,7 @@ fn build_actions(
             snap.config.max_wip
         ));
     } else if current_work.is_empty() {
-        actions.push(
-            "Board is clear. Run 'ticket next' to see unblocked tickets."
-                .to_string(),
-        );
+        actions.push("Board is clear. Run 'ticket next' to see unblocked tickets.".to_string());
     }
 
     actions
@@ -426,9 +384,7 @@ fn build_actions(
 fn is_current_work_status(status: &BoardEntryStatus) -> bool {
     matches!(
         status,
-        BoardEntryStatus::Active
-            | BoardEntryStatus::Stale
-            | BoardEntryStatus::Conflict
+        BoardEntryStatus::Active | BoardEntryStatus::Stale | BoardEntryStatus::Conflict
     )
 }
 
@@ -441,10 +397,7 @@ fn current_work_priority(status: &BoardEntryStatus) -> u8 {
     }
 }
 
-fn non_empty_or_default(
-    value: &str,
-    default: &str,
-) -> String {
+fn non_empty_or_default(value: &str, default: &str) -> String {
     if value.trim().is_empty() {
         default.to_string()
     } else {
@@ -527,10 +480,7 @@ fn cmd_board_check_out(
         let snap = store.board_show(None)?;
         snap.entries
             .into_iter()
-            .find(|entry| {
-                entry.ticket_id == ticket_id
-                    && entry.status == BoardEntryStatus::Active
-            })
+            .find(|entry| entry.ticket_id == ticket_id && entry.status == BoardEntryStatus::Active)
             .map(|entry| entry.agent_id)
             .ok_or_else(|| {
                 CliRunError::BadRequest(format!(
@@ -557,14 +507,9 @@ fn cmd_board_check_out(
 
 // ── heartbeat ─────────────────────────────────────────────────────────────────
 
-fn cmd_board_heartbeat(
-    entry_id: String,
-    store: &TicketStore,
-) -> Result<Value, CliRunError> {
+fn cmd_board_heartbeat(entry_id: String, store: &TicketStore) -> Result<Value, CliRunError> {
     let entry_id = entry_id.parse::<Uuid>().map_err(|_| {
-        CliRunError::BadRequest(format!(
-            "invalid entry_id '{entry_id}': expected a UUID"
-        ))
+        CliRunError::BadRequest(format!("invalid entry_id '{entry_id}': expected a UUID"))
     })?;
 
     let entry = store.board_heartbeat(&entry_id).map_err(board_err_to_cli)?;
@@ -587,21 +532,19 @@ fn cmd_board_configure(
     completed_audit_window_secs: Option<u64>,
     store: &TicketStore,
 ) -> Result<Value, CliRunError> {
-    let new_config = if max_wip.is_none()
-        && stale_after_secs.is_none()
-        && completed_audit_window_secs.is_none()
-    {
-        None
-    } else {
-        let current = store.board_configure(None).map_err(board_err_to_cli)?;
-        Some(BoardConfig {
-            max_wip: max_wip.unwrap_or(current.max_wip),
-            stale_after_secs: stale_after_secs
-                .unwrap_or(current.stale_after_secs),
-            completed_audit_window_secs: completed_audit_window_secs
-                .unwrap_or(current.completed_audit_window_secs),
-        })
-    };
+    let new_config =
+        if max_wip.is_none() && stale_after_secs.is_none() && completed_audit_window_secs.is_none()
+        {
+            None
+        } else {
+            let current = store.board_configure(None).map_err(board_err_to_cli)?;
+            Some(BoardConfig {
+                max_wip: max_wip.unwrap_or(current.max_wip),
+                stale_after_secs: stale_after_secs.unwrap_or(current.stale_after_secs),
+                completed_audit_window_secs: completed_audit_window_secs
+                    .unwrap_or(current.completed_audit_window_secs),
+            })
+        };
 
     let config = store
         .board_configure(new_config)
@@ -616,10 +559,7 @@ fn cmd_board_configure(
 
 // ── clean preview ─────────────────────────────────────────────────────────────
 
-fn cmd_board_clean_preview(
-    include_stale: bool,
-    store: &TicketStore,
-) -> Result<Value, CliRunError> {
+fn cmd_board_clean_preview(include_stale: bool, store: &TicketStore) -> Result<Value, CliRunError> {
     let preview = store
         .board_clean_preview(include_stale)
         .map_err(board_err_to_cli)?;
@@ -706,11 +646,9 @@ fn cmd_board_rename_file(
 
 fn board_err_to_cli(err: BoardError) -> CliRunError {
     match &err {
-        BoardError::WipLimitReached { current, max } => {
-            CliRunError::BadRequest(format!(
-                "WIP limit reached: {current}/{max} active entries — check out a ticket or raise the limit with `board configure --max-wip`"
-            ))
-        }
+        BoardError::WipLimitReached { current, max } => CliRunError::BadRequest(format!(
+            "WIP limit reached: {current}/{max} active entries — check out a ticket or raise the limit with `board configure --max-wip`"
+        )),
         BoardError::FileConflict {
             files,
             conflicting_agent,
@@ -725,21 +663,21 @@ fn board_err_to_cli(err: BoardError) -> CliRunError {
         } => CliRunError::BadRequest(format!(
             "worktree conflict: '{worktree_path}' already held by agent '{conflicting_agent}' on ticket {conflicting_ticket}"
         )),
-        BoardError::WorktreeRequiresSession { worktree_path } => {
-            CliRunError::BadRequest(format!(
-                "worktree path '{worktree_path}' requires a session id"
-            ))
-        }
-        BoardError::AlreadyCheckedIn { ticket_id, agent_id } => {
-            CliRunError::BadRequest(format!(
-                "agent '{agent_id}' is already checked in for ticket {ticket_id}"
-            ))
-        }
-        BoardError::NotCheckedIn { ticket_id, agent_id } => {
-            CliRunError::BadRequest(format!(
-                "agent '{agent_id}' is not checked in for ticket {ticket_id}"
-            ))
-        }
+        BoardError::WorktreeRequiresSession { worktree_path } => CliRunError::BadRequest(format!(
+            "worktree path '{worktree_path}' requires a session id"
+        )),
+        BoardError::AlreadyCheckedIn {
+            ticket_id,
+            agent_id,
+        } => CliRunError::BadRequest(format!(
+            "agent '{agent_id}' is already checked in for ticket {ticket_id}"
+        )),
+        BoardError::NotCheckedIn {
+            ticket_id,
+            agent_id,
+        } => CliRunError::BadRequest(format!(
+            "agent '{agent_id}' is not checked in for ticket {ticket_id}"
+        )),
         BoardError::TicketNotFound(ticket_id) => {
             CliRunError::BadRequest(format!("ticket not found: {ticket_id}"))
         }

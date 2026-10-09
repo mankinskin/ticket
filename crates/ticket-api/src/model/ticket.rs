@@ -1,18 +1,9 @@
-use chrono::{
-    DateTime,
-    Utc,
-};
-use serde::{
-    Deserialize,
-    Serialize,
-};
+use chrono::{DateTime, Utc};
+use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use uuid::Uuid;
 
-pub use memory_kernel::model::entity::{
-    EntityId as TicketId,
-    EntityManifest as TicketManifest,
-};
+pub use memory_kernel::model::entity::{EntityId as TicketId, EntityManifest as TicketManifest};
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 pub struct SpecRef {
@@ -33,10 +24,7 @@ pub struct TicketPart {
 }
 
 impl TicketPart {
-    pub fn new(
-        kind: impl Into<String>,
-        path: impl Into<String>,
-    ) -> Self {
+    pub fn new(kind: impl Into<String>, path: impl Into<String>) -> Self {
         Self {
             id: Uuid::new_v4(),
             kind: kind.into(),
@@ -59,26 +47,17 @@ pub struct TicketRefEntry {
 pub trait TicketManifestExt {
     fn related_specs(&self) -> Vec<SpecRef>;
 
-    fn set_related_specs(
-        &mut self,
-        related_specs: Vec<SpecRef>,
-    );
+    fn set_related_specs(&mut self, related_specs: Vec<SpecRef>);
 
     fn refs(&self) -> Vec<TicketRefEntry>;
 
-    fn set_refs(
-        &mut self,
-        refs: Vec<TicketRefEntry>,
-    );
+    fn set_refs(&mut self, refs: Vec<TicketRefEntry>);
 
     fn legacy_spec_link_entries(&self) -> Vec<String>;
 
     fn parts(&self) -> Vec<TicketPart>;
 
-    fn set_parts(
-        &mut self,
-        parts: Vec<TicketPart>,
-    );
+    fn set_parts(&mut self, parts: Vec<TicketPart>);
 }
 
 impl TicketManifestExt for TicketManifest {
@@ -90,10 +69,7 @@ impl TicketManifestExt for TicketManifest {
             .unwrap_or_default()
     }
 
-    fn set_related_specs(
-        &mut self,
-        related_specs: Vec<SpecRef>,
-    ) {
+    fn set_related_specs(&mut self, related_specs: Vec<SpecRef>) {
         if related_specs.is_empty() {
             self.extra.remove("related_specs");
             return;
@@ -101,10 +77,10 @@ impl TicketManifestExt for TicketManifest {
         match serde_json::to_value(related_specs) {
             Ok(value) => {
                 self.extra.insert("related_specs".to_string(), value);
-            },
+            }
             Err(_) => {
                 self.extra.remove("related_specs");
-            },
+            }
         }
     }
 
@@ -116,19 +92,13 @@ impl TicketManifestExt for TicketManifest {
             .into_iter()
             .map(|spec_ref| TicketRefEntry {
                 kind: "spec".to_string(),
-                urn: format!(
-                    "ce://{}/spec/{}",
-                    spec_ref.workspace, spec_ref.spec_id
-                ),
+                urn: format!("ce://{}/spec/{}", spec_ref.workspace, spec_ref.spec_id),
                 note: None,
             })
             .collect()
     }
 
-    fn set_refs(
-        &mut self,
-        refs: Vec<TicketRefEntry>,
-    ) {
+    fn set_refs(&mut self, refs: Vec<TicketRefEntry>) {
         if refs.is_empty() {
             self.extra.remove("refs");
             return;
@@ -136,10 +106,10 @@ impl TicketManifestExt for TicketManifest {
         match serde_json::to_value(refs) {
             Ok(value) => {
                 self.extra.insert("refs".to_string(), value);
-            },
+            }
             Err(_) => {
                 self.extra.remove("refs");
-            },
+            }
         }
     }
 
@@ -165,10 +135,7 @@ impl TicketManifestExt for TicketManifest {
             .unwrap_or_default()
     }
 
-    fn set_parts(
-        &mut self,
-        parts: Vec<TicketPart>,
-    ) {
+    fn set_parts(&mut self, parts: Vec<TicketPart>) {
         if parts.is_empty() {
             self.extra.remove("parts");
             return;
@@ -176,10 +143,10 @@ impl TicketManifestExt for TicketManifest {
         match serde_json::to_value(parts) {
             Ok(value) => {
                 self.extra.insert("parts".to_string(), value);
-            },
+            }
             Err(_) => {
                 self.extra.remove("parts");
-            },
+            }
         }
     }
 }

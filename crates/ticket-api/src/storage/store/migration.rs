@@ -15,11 +15,7 @@ use std::collections::BTreeMap;
 use uuid::Uuid;
 
 use super::TicketStore;
-use crate::{
-    error::StorageError,
-    model::ticket::TicketManifestExt,
-    storage::ticket_fs::TicketFs,
-};
+use crate::{error::StorageError, model::ticket::TicketManifestExt, storage::ticket_fs::TicketFs};
 
 /// History field key marking a revision as produced by the description
 /// migration, with the list of part ids it created (used by
@@ -209,15 +205,13 @@ impl TicketStore {
                 report.skipped_already_migrated += 1;
                 continue;
             }
-            let Some(description) = TicketFs::read_description(&ticket.path)
-            else {
+            let Some(description) = TicketFs::read_description(&ticket.path) else {
                 report.skipped_no_description += 1;
                 continue;
             };
 
             let segments = split_description(&description);
-            let reconstructed: String =
-                segments.iter().map(|s| s.content.as_str()).collect();
+            let reconstructed: String = segments.iter().map(|s| s.content.as_str()).collect();
             let lossless = reconstructed == description;
             if !lossless {
                 report.low_confidence.push(ticket.id);
@@ -230,8 +224,7 @@ impl TicketStore {
                 if segment.kind == "objective" {
                     objective_lines += segment.content.lines().count();
                 } else {
-                    *matched_counts.entry(segment.kind.clone()).or_insert(0) +=
-                        1;
+                    *matched_counts.entry(segment.kind.clone()).or_insert(0) += 1;
                 }
             }
 
@@ -307,13 +300,7 @@ impl TicketStore {
             let mut created_part_ids = Vec::with_capacity(plan.segments.len());
             for segment in &plan.segments {
                 let part_id = Uuid::new_v4();
-                self.write_part(
-                    &id,
-                    part_id,
-                    &segment.kind,
-                    &segment.content,
-                    author,
-                )?;
+                self.write_part(&id, part_id, &segment.kind, &segment.content, author)?;
                 created_part_ids.push(part_id);
                 report.parts_created += 1;
             }
@@ -328,11 +315,9 @@ impl TicketStore {
                         .collect(),
                 ),
             );
-            if let Err(error) = TicketFs::append_history(
-                &indexed.path,
-                history_fields,
-                author.map(str::to_string),
-            ) {
+            if let Err(error) =
+                TicketFs::append_history(&indexed.path, history_fields, author.map(str::to_string))
+            {
                 tracing::error!(
                     ticket_id = %id,
                     %error,
@@ -351,13 +336,8 @@ impl TicketStore {
     /// deletes their backing files, restoring the pre-migration
     /// single-`description.md` layout (AC6). Errors if the ticket has no
     /// migration history revision.
-    pub fn migration_undo(
-        &self,
-        id: &Uuid,
-        author: Option<&str>,
-    ) -> Result<(), StorageError> {
-        let indexed =
-            self.get_indexed(id)?.ok_or(StorageError::NotFound(*id))?;
+    pub fn migration_undo(&self, id: &Uuid, author: Option<&str>) -> Result<(), StorageError> {
+        let indexed = self.get_indexed(id)?.ok_or(StorageError::NotFound(*id))?;
         let history = TicketFs::read_history(&indexed.path)?;
         let revision = history
             .iter()
@@ -368,10 +348,7 @@ impl TicketStore {
                     "no migration history revision found for ticket {id}"
                 ))
             })?;
-        let created_ids: Vec<Uuid> = match revision
-            .fields
-            .get(MIGRATION_CREATED_PART_IDS_KEY)
-        {
+        let created_ids: Vec<Uuid> = match revision.fields.get(MIGRATION_CREATED_PART_IDS_KEY) {
             Some(serde_json::Value::Array(values)) => values
                 .iter()
                 .filter_map(|v| v.as_str())
@@ -392,11 +369,7 @@ impl TicketStore {
                     .collect(),
             ),
         );
-        TicketFs::append_history(
-            &indexed.path,
-            history_fields,
-            author.map(str::to_string),
-        )?;
+        TicketFs::append_history(&indexed.path, history_fields, author.map(str::to_string))?;
         Ok(())
     }
 }
@@ -429,14 +402,12 @@ All green.
 Ready.
 ";
         let segments = split_description(text);
-        let kinds: Vec<&str> =
-            segments.iter().map(|s| s.kind.as_str()).collect();
+        let kinds: Vec<&str> = segments.iter().map(|s| s.kind.as_str()).collect();
         assert_eq!(
             kinds,
             vec!["objective", "review", "notes", "validation", "notes"]
         );
-        let reconstructed: String =
-            segments.iter().map(|s| s.content.as_str()).collect();
+        let reconstructed: String = segments.iter().map(|s| s.content.as_str()).collect();
         assert_eq!(reconstructed, text);
     }
 
@@ -447,8 +418,7 @@ Ready.
         assert_eq!(segments.len(), 2);
         assert_eq!(segments[0].kind, "review");
         assert_eq!(segments[1].kind, "review");
-        let reconstructed: String =
-            segments.iter().map(|s| s.content.as_str()).collect();
+        let reconstructed: String = segments.iter().map(|s| s.content.as_str()).collect();
         assert_eq!(reconstructed, text);
     }
 
@@ -456,12 +426,10 @@ Ready.
     fn unrecognized_heading_stays_in_objective() {
         let text = "## Objective\nintro\n## Notes To Self\nasides\n## Review\nfindings\n";
         let segments = split_description(text);
-        let kinds: Vec<&str> =
-            segments.iter().map(|s| s.kind.as_str()).collect();
+        let kinds: Vec<&str> = segments.iter().map(|s| s.kind.as_str()).collect();
         assert_eq!(kinds, vec!["objective", "review"]);
         assert!(segments[0].content.contains("Notes To Self"));
-        let reconstructed: String =
-            segments.iter().map(|s| s.content.as_str()).collect();
+        let reconstructed: String = segments.iter().map(|s| s.content.as_str()).collect();
         assert_eq!(reconstructed, text);
     }
 
@@ -480,8 +448,7 @@ Ready.
         let segments = split_description(text);
         assert_eq!(segments.len(), 2);
         assert!(segments.iter().all(|s| s.kind == "notes"));
-        let reconstructed: String =
-            segments.iter().map(|s| s.content.as_str()).collect();
+        let reconstructed: String = segments.iter().map(|s| s.content.as_str()).collect();
         assert_eq!(reconstructed, text);
     }
 

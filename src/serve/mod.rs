@@ -10,34 +10,19 @@ pub mod registry;
 pub mod routes;
 pub mod stream;
 pub use auth_state::AuthState;
-use axum::{
-    http::StatusCode,
-    response::Response,
-};
+use axum::{http::StatusCode, response::Response};
 pub use registry::WorkspaceRegistry;
 use serde_json::json;
 use std::{
-    collections::{
-        BTreeSet,
-        HashSet,
-    },
+    collections::{BTreeSet, HashSet},
     net::SocketAddr,
     path::Path,
-    sync::{
-        Arc,
-        Mutex,
-    },
+    sync::{Arc, Mutex},
 };
-pub use stream::{
-    HookEmitter,
-    StreamBroker,
-};
+pub use stream::{HookEmitter, StreamBroker};
 use ticket_api::storage::store::TicketStore;
 use tokio::net::TcpListener;
-use viewer_api::{
-    auth::TokenSet,
-    error::ApiError,
-};
+use viewer_api::{auth::TokenSet, error::ApiError};
 pub fn register_descendant_scan_roots(
     store: &TicketStore,
     workspace_root: &Path,
@@ -99,10 +84,7 @@ pub struct AppState {
     pub auth: Option<Arc<TokenSet>>,
 }
 impl AppState {
-    pub fn new(
-        registry: Arc<WorkspaceRegistry>,
-        broker: Arc<StreamBroker>,
-    ) -> Self {
+    pub fn new(registry: Arc<WorkspaceRegistry>, broker: Arc<StreamBroker>) -> Self {
         Self {
             registry,
             broker,
@@ -111,10 +93,7 @@ impl AppState {
         }
     }
     /// Enable bearer-token authentication for write endpoints.
-    pub fn with_auth(
-        mut self,
-        token_set: Arc<TokenSet>,
-    ) -> Self {
+    pub fn with_auth(mut self, token_set: Arc<TokenSet>) -> Self {
         self.auth = Some(token_set);
         self
     }
@@ -122,10 +101,7 @@ impl AppState {
     ///
     /// This guarantees that even lazily opened workspaces get a broker channel,
     /// store hook emitter, and reconcile loop.
-    pub fn ensure_workspace_runtime(
-        &self,
-        workspace: &str,
-    ) -> Option<Arc<TicketStore>> {
+    pub fn ensure_workspace_runtime(&self, workspace: &str) -> Option<Arc<TicketStore>> {
         self.resolve_workspace_runtime(workspace)
             .ok()
             .flatten()
@@ -134,10 +110,7 @@ impl AppState {
     pub fn resolve_workspace_runtime(
         &self,
         workspace: &str,
-    ) -> Result<
-        Option<(String, Arc<TicketStore>)>,
-        registry::WorkspaceResolveError,
-    > {
+    ) -> Result<Option<(String, Arc<TicketStore>)>, registry::WorkspaceResolveError> {
         let workspace = match self.registry.resolve_workspace_name(workspace)? {
             Some(workspace) => workspace,
             None => return Ok(None),
@@ -151,8 +124,7 @@ impl AppState {
             return Ok(Some((workspace, store)));
         }
         self.broker.ensure_channel(&workspace);
-        let emitter =
-            HookEmitter::new(workspace.to_string(), Arc::clone(&self.broker));
+        let emitter = HookEmitter::new(workspace.to_string(), Arc::clone(&self.broker));
         store.set_hook(emitter.clone());
         stream::reconcile::spawn_reconcile(Arc::clone(&store), emitter);
         Ok(Some((workspace, store)))
@@ -213,8 +185,7 @@ pub async fn serve(
     config: ServeConfig,
     registry: WorkspaceRegistry,
 ) -> Result<(), Box<dyn std::error::Error>> {
-    let state =
-        AppState::new(Arc::new(registry), Arc::new(StreamBroker::new()));
+    let state = AppState::new(Arc::new(registry), Arc::new(StreamBroker::new()));
     // Pre-initialize all known workspaces at startup while still keeping
     // on-demand initialization for lazily opened stores.
     let workspace_names = state.registry.workspace_names();
@@ -230,21 +201,10 @@ pub async fn serve(
 }
 #[cfg(test)]
 mod tests {
-    use super::{
-        AppState,
-        StreamBroker,
-        WorkspaceRegistry,
-        reapply_workspace_scan_policy,
-    };
+    use super::{AppState, StreamBroker, WorkspaceRegistry, reapply_workspace_scan_policy};
     use crate::serve::stream::event::SseEvent;
-    use std::{
-        collections::BTreeMap,
-        sync::Arc,
-    };
-    use ticket_api::{
-        model::filesystem::ScanRoot,
-        storage::store::TicketStore,
-    };
+    use std::{collections::BTreeMap, sync::Arc};
+    use ticket_api::{model::filesystem::ScanRoot, storage::store::TicketStore};
     #[test]
     fn reapply_workspace_scan_policy_skips_restricted_descendants() {
         let root = tempfile::tempdir().expect("tempdir");
@@ -262,8 +222,7 @@ mod tests {
             .join(".workflow-tools")
             .join("ticket");
         TicketStore::init(&child_store_root).expect("open child store");
-        reapply_workspace_scan_policy(&store, root.path())
-            .expect("apply workspace scan policy");
+        reapply_workspace_scan_policy(&store, root.path()).expect("apply workspace scan policy");
         assert!(
             store
                 .list_scan_roots()
@@ -311,15 +270,12 @@ mod tests {
                     payload.ticket.title.as_deref(),
                     Some("runtime wiring regression")
                 );
-            },
+            }
             other => panic!("expected TicketUpsert, got {other:?}"),
         }
     }
     // ── Auth middleware router-level tests ────────────────────────────────
-    fn make_state_with_auth(
-        dir: &std::path::Path,
-        token: &str,
-    ) -> AppState {
+    fn make_state_with_auth(dir: &std::path::Path, token: &str) -> AppState {
         let state = AppState::new(
             Arc::new(WorkspaceRegistry::single(dir.to_path_buf())),
             Arc::new(StreamBroker::new()),
@@ -337,10 +293,7 @@ mod tests {
         workspace: &str,
         auth_header: Option<&str>,
     ) -> axum::http::StatusCode {
-        use axum::http::{
-            Request,
-            header,
-        };
+        use axum::http::{Request, header};
         use tower::ServiceExt;
         let body = serde_json::json!({
             "type_id": "tracker-improvement",
@@ -375,8 +328,7 @@ mod tests {
         let state = make_state_with_auth(dir.path(), "secret-token");
         let workspace = state.registry.primary_workspace_name().to_string();
         let app = crate::serve::routes::build_router(state);
-        let status =
-            post_create(app, &workspace, Some("Bearer wrong-token")).await;
+        let status = post_create(app, &workspace, Some("Bearer wrong-token")).await;
         assert_eq!(status, axum::http::StatusCode::UNAUTHORIZED);
     }
     #[tokio::test]
@@ -385,8 +337,7 @@ mod tests {
         let state = make_state_with_auth(dir.path(), "secret-token");
         let workspace = state.registry.primary_workspace_name().to_string();
         let app = crate::serve::routes::build_router(state);
-        let status =
-            post_create(app, &workspace, Some("Bearer secret-token")).await;
+        let status = post_create(app, &workspace, Some("Bearer secret-token")).await;
         // 201 Created or 422 (validation) is acceptable — not 401
         assert_ne!(status, axum::http::StatusCode::UNAUTHORIZED);
     }

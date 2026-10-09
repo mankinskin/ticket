@@ -1,55 +1,28 @@
 use axum::{
-    extract::{
-        Extension,
-        Path,
-        Query,
-        State,
-    },
-    http::{
-        HeaderMap,
-        StatusCode,
-    },
-    response::{
-        IntoResponse,
-        Json,
-        Response,
-    },
+    extract::{Extension, Path, Query, State},
+    http::{HeaderMap, StatusCode},
+    response::{IntoResponse, Json, Response},
 };
 use uuid::Uuid;
 
-use ticket_api::storage::ticket_fs::{
-    LoadedPart,
-    TicketFs,
-};
+use ticket_api::storage::ticket_fs::{LoadedPart, TicketFs};
 
 use viewer_api::error::RequestIdExt;
 
 use crate::serve::{
     AppState,
-    error::{
-        storage_err,
-        task_join_err,
-    },
+    error::{storage_err, task_join_err},
 };
 
 use super::{
     mutations::author_from_headers,
     types::{
-        ListPartsParam,
-        ListPartsResponse,
-        PartItem,
-        PartResponse,
-        TicketIdParam,
-        WriteAmendmentBody,
-        WritePartBody,
-        ticket_ref_for_id,
+        ListPartsParam, ListPartsResponse, PartItem, PartResponse, TicketIdParam,
+        WriteAmendmentBody, WritePartBody, ticket_ref_for_id,
     },
 };
 
-fn part_item(
-    part: &LoadedPart,
-    with_content: bool,
-) -> PartItem {
+fn part_item(part: &LoadedPart, with_content: bool) -> PartItem {
     PartItem {
         id: part.id,
         kind: part.kind.clone(),
@@ -72,8 +45,7 @@ pub async fn list_parts(
     Path(id): Path<Uuid>,
     Query(params): Query<ListPartsParam>,
 ) -> Response {
-    let (workspace, store) = match state
-        .resolve_public_workspace_request(&params.workspace, &rid.0)
+    let (workspace, store) = match state.resolve_public_workspace_request(&params.workspace, &rid.0)
     {
         Ok(resolved) => resolved,
         Err(response) => return response,
@@ -86,11 +58,9 @@ pub async fn list_parts(
         let request_id = task_request_id.clone();
         let indexed = match store.get_indexed(&id) {
             Ok(Some(indexed)) => indexed,
-            Ok(None) =>
-                return storage_err(
-                    ticket_api::error::StorageError::NotFound(id),
-                    &request_id,
-                ),
+            Ok(None) => {
+                return storage_err(ticket_api::error::StorageError::NotFound(id), &request_id);
+            }
             Err(e) => return storage_err(e, &request_id),
         };
         let manifest = match TicketFs::read(&indexed.path) {
@@ -142,8 +112,7 @@ pub async fn get_part(
     Path((id, part_id)): Path<(Uuid, Uuid)>,
     Query(params): Query<TicketIdParam>,
 ) -> Response {
-    let (workspace, store) = match state
-        .resolve_public_workspace_request(&params.workspace, &rid.0)
+    let (workspace, store) = match state.resolve_public_workspace_request(&params.workspace, &rid.0)
     {
         Ok(resolved) => resolved,
         Err(response) => return response,
@@ -155,11 +124,9 @@ pub async fn get_part(
         let request_id = task_request_id.clone();
         let indexed = match store.get_indexed(&id) {
             Ok(Some(indexed)) => indexed,
-            Ok(None) =>
-                return storage_err(
-                    ticket_api::error::StorageError::NotFound(id),
-                    &request_id,
-                ),
+            Ok(None) => {
+                return storage_err(ticket_api::error::StorageError::NotFound(id), &request_id);
+            }
             Err(e) => return storage_err(e, &request_id),
         };
         let manifest = match TicketFs::read(&indexed.path) {
@@ -211,8 +178,7 @@ pub async fn write_part(
     headers: HeaderMap,
     Json(body): Json<WritePartBody>,
 ) -> Response {
-    let (workspace, store) = match state
-        .resolve_public_workspace_request(&params.workspace, &rid.0)
+    let (workspace, store) = match state.resolve_public_workspace_request(&params.workspace, &rid.0)
     {
         Ok(resolved) => resolved,
         Err(response) => return response,
@@ -224,14 +190,8 @@ pub async fn write_part(
 
     tokio::task::spawn_blocking(move || {
         let request_id = task_request_id.clone();
-        match store.write_part(
-            &id,
-            part_id,
-            &body.kind,
-            &body.content,
-            author.as_deref(),
-        ) {
-            Ok(_manifest) => {},
+        match store.write_part(&id, part_id, &body.kind, &body.content, author.as_deref()) {
+            Ok(_manifest) => {}
             Err(e) => return storage_err(e, &request_id),
         }
 
@@ -253,8 +213,7 @@ pub async fn write_amendment(
     headers: HeaderMap,
     Json(body): Json<WriteAmendmentBody>,
 ) -> Response {
-    let (workspace, store) = match state
-        .resolve_public_workspace_request(&params.workspace, &rid.0)
+    let (workspace, store) = match state.resolve_public_workspace_request(&params.workspace, &rid.0)
     {
         Ok(resolved) => resolved,
         Err(response) => return response,
@@ -267,23 +226,16 @@ pub async fn write_amendment(
 
     tokio::task::spawn_blocking(move || {
         let request_id = task_request_id.clone();
-        match store.write_amendment_part(
-            &id,
-            part_id,
-            &body.content,
-            supersedes,
-            author.as_deref(),
-        ) {
-            Ok(_manifest) => {},
+        match store.write_amendment_part(&id, part_id, &body.content, supersedes, author.as_deref())
+        {
+            Ok(_manifest) => {}
             Err(e) => return storage_err(e, &request_id),
         }
 
         respond_with_part(&store, &workspace, &request_id, id, part_id)
     })
     .await
-    .unwrap_or_else(|_| {
-        task_join_err(&request_id, "ticket write-amendment request")
-    })
+    .unwrap_or_else(|_| task_join_err(&request_id, "ticket write-amendment request"))
 }
 
 /// `POST /api/tickets/{id}/parts/{part_id}/undo?workspace=<name>`
@@ -298,8 +250,7 @@ pub async fn undo_part(
     Query(params): Query<TicketIdParam>,
     headers: HeaderMap,
 ) -> Response {
-    let (workspace, store) = match state
-        .resolve_public_workspace_request(&params.workspace, &rid.0)
+    let (workspace, store) = match state.resolve_public_workspace_request(&params.workspace, &rid.0)
     {
         Ok(resolved) => resolved,
         Err(response) => return response,
@@ -311,7 +262,7 @@ pub async fn undo_part(
     tokio::task::spawn_blocking(move || {
         let request_id = task_request_id.clone();
         match store.undo_part(&id, part_id, author.as_deref()) {
-            Ok(_manifest) => {},
+            Ok(_manifest) => {}
             Err(e) => return storage_err(e, &request_id),
         }
 
@@ -330,11 +281,7 @@ fn respond_with_part(
 ) -> Response {
     let indexed = match store.get_indexed(&id) {
         Ok(Some(indexed)) => indexed,
-        Ok(None) =>
-            return storage_err(
-                ticket_api::error::StorageError::NotFound(id),
-                request_id,
-            ),
+        Ok(None) => return storage_err(ticket_api::error::StorageError::NotFound(id), request_id),
         Err(e) => return storage_err(e, request_id),
     };
     let manifest = match TicketFs::read(&indexed.path) {

@@ -127,7 +127,10 @@ fn entity_indexed_in_requires_path_ownership_not_aggregate_visibility() {
     let target_store = TicketStore::init(&nested_repo).unwrap();
     source_store
         .add_scan_root(ScanRoot {
-            path: nested_repo.join(".workflow-tools").join("ticket").join("tickets"),
+            path: nested_repo
+                .join(".workflow-tools")
+                .join("ticket")
+                .join("tickets"),
             label: "nested-tickets".to_string(),
         })
         .unwrap();
@@ -298,7 +301,10 @@ fn resume_move_normalizes_journal_paths_before_validation() {
     let target_store = TicketStore::init(&nested_repo).unwrap();
     source_store
         .add_scan_root(ScanRoot {
-            path: nested_repo.join(".workflow-tools").join("ticket").join("tickets"),
+            path: nested_repo
+                .join(".workflow-tools")
+                .join("ticket")
+                .join("tickets"),
             label: "nested-tickets".to_string(),
         })
         .unwrap();

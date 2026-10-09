@@ -1,35 +1,21 @@
-use std::collections::{
-    HashMap,
-    HashSet,
-};
+use std::collections::{HashMap, HashSet};
 
 use dioxus::prelude::*;
-use viewer_api_dioxus::{
-    ExplorerShell,
-    SidebarSearch,
-};
+use viewer_api_dioxus::{ExplorerShell, SidebarSearch};
 
 use crate::{
-    search_syntax::{
-        SEARCH_INPUT_PLACEHOLDER,
-        SEARCH_SYNTAX_HINT,
-    },
+    search_syntax::{SEARCH_INPUT_PLACEHOLDER, SEARCH_SYNTAX_HINT},
     types::TicketFileEntry,
 };
 
-use super::{
-    header::render_filter_controls,
-    rows::render_ticket_rows,
-    TicketTreeProps,
-};
+use super::{header::render_filter_controls, rows::render_ticket_rows, TicketTreeProps};
 
 #[component]
 pub fn TicketTree(props: TicketTreeProps) -> Element {
     let filter = props.filter.clone();
     let state_filter_val = props.state_filter.clone();
     let expanded_ids: Signal<HashSet<String>> = use_signal(HashSet::new);
-    let file_cache: Signal<HashMap<String, Vec<TicketFileEntry>>> =
-        use_signal(HashMap::new);
+    let file_cache: Signal<HashMap<String, Vec<TicketFileEntry>>> = use_signal(HashMap::new);
     let loading_files: Signal<HashSet<String>> = use_signal(HashSet::new);
     #[cfg_attr(not(target_arch = "wasm32"), allow(unused_mut))]
     let mut focused_ticket_id: Signal<Option<String>> = use_signal(|| None);
@@ -37,8 +23,7 @@ pub fn TicketTree(props: TicketTreeProps) -> Element {
     // rather than to `focused_ticket_id` so that data refreshes and focus
     // initialisation never trigger a scroll jump.
     #[cfg_attr(not(target_arch = "wasm32"), allow(unused_mut))]
-    let mut keyboard_scroll_request: Signal<Option<String>> =
-        use_signal(|| None);
+    let mut keyboard_scroll_request: Signal<Option<String>> = use_signal(|| None);
     let sorted = sorted_tickets(props.tickets.clone(), &props.sort_key);
     let displayed_ticket_ids = sorted
         .iter()
@@ -65,14 +50,11 @@ pub fn TicketTree(props: TicketTreeProps) -> Element {
             return;
         };
 
-        let Some(document) =
-            web_sys::window().and_then(|window| window.document())
-        else {
+        let Some(document) = web_sys::window().and_then(|window| window.document()) else {
             return;
         };
 
-        let selector =
-            format!(r#"button[data-testid="ticket-tree-ticket-{ticket_id}"]"#);
+        let selector = format!(r#"button[data-testid="ticket-tree-ticket-{ticket_id}"]"#);
         if let Ok(Some(element)) = document.query_selector(&selector) {
             let mut opts = web_sys::ScrollIntoViewOptions::new();
             opts.block(web_sys::ScrollLogicalPosition::Nearest);
@@ -233,15 +215,11 @@ fn resolve_focused_ticket(
     }
 
     current_focus
-        .filter(|id| {
-            displayed_ticket_ids.iter().any(|candidate| candidate == id)
-        })
+        .filter(|id| displayed_ticket_ids.iter().any(|candidate| candidate == id))
         .map(ToString::to_string)
         .or_else(|| {
             selected_id
-                .filter(|id| {
-                    displayed_ticket_ids.iter().any(|candidate| candidate == id)
-                })
+                .filter(|id| displayed_ticket_ids.iter().any(|candidate| candidate == id))
                 .map(ToString::to_string)
         })
         .or_else(|| displayed_ticket_ids.first().cloned())

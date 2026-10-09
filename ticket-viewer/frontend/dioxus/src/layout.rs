@@ -10,16 +10,9 @@
 //! Used by `graph3d::Layout3D::from_2d()` to compute initial node positions
 //! before 3D projection.
 
-use std::{
-    cmp::Ordering,
-    collections::HashMap,
-};
+use std::{cmp::Ordering, collections::HashMap};
 
-use crate::types::{
-    GraphEdgeItem,
-    GraphNodeItem,
-    TicketRef,
-};
+use crate::types::{GraphEdgeItem, GraphNodeItem, TicketRef};
 
 // ── Layout mode ────────────────────────────────────────────────────────────
 
@@ -214,10 +207,7 @@ impl GraphLayout {
         layout
     }
 
-    pub fn with_mode(
-        &self,
-        mode: LayoutMode,
-    ) -> Self {
+    pub fn with_mode(&self, mode: LayoutMode) -> Self {
         let mut layout = self.clone();
         for node in &mut layout.nodes {
             node.x = 0.0;
@@ -239,10 +229,7 @@ impl GraphLayout {
         }
     }
 
-    fn apply_layout_mode(
-        &mut self,
-        mode: LayoutMode,
-    ) {
+    fn apply_layout_mode(&mut self, mode: LayoutMode) {
         self.kanban_overlay = None;
         match mode {
             LayoutMode::Hierarchical3D => self.hierarchical_layout(),
@@ -253,7 +240,7 @@ impl GraphLayout {
                 for nd in &mut self.nodes {
                     nd.z = 0.0;
                 }
-            },
+            }
             LayoutMode::KanbanTable => self.kanban_table_layout(),
             LayoutMode::Fixed2D => self.fixed_2d_layout(),
         }
@@ -279,10 +266,8 @@ impl GraphLayout {
                 CELL_CLUSTER_Y,
                 CELL_CLUSTER_Z,
             );
-            self.nodes[*node_idx].x =
-                placement.column as f64 * COLUMN_SPACING + local_x;
-            self.nodes[*node_idx].y =
-                placement.row as f64 * ROW_SPACING + local_y;
+            self.nodes[*node_idx].x = placement.column as f64 * COLUMN_SPACING + local_x;
+            self.nodes[*node_idx].y = placement.row as f64 * ROW_SPACING + local_y;
             self.nodes[*node_idx].z = local_z;
         }
 
@@ -297,15 +282,11 @@ impl GraphLayout {
         let mut group_seed_by_idx = vec![None; self.nodes.len()];
 
         for &node_idx in &ordered_indices {
-            let primary_parent =
-                primary_parent_index(&self.nodes, &parents_by_child, node_idx);
+            let primary_parent = primary_parent_index(&self.nodes, &parents_by_child, node_idx);
             let seed = match primary_parent {
                 None => node_idx,
-                Some(parent_idx)
-                    if !parents_by_child.contains_key(&parent_idx) =>
-                    node_idx,
-                Some(parent_idx) =>
-                    group_seed_by_idx[parent_idx].unwrap_or(parent_idx),
+                Some(parent_idx) if !parents_by_child.contains_key(&parent_idx) => node_idx,
+                Some(parent_idx) => group_seed_by_idx[parent_idx].unwrap_or(parent_idx),
             };
             group_seed_by_idx[node_idx] = Some(seed);
         }
@@ -341,8 +322,7 @@ impl GraphLayout {
             let row = *group_row_by_seed
                 .get(&seed_idx)
                 .expect("kanban row should exist for dependency group");
-            let state_key =
-                kanban_state_key(self.nodes[node_idx].state.as_deref());
+            let state_key = kanban_state_key(self.nodes[node_idx].state.as_deref());
             let column = *column_by_state
                 .get(&state_key)
                 .expect("kanban column should exist for state");
@@ -351,9 +331,8 @@ impl GraphLayout {
 
         let mut placements = HashMap::with_capacity(self.nodes.len());
         for ((column, row), cell_indices) in &mut cells {
-            cell_indices.sort_by(|left_idx, right_idx| {
-                kanban_node_cmp(&self.nodes, *left_idx, *right_idx)
-            });
+            cell_indices
+                .sort_by(|left_idx, right_idx| kanban_node_cmp(&self.nodes, *left_idx, *right_idx));
             let cell_count = cell_indices.len();
             for (slot, node_idx) in cell_indices.iter().enumerate() {
                 placements.insert(
@@ -370,8 +349,7 @@ impl GraphLayout {
 
         let mut row_labels = vec![String::new(); group_row_by_seed.len()];
         for (seed_idx, row_idx) in group_row_by_seed {
-            row_labels[row_idx] =
-                kanban_row_label(&self.nodes[seed_idx], row_idx);
+            row_labels[row_idx] = kanban_row_label(&self.nodes[seed_idx], row_idx);
         }
 
         KanbanLayoutPlan {
@@ -381,13 +359,8 @@ impl GraphLayout {
         }
     }
 
-    fn build_kanban_overlay(
-        &self,
-        plan: &KanbanLayoutPlan,
-    ) -> KanbanOverlay {
-        if plan.placements.is_empty()
-            || plan.column_states.is_empty()
-            || plan.row_labels.is_empty()
+    fn build_kanban_overlay(&self, plan: &KanbanLayoutPlan) -> KanbanOverlay {
+        if plan.placements.is_empty() || plan.column_states.is_empty() || plan.row_labels.is_empty()
         {
             return KanbanOverlay::default();
         }
@@ -418,8 +391,7 @@ impl GraphLayout {
             .iter()
             .map(|node| node.y)
             .fold(f64::NEG_INFINITY, f64::max);
-        let min_x =
-            column_centers.iter().copied().fold(f64::INFINITY, f64::min);
+        let min_x = column_centers.iter().copied().fold(f64::INFINITY, f64::min);
 
         let header_y = min_y - 160.0;
         let row_label_x = min_x - 260.0;
@@ -513,8 +485,7 @@ impl GraphLayout {
         // `grid_w / grid_h ≈ aspect` solves to
         // `cols = sqrt(total * aspect * ROW_SPACING / COL_SPACING)`.
         let aspect = viewport_aspect_ratio();
-        let cols_f =
-            (total as f64 * aspect * (ROW_SPACING / COL_SPACING)).sqrt();
+        let cols_f = (total as f64 * aspect * (ROW_SPACING / COL_SPACING)).sqrt();
         let cols = (cols_f.round() as usize).clamp(1, total);
 
         // Lay each depth band into full-width rows, starting every new depth on
@@ -554,10 +525,7 @@ impl GraphLayout {
     ///   toward each other across the 3-D space of their layers.
     /// * Cross-layer repulsion decays with Y distance so nodes primarily
     ///   push away neighbours on the same or adjacent layers.
-    fn xz_force_refinement(
-        &mut self,
-        steps: usize,
-    ) {
+    fn xz_force_refinement(&mut self, steps: usize) {
         let n = self.nodes.len();
         if n <= 1 {
             return;
@@ -660,10 +628,8 @@ impl GraphLayout {
         if self.nodes.is_empty() {
             return (0.0, 0.0);
         }
-        let cx = self.nodes.iter().map(|n| n.x).sum::<f64>()
-            / self.nodes.len() as f64;
-        let cy = self.nodes.iter().map(|n| n.y).sum::<f64>()
-            / self.nodes.len() as f64;
+        let cx = self.nodes.iter().map(|n| n.x).sum::<f64>() / self.nodes.len() as f64;
+        let cy = self.nodes.iter().map(|n| n.y).sum::<f64>() / self.nodes.len() as f64;
         (cx, cy)
     }
 
@@ -673,18 +639,14 @@ impl GraphLayout {
         if self.nodes.is_empty() {
             return;
         }
-        let cy = self.nodes.iter().map(|n| n.y).sum::<f64>()
-            / self.nodes.len() as f64;
+        let cy = self.nodes.iter().map(|n| n.y).sum::<f64>() / self.nodes.len() as f64;
         for n in &mut self.nodes {
             n.y -= cy;
         }
     }
 
     /// Run `steps` force-simulation iterations (kept for the 3-D GPU path).
-    pub fn simulate(
-        &mut self,
-        steps: usize,
-    ) {
+    pub fn simulate(&mut self, steps: usize) {
         for _ in 0..steps {
             self.step();
         }
@@ -762,17 +724,11 @@ impl GraphLayout {
 
 fn sorted_node_indices(nodes: &[GraphNode]) -> Vec<usize> {
     let mut indices = (0..nodes.len()).collect::<Vec<_>>();
-    indices.sort_by(|left_idx, right_idx| {
-        kanban_node_cmp(nodes, *left_idx, *right_idx)
-    });
+    indices.sort_by(|left_idx, right_idx| kanban_node_cmp(nodes, *left_idx, *right_idx));
     indices
 }
 
-fn kanban_node_cmp(
-    nodes: &[GraphNode],
-    left_idx: usize,
-    right_idx: usize,
-) -> Ordering {
+fn kanban_node_cmp(nodes: &[GraphNode], left_idx: usize, right_idx: usize) -> Ordering {
     let left = &nodes[left_idx];
     let right = &nodes[right_idx];
     left.depth
@@ -795,10 +751,7 @@ fn kanban_node_cmp(
         .then_with(|| left.id.cmp(&right.id))
 }
 
-fn parents_by_child(
-    nodes: &[GraphNode],
-    edges: &[GraphEdge],
-) -> HashMap<usize, Vec<usize>> {
+fn parents_by_child(nodes: &[GraphNode], edges: &[GraphEdge]) -> HashMap<usize, Vec<usize>> {
     let id_to_idx = nodes
         .iter()
         .enumerate()
@@ -823,9 +776,10 @@ fn primary_parent_index(
     node_idx: usize,
 ) -> Option<usize> {
     let parents = parents_by_child.get(&node_idx)?;
-    parents.iter().copied().min_by(|left_idx, right_idx| {
-        kanban_node_cmp(nodes, *left_idx, *right_idx)
-    })
+    parents
+        .iter()
+        .copied()
+        .min_by(|left_idx, right_idx| kanban_node_cmp(nodes, *left_idx, *right_idx))
 }
 
 fn kanban_state_key(state: Option<&str>) -> String {
@@ -849,19 +803,13 @@ fn kanban_state_rank(state: &str) -> usize {
     }
 }
 
-fn kanban_state_cmp(
-    left: &str,
-    right: &str,
-) -> Ordering {
+fn kanban_state_cmp(left: &str, right: &str) -> Ordering {
     kanban_state_rank(left)
         .cmp(&kanban_state_rank(right))
         .then_with(|| left.cmp(right))
 }
 
-fn kanban_row_label(
-    node: &GraphNode,
-    row_idx: usize,
-) -> String {
+fn kanban_row_label(node: &GraphNode, row_idx: usize) -> String {
     let title = node.title.as_deref().unwrap_or(node.id.as_str()).trim();
     let short_title = if title.is_empty() {
         node.id.as_str()
@@ -871,16 +819,11 @@ fn kanban_row_label(
     format!("{:02}. {short_title}", row_idx + 1)
 }
 
-fn mean_axis(
-    indices: &[usize],
-    nodes: &[GraphNode],
-    axis: impl Fn(&GraphNode) -> f64,
-) -> f64 {
+fn mean_axis(indices: &[usize], nodes: &[GraphNode], axis: impl Fn(&GraphNode) -> f64) -> f64 {
     if indices.is_empty() {
         return 0.0;
     }
-    indices.iter().map(|idx| axis(&nodes[*idx])).sum::<f64>()
-        / indices.len() as f64
+    indices.iter().map(|idx| axis(&nodes[*idx])).sum::<f64>() / indices.len() as f64
 }
 
 fn kanban_cell_offset(
@@ -913,19 +856,10 @@ mod tests {
     use super::GraphLayout;
     use crate::{
         layout::LayoutMode,
-        types::{
-            GraphEdgeItem,
-            GraphNodeItem,
-            TicketRef,
-        },
+        types::{GraphEdgeItem, GraphNodeItem, TicketRef},
     };
 
-    fn node(
-        id: &str,
-        state: &str,
-        depth: usize,
-        title: &str,
-    ) -> GraphNodeItem {
+    fn node(id: &str, state: &str, depth: usize, title: &str) -> GraphNodeItem {
         GraphNodeItem {
             id: id.to_string(),
             ticket_ref: TicketRef::default(),
@@ -937,10 +871,7 @@ mod tests {
         }
     }
 
-    fn edge(
-        from: &str,
-        to: &str,
-    ) -> GraphEdgeItem {
+    fn edge(from: &str, to: &str) -> GraphEdgeItem {
         GraphEdgeItem {
             from: from.to_string(),
             to: to.to_string(),
@@ -950,10 +881,7 @@ mod tests {
         }
     }
 
-    fn position(
-        layout: &GraphLayout,
-        node_id: &str,
-    ) -> (f64, f64, f64) {
+    fn position(layout: &GraphLayout, node_id: &str) -> (f64, f64, f64) {
         let node = layout
             .nodes
             .iter()
@@ -1083,10 +1011,7 @@ mod tests {
         let (impl_b_x, impl_b_y, impl_b_z) = position(&layout, "impl-b");
 
         assert!((impl_a_y - impl_b_y).abs() < 1.0);
-        assert!(
-            (impl_a_x - impl_b_x).abs() > 1.0
-                || (impl_a_z - impl_b_z).abs() > 1.0
-        );
+        assert!((impl_a_x - impl_b_x).abs() > 1.0 || (impl_a_z - impl_b_z).abs() > 1.0);
     }
 }
 
@@ -1107,10 +1032,7 @@ fn parent_anchor(
     sum / parent_indices.len() as f64
 }
 
-fn layer_stagger(
-    slot: usize,
-    spacing: f64,
-) -> f64 {
+fn layer_stagger(slot: usize, spacing: f64) -> f64 {
     const OFFSETS: [f64; 7] = [0.0, 1.0, -1.0, 2.0, -2.0, 3.0, -3.0];
     OFFSETS[slot % OFFSETS.len()] * spacing
 }

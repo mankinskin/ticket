@@ -1,16 +1,8 @@
 use dioxus::prelude::*;
 
 use super::{
-    actions::{
-        apply_batch_operation,
-        toggle_pending_op,
-    },
-    model::{
-        BulkOp,
-        CommandResult,
-        PRIORITY_OPS,
-        STATE_OPS,
-    },
+    actions::{apply_batch_operation, toggle_pending_op},
+    model::{BulkOp, CommandResult, PRIORITY_OPS, STATE_OPS},
     results::render_results_panel,
 };
 

@@ -1,25 +1,13 @@
 use dioxus::prelude::*;
 use dioxus_router::Navigator;
 
-use crate::{
-    components::ticket_card::TicketCard,
-    layout::GraphLayout,
-    types::TicketRef,
-};
+use crate::{components::ticket_card::TicketCard, layout::GraphLayout, types::TicketRef};
 
 use super::{
     interactions::{
-        end_drag,
-        handle_wheel,
-        select_node_or_navigate,
-        start_node_drag,
-        start_pan,
-        update_drag,
+        end_drag, handle_wheel, select_node_or_navigate, start_node_drag, start_pan, update_drag,
     },
-    state::{
-        canvas_size,
-        DragState,
-    },
+    state::{canvas_size, DragState},
 };
 
 #[component]

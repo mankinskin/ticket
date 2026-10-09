@@ -1,15 +1,8 @@
 use std::sync::Arc;
 
-use ticket_api::{
-    model::filesystem::ScanRoot,
-    storage::store::TicketStore,
-};
+use ticket_api::{model::filesystem::ScanRoot, storage::store::TicketStore};
 
-use crate::serve::{
-    AppState,
-    StreamBroker,
-    WorkspaceRegistry,
-};
+use crate::serve::{AppState, StreamBroker, WorkspaceRegistry};
 
 #[path = "tests/lifecycle.rs"]
 mod lifecycle;

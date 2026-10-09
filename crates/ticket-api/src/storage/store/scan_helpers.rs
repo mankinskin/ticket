@@ -27,10 +27,7 @@ pub(super) fn record_named_phase_timing(
     );
 }
 
-pub(super) fn metric_root_label(
-    index: usize,
-    root: &ScanRoot,
-) -> String {
+pub(super) fn metric_root_label(index: usize, root: &ScanRoot) -> String {
     let label = if root.label.trim().is_empty() {
         root.path
             .file_name()
@@ -58,14 +55,11 @@ pub(super) fn stale_reconciliation_diagnostic(
         .iter()
         .all(|root| !ticket.path.starts_with(&root.path))
     {
-        "ticket path left configured scan roots; pruned stale index/search entry"
-            .to_string()
+        "ticket path left configured scan roots; pruned stale index/search entry".to_string()
     } else if !ticket.path.exists() {
-        "ticket folder missing on disk; pruned stale index/search entry"
-            .to_string()
+        "ticket folder missing on disk; pruned stale index/search entry".to_string()
     } else {
-        "ticket missing from scan results; pruned stale index/search entry"
-            .to_string()
+        "ticket missing from scan results; pruned stale index/search entry".to_string()
     };
 
     ParseDiagnostic {
@@ -125,7 +119,7 @@ pub(super) fn integrate_entry(
             existing.title = title.clone();
             existing.state = state.clone();
             existing
-        },
+        }
         None => IndexedTicket {
             id: entry.id,
             path: entry.path.clone(),
@@ -218,8 +212,7 @@ pub(super) fn entry_is_current(
     }
 
     let indexed_at = existing.updated_at;
-    if path_modified_after(&entry.path.join(TICKET_MANIFEST_FILE), indexed_at)?
-    {
+    if path_modified_after(&entry.path.join(TICKET_MANIFEST_FILE), indexed_at)? {
         return Ok(false);
     }
 
@@ -253,9 +246,7 @@ pub(super) fn merge_phase_totals(
     }
 }
 
-pub(super) fn manifest_edges(
-    entry: &TicketScanEntry
-) -> Vec<crate::model::edge::EdgeRecord> {
+pub(super) fn manifest_edges(entry: &TicketScanEntry) -> Vec<crate::model::edge::EdgeRecord> {
     let mut edges = Vec::new();
 
     for &kind in FILE_BACKED_EDGE_KINDS {

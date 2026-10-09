@@ -6,7 +6,7 @@ use crate::types::*;
 /// Note: futures are not required to be `Send` — WASM is single-threaded.
 pub trait TicketBackend {
     fn list_workspaces(
-        &self
+        &self,
     ) -> impl std::future::Future<Output = Result<WorkspacesResponse, String>>;
 
     fn list_tickets(

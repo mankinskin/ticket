@@ -1,38 +1,19 @@
 use std::{
-    collections::{
-        HashMap,
-        HashSet,
-        VecDeque,
-    },
+    collections::{HashMap, HashSet, VecDeque},
     fmt::Write,
 };
 
 use chrono::Utc;
-use serde_json::{
-    Value,
-    json,
-};
+use serde_json::{Value, json};
 use uuid::Uuid;
 
-use ticket_api::{
-    model::edge::EdgeRecord,
-    storage::TicketStore,
-};
+use ticket_api::{model::edge::EdgeRecord, storage::TicketStore};
 
 use crate::cli::{
-    CliRunError,
-    LinkArgs,
-    LinksArgs,
-    PruneDanglingArgs,
-    SubgraphArgs,
-    TopgraphArgs,
-    UnlinkArgs,
+    CliRunError, LinkArgs, LinksArgs, PruneDanglingArgs, SubgraphArgs, TopgraphArgs, UnlinkArgs,
 };
 
-pub(crate) fn cmd_link(
-    args: LinkArgs,
-    store: &TicketStore,
-) -> Result<Value, CliRunError> {
+pub(crate) fn cmd_link(args: LinkArgs, store: &TicketStore) -> Result<Value, CliRunError> {
     let from = resolve_uuid_prefix(&args.from, store)?;
     let to = resolve_uuid_prefix(&args.to, store)?;
     let from_title = store
@@ -74,10 +55,7 @@ pub(crate) fn cmd_link(
     }))
 }
 
-pub(crate) fn cmd_unlink(
-    args: UnlinkArgs,
-    store: &TicketStore,
-) -> Result<Value, CliRunError> {
+pub(crate) fn cmd_unlink(args: UnlinkArgs, store: &TicketStore) -> Result<Value, CliRunError> {
     let from = resolve_unlink_from(&args.from, store)?;
     let to = resolve_unlink_to(from, &args.to, &args.kind, store)?;
     let from_title = store
@@ -119,10 +97,7 @@ pub(crate) fn cmd_unlink(
     }))
 }
 
-fn resolve_unlink_from(
-    selector: &str,
-    store: &TicketStore,
-) -> Result<Uuid, CliRunError> {
+fn resolve_unlink_from(selector: &str, store: &TicketStore) -> Result<Uuid, CliRunError> {
     let trimmed = selector.trim();
     if let Ok(id) = trimmed.parse::<Uuid>() {
         return Ok(id);
@@ -151,8 +126,7 @@ fn resolve_unlink_to(
         return Ok(parsed);
     }
 
-    if !(trimmed.len() >= 8 && trimmed.chars().all(|ch| ch.is_ascii_hexdigit()))
-    {
+    if !(trimmed.len() >= 8 && trimmed.chars().all(|ch| ch.is_ascii_hexdigit())) {
         return Err(CliRunError::BadRequest(format!(
             "invalid UUID '{selector}': expected full UUID or hex prefix (>= 8 chars)"
         )));
@@ -178,10 +152,7 @@ fn resolve_unlink_to(
     }
 }
 
-pub(crate) fn cmd_links(
-    args: LinksArgs,
-    store: &TicketStore,
-) -> Result<Value, CliRunError> {
+pub(crate) fn cmd_links(args: LinksArgs, store: &TicketStore) -> Result<Value, CliRunError> {
     let raw_edges = if args.all {
         store.list_all_edges()?
     } else {
@@ -222,9 +193,7 @@ pub(crate) fn cmd_prune_dangling(
         None
     } else {
         let root_str = args.root.as_deref().ok_or_else(|| {
-            CliRunError::BadRequest(
-                "root ticket id is required unless --all is set".to_string(),
-            )
+            CliRunError::BadRequest("root ticket id is required unless --all is set".to_string())
         })?;
         Some(resolve_uuid_prefix(root_str, store)?)
     };
@@ -288,10 +257,7 @@ pub(crate) fn cmd_prune_dangling(
 
 // ── subgraph / topgraph ────────────────────────────────────────────────────────
 
-pub(crate) fn cmd_subgraph(
-    args: SubgraphArgs,
-    store: &TicketStore,
-) -> Result<Value, CliRunError> {
+pub(crate) fn cmd_subgraph(args: SubgraphArgs, store: &TicketStore) -> Result<Value, CliRunError> {
     graph_traversal(
         "subgraph",
         &args.root,
@@ -303,10 +269,7 @@ pub(crate) fn cmd_subgraph(
     )
 }
 
-pub(crate) fn cmd_topgraph(
-    args: TopgraphArgs,
-    store: &TicketStore,
-) -> Result<Value, CliRunError> {
+pub(crate) fn cmd_topgraph(args: TopgraphArgs, store: &TicketStore) -> Result<Value, CliRunError> {
     graph_traversal(
         "topgraph",
         &args.root,
@@ -335,18 +298,11 @@ fn graph_traversal(
     store: &TicketStore,
 ) -> Result<Value, CliRunError> {
     let root = resolve_uuid_prefix(root_str, store)?;
-    let traversal = collect_graph_data(
-        root,
-        depth.min(8),
-        direction,
-        edge_kind_filter,
-        store,
-    )?;
+    let traversal = collect_graph_data(root, depth.min(8), direction, edge_kind_filter, store)?;
     let json_nodes = graph_json_nodes(&traversal.node_list);
     let json_edges = graph_json_edges(&traversal.unique_edges);
     let edge_refs: Vec<&EdgeRecord> = traversal.unique_edges.iter().collect();
-    let tree =
-        render_ascii_tree(root, &traversal.node_list, &edge_refs, reverse_tree);
+    let tree = render_ascii_tree(root, &traversal.node_list, &edge_refs, reverse_tree);
 
     Ok(json!({
         "command": command_name,
@@ -388,12 +344,8 @@ fn collect_graph_data(
         }
 
         for edge in &all_edges {
-            let Some(neighbor) = matching_neighbor(
-                edge,
-                current_id,
-                direction,
-                edge_kind_filter,
-            ) else {
+            let Some(neighbor) = matching_neighbor(edge, current_id, direction, edge_kind_filter)
+            else {
                 continue;
             };
             collected_edges.push(edge.clone());
@@ -437,10 +389,7 @@ fn matching_neighbor(
     }
 }
 
-fn edge_neighbor(
-    edge: &EdgeRecord,
-    current_id: Uuid,
-) -> Option<(Uuid, bool)> {
+fn edge_neighbor(edge: &EdgeRecord, current_id: Uuid) -> Option<(Uuid, bool)> {
     if edge.from == current_id {
         Some((edge.to, true))
     } else if edge.to == current_id {
@@ -450,10 +399,7 @@ fn edge_neighbor(
     }
 }
 
-fn direction_allows(
-    direction: &str,
-    is_outbound: bool,
-) -> bool {
+fn direction_allows(direction: &str, is_outbound: bool) -> bool {
     match direction {
         "out" => is_outbound,
         "in" => !is_outbound,
@@ -465,9 +411,7 @@ fn dedupe_edges(collected_edges: Vec<EdgeRecord>) -> Vec<EdgeRecord> {
     let mut seen_edges = HashSet::new();
     collected_edges
         .into_iter()
-        .filter(|edge| {
-            seen_edges.insert((edge.from, edge.to, edge.kind.clone()))
-        })
+        .filter(|edge| seen_edges.insert((edge.from, edge.to, edge.kind.clone())))
         .collect()
 }
 
@@ -498,10 +442,7 @@ fn graph_json_edges(unique_edges: &[EdgeRecord]) -> Vec<Value> {
         .collect()
 }
 
-fn ticket_exists(
-    store: &TicketStore,
-    ticket_id: Uuid,
-) -> bool {
+fn ticket_exists(store: &TicketStore, ticket_id: Uuid) -> bool {
     store.get_indexed(&ticket_id).ok().flatten().is_some()
 }
 
@@ -552,9 +493,7 @@ fn render_ascii_tree(
     let short_id = &root.to_string()[..8];
     let (title, state) = node_info
         .get(&root)
-        .map(|(t, s)| {
-            (t.as_deref().unwrap_or("?"), s.as_deref().unwrap_or("?"))
-        })
+        .map(|(t, s)| (t.as_deref().unwrap_or("?"), s.as_deref().unwrap_or("?")))
         .unwrap_or(("?", "?"));
     let _ = writeln!(out, "{title} ({short_id}) [{state}]");
 
@@ -595,9 +534,7 @@ fn render_children(
         let short_id = &child_id.to_string()[..8];
         let (title, state) = node_info
             .get(child_id)
-            .map(|(t, s)| {
-                (t.as_deref().unwrap_or("?"), s.as_deref().unwrap_or("?"))
-            })
+            .map(|(t, s)| (t.as_deref().unwrap_or("?"), s.as_deref().unwrap_or("?")))
             .unwrap_or(("?", "?"));
 
         // In a topgraph the child actually depends on the parent, so flip the arrow.

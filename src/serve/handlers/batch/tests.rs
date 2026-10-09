@@ -1,28 +1,13 @@
 use std::sync::Arc;
 
 use axum::{
-    body::{
-        Body,
-        to_bytes,
-    },
-    http::{
-        Method,
-        Request,
-        StatusCode,
-        header,
-    },
+    body::{Body, to_bytes},
+    http::{Method, Request, StatusCode, header},
 };
-use ticket_api::{
-    model::filesystem::ScanRoot,
-    storage::store::TicketStore,
-};
+use ticket_api::{model::filesystem::ScanRoot, storage::store::TicketStore};
 use tower::ServiceExt;
 
-use crate::serve::{
-    AppState,
-    StreamBroker,
-    WorkspaceRegistry,
-};
+use crate::serve::{AppState, StreamBroker, WorkspaceRegistry};
 
 use super::*;
 
@@ -42,16 +27,10 @@ fn make_router(dir: &std::path::Path) -> axum::Router {
 }
 
 fn primary_workspace_name(dir: &std::path::Path) -> String {
-    crate::serve::registry::canonical_workspace_name_for_index_root(
-        dir,
-        "workspace",
-    )
+    crate::serve::registry::canonical_workspace_name_for_index_root(dir, "workspace")
 }
 
-async fn post_batch(
-    app: axum::Router,
-    body: serde_json::Value,
-) -> (StatusCode, Value) {
+async fn post_batch(app: axum::Router, body: serde_json::Value) -> (StatusCode, Value) {
     let req = Request::builder()
         .method(Method::POST)
         .uri("/api/batch")

@@ -5,27 +5,16 @@ use dioxus_router::Navigator;
 #[cfg(target_arch = "wasm32")]
 use crate::types::TicketRef;
 use crate::{
-    api::{
-        HttpTicketBackend,
-        TicketBackend,
-    },
+    api::{HttpTicketBackend, TicketBackend},
     layout::GraphLayout,
 };
 
 #[cfg(target_arch = "wasm32")]
 use super::interactions::select_node_or_navigate;
 use super::{
-    edge_list::{
-        EdgeListSidebar,
-        RemoveEdgeDialog,
-    },
+    edge_list::{EdgeListSidebar, RemoveEdgeDialog},
     picker::EdgePickerOverlay,
-    state::{
-        subscribe_sse,
-        DepSseHandle,
-        DragState,
-        RemoveEdge,
-    },
+    state::{subscribe_sse, DepSseHandle, DragState, RemoveEdge},
     viewport::GraphViewport,
     DepGraphProps,
 };
@@ -82,19 +71,18 @@ pub fn DepGraph(props: DepGraphProps) -> Element {
                 let backend = HttpTicketBackend::new(None);
                 match backend.get_workspace_graph(&workspace).await {
                     Ok(response) => {
-                        let active_workspace =
-                            if response.active_workspace.is_empty() {
-                                workspace.clone()
-                            } else {
-                                response.active_workspace.clone()
-                            };
+                        let active_workspace = if response.active_workspace.is_empty() {
+                            workspace.clone()
+                        } else {
+                            response.active_workspace.clone()
+                        };
                         layout.set(Some(GraphLayout::build(
                             &active_workspace,
                             response.nodes,
                             response.edges,
                         )));
                         load_error.set(None);
-                    },
+                    }
                     Err(error) => load_error.set(Some(error)),
                 }
             });

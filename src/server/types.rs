@@ -1,18 +1,7 @@
-use std::{
-    borrow::Cow,
-    collections::BTreeMap,
-};
+use std::{borrow::Cow, collections::BTreeMap};
 
-use rmcp::schemars::{
-    self,
-    JsonSchema,
-    Schema,
-    SchemaGenerator,
-};
-use serde::{
-    Deserialize,
-    Serialize,
-};
+use rmcp::schemars::{self, JsonSchema, Schema, SchemaGenerator};
+use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use ticket_api::storage::DescriptionUpdate;
 
@@ -277,7 +266,6 @@ impl JsonSchema for UpdateTicketInput {
         false
     }
 }
-
 
 #[derive(Debug, Deserialize, JsonSchema)]
 pub struct CloseTicketInput {

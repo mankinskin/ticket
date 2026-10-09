@@ -1,10 +1,6 @@
 mod common;
 
-use common::{
-    TicketCommands,
-    TicketSandbox as Sandbox,
-    create_ticket,
-};
+use common::{TicketCommands, TicketSandbox as Sandbox, create_ticket};
 
 #[test]
 fn ready_overview_returns_json_with_ready_tickets() {
@@ -34,8 +30,7 @@ fn ready_overview_returns_json_with_ready_tickets() {
         "depends_on",
     ]);
 
-    let result =
-        s.ticket_json(&["ready-overview", "--scope", "integration test scope"]);
+    let result = s.ticket_json(&["ready-overview", "--scope", "integration test scope"]);
 
     assert_eq!(result["status"], "ok");
     assert_eq!(result["ready_count"], 1);

@@ -1,30 +1,15 @@
 use dioxus::prelude::*;
 
 use viewer_api_dioxus::{
-    LayoutMode,
-    PanelResizer,
-    Projection,
-    ResizeDirection,
-    ResizeEdge,
-    ResizeHandle,
+    LayoutMode, PanelResizer, Projection, ResizeDirection, ResizeEdge, ResizeHandle,
 };
 
 use crate::{
-    components::{
-        dep_graph::DepGraph,
-        ticket_content::TicketContent,
-        ticket_detail::TicketDetail,
-    },
-    types::{
-        TicketRef,
-        TicketSummary,
-    },
+    components::{dep_graph::DepGraph, ticket_content::TicketContent, ticket_detail::TicketDetail},
+    types::{TicketRef, TicketSummary},
 };
 
-use super::{
-    DETAIL_COLLAPSE_PX,
-    GRAPH_COLLAPSE_PX,
-};
+use super::{DETAIL_COLLAPSE_PX, GRAPH_COLLAPSE_PX};
 
 pub(super) fn render_selected_main_panel(
     active_workspace: String,
@@ -45,10 +30,8 @@ pub(super) fn render_selected_main_panel(
     window_width: Signal<u32>,
 ) -> Element {
     let view_mode_value = view_mode.read().clone();
-    let show_graph_panel =
-        view_mode_value.as_str() != "content" && !graph_panel_collapsed;
-    let overlay_content_on_graph =
-        view_mode_value.as_str() == "split" && show_graph_panel;
+    let show_graph_panel = view_mode_value.as_str() != "content" && !graph_panel_collapsed;
+    let overlay_content_on_graph = view_mode_value.as_str() == "split" && show_graph_panel;
 
     rsx! {
         {render_view_mode_bar(

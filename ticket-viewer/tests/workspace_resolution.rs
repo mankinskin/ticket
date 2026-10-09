@@ -2,34 +2,20 @@
 //! identically to the CLI — via `ticket_api::workspace` — and that the
 //! HTTP API reflects the resolved store contents.
 
-use std::{
-    collections::BTreeMap,
-    sync::Arc,
-};
+use std::{collections::BTreeMap, sync::Arc};
 
 use axum::{
     body::to_bytes,
-    http::{
-        Request,
-        StatusCode,
-    },
+    http::{Request, StatusCode},
 };
 use tower::ServiceExt; // for `oneshot`
 
 use ticket_api::{
     model::filesystem::ScanRoot,
     storage::store::TicketStore,
-    workspace::{
-        find_local_root_from,
-        resolve_workspace_from,
-        TICKET_INDEX_DIR,
-    },
+    workspace::{find_local_root_from, resolve_workspace_from, TICKET_INDEX_DIR},
 };
-use ticket_http::serve::{
-    AppState,
-    StreamBroker,
-    WorkspaceRegistry,
-};
+use ticket_http::serve::{AppState, StreamBroker, WorkspaceRegistry};
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -52,10 +38,7 @@ fn build_app(store: Arc<TicketStore>) -> (axum::Router, String) {
     (ticket_http::build_router(state), workspace)
 }
 
-async fn get_ticket_count(
-    app: axum::Router,
-    workspace: &str,
-) -> (StatusCode, usize) {
+async fn get_ticket_count(app: axum::Router, workspace: &str) -> (StatusCode, usize) {
     let req = Request::builder()
         .uri(format!("/api/tickets?workspace={workspace}"))
         .body(axum::body::Body::empty())
@@ -66,8 +49,7 @@ async fn get_ticket_count(
     let bytes = to_bytes(resp.into_body(), 4 * 1024 * 1024)
         .await
         .expect("read body");
-    let payload: serde_json::Value =
-        serde_json::from_slice(&bytes).expect("parse json");
+    let payload: serde_json::Value = serde_json::from_slice(&bytes).expect("parse json");
     let count = payload["items"].as_array().map(|a| a.len()).unwrap_or(0);
     (status, count)
 }
@@ -80,8 +62,7 @@ fn local_workspace_file_is_found_walking_up() {
     let nested = root.path().join("a").join("b").join("c");
     std::fs::create_dir_all(&nested).expect("mkdir");
 
-    std::fs::create_dir(root.path().join(TICKET_INDEX_DIR))
-        .expect("create .ticket");
+    std::fs::create_dir(root.path().join(TICKET_INDEX_DIR)).expect("create .ticket");
 
     let found = find_local_root_from(&nested, TICKET_INDEX_DIR);
     assert!(found.is_some(), "should find .ticket walking up");
@@ -160,8 +141,7 @@ async fn resolved_workspace_serves_correct_store() {
 
     let (index_root, _source) = resolve_workspace_from(root.path());
 
-    let store =
-        Arc::new(TicketStore::open_or_init(&index_root).expect("open store"));
+    let store = Arc::new(TicketStore::open_or_init(&index_root).expect("open store"));
     store
         .add_scan_root(ScanRoot {
             path: index_root.join("tickets"),

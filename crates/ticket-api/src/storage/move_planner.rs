@@ -80,14 +80,11 @@ fn ticket_entity_root(store_root: &Path) -> PathBuf {
     index_root.join("tickets")
 }
 
-fn ticket_path_belongs_to_store(
-    store_root: &Path,
-    ticket_path: &Path,
-) -> bool {
+fn ticket_path_belongs_to_store(store_root: &Path, ticket_path: &Path) -> bool {
     let entity_root = std::fs::canonicalize(ticket_entity_root(store_root))
         .unwrap_or_else(|_| ticket_entity_root(store_root));
-    let ticket_path = std::fs::canonicalize(ticket_path)
-        .unwrap_or_else(|_| ticket_path.to_path_buf());
+    let ticket_path =
+        std::fs::canonicalize(ticket_path).unwrap_or_else(|_| ticket_path.to_path_buf());
     ticket_path.starts_with(entity_root)
 }
 
@@ -145,10 +142,7 @@ impl MoveDomain for TicketMoveDomain<'_> {
                 indexed
                     .get(entity_id)
                     .filter(|ticket| {
-                        ticket_path_belongs_to_store(
-                            &self.store.index_root,
-                            &ticket.path,
-                        )
+                        ticket_path_belongs_to_store(&self.store.index_root, &ticket.path)
                     })
                     .map(|ticket| (*entity_id, ticket.path.clone()))
             })
@@ -218,9 +212,7 @@ impl MoveDomain for TicketMoveDomain<'_> {
                     *entity_id,
                     indexed
                         .get(entity_id)
-                        .map(|ticket| {
-                            ticket_path_belongs_to_store(store_root, &ticket.path)
-                        })
+                        .map(|ticket| ticket_path_belongs_to_store(store_root, &ticket.path))
                         .unwrap_or(false),
                 )
             })
@@ -692,7 +684,10 @@ mod tests {
         let target_store = TicketStore::init(&nested_repo).unwrap();
         source_store
             .add_scan_root(ScanRoot {
-                path: nested_repo.join(".workflow-tools").join("ticket").join("tickets"),
+                path: nested_repo
+                    .join(".workflow-tools")
+                    .join("ticket")
+                    .join("tickets"),
                 label: "nested-tickets".to_string(),
             })
             .unwrap();

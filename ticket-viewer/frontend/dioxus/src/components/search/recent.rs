@@ -10,10 +10,7 @@ pub(super) fn load_recent(workspace: &str) -> Vec<String> {
     serde_json::from_str::<Vec<String>>(&raw).unwrap_or_default()
 }
 
-pub(super) fn save_recent(
-    workspace: &str,
-    query: &str,
-) {
+pub(super) fn save_recent(workspace: &str, query: &str) {
     const MAX_RECENT: usize = 5;
 
     let store = match local_storage() {

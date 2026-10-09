@@ -7,20 +7,14 @@
 use axum::{
     body::Body,
     extract::State,
-    http::{
-        Request,
-        StatusCode,
-    },
+    http::{Request, StatusCode},
     middleware::Next,
     response::Response,
 };
 
 use viewer_api::{
     auth::extract_bearer_token,
-    error::{
-        ApiError,
-        RequestIdExt,
-    },
+    error::{ApiError, RequestIdExt},
 };
 
 use super::AppState;
@@ -44,12 +38,10 @@ pub async fn write_auth(
 
     match extract_bearer_token(request.headers()) {
         Some(token) if token_set.contains(token) => next.run(request).await,
-        Some(_) => ApiError::unauthorized(
-            "auth.invalid_token",
-            "Bearer token is invalid",
-            &request_id,
-        )
-        .into_response_with_status(StatusCode::UNAUTHORIZED),
+        Some(_) => {
+            ApiError::unauthorized("auth.invalid_token", "Bearer token is invalid", &request_id)
+                .into_response_with_status(StatusCode::UNAUTHORIZED)
+        }
         None => ApiError::unauthorized(
             "auth.missing_token",
             "Authorization header required",

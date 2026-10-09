@@ -1,44 +1,21 @@
 use axum::{
     Json,
     body::to_bytes,
-    extract::{
-        Extension,
-        Path,
-        Query,
-        State,
-    },
-    http::{
-        HeaderMap,
-        StatusCode,
-    },
+    extract::{Extension, Path, Query, State},
+    http::{HeaderMap, StatusCode},
 };
-use std::{
-    collections::BTreeMap,
-    process::Command,
-    sync::Arc,
-};
+use std::{collections::BTreeMap, process::Command, sync::Arc};
 use viewer_api::error::RequestIdExt;
 
 use super::{
     super::{
-        CreateTicketBody,
-        MoveTicketBody,
-        MutationWorkspaceParam,
-        ReleaseLeaseBody,
-        UpdateTicketBody,
-        create_ticket,
-        move_ticket,
-        release_ticket_lease,
-        update_ticket,
+        CreateTicketBody, MoveTicketBody, MutationWorkspaceParam, ReleaseLeaseBody,
+        UpdateTicketBody, create_ticket, move_ticket, release_ticket_lease, update_ticket,
     },
-    make_state,
-    make_store,
+    make_state, make_store,
 };
 
-fn run_git(
-    repo_root: &std::path::Path,
-    args: &[&str],
-) {
+fn run_git(repo_root: &std::path::Path, args: &[&str]) {
     let status = Command::new("git")
         .current_dir(repo_root)
         .args(args)
@@ -73,8 +50,7 @@ async fn create_ticket_returns_201_with_new_ticket() {
     let bytes = to_bytes(response.into_body(), 1024 * 1024)
         .await
         .expect("body");
-    let payload: serde_json::Value =
-        serde_json::from_slice(&bytes).expect("json");
+    let payload: serde_json::Value = serde_json::from_slice(&bytes).expect("json");
 
     assert_eq!(payload["workspace"], workspace);
     assert_eq!(payload["active_workspace"], workspace.clone());
@@ -115,8 +91,7 @@ async fn create_ticket_with_extra_fields_and_description() {
     let bytes = to_bytes(response.into_body(), 1024 * 1024)
         .await
         .expect("body");
-    let payload: serde_json::Value =
-        serde_json::from_slice(&bytes).expect("json");
+    let payload: serde_json::Value = serde_json::from_slice(&bytes).expect("json");
     assert_eq!(payload["ticket"]["fields"]["priority"], "high");
 }
 
@@ -168,8 +143,7 @@ async fn update_ticket_patches_fields() {
     let bytes = to_bytes(response.into_body(), 1024 * 1024)
         .await
         .expect("body");
-    let payload: serde_json::Value =
-        serde_json::from_slice(&bytes).expect("json");
+    let payload: serde_json::Value = serde_json::from_slice(&bytes).expect("json");
     assert_eq!(payload["ticket"]["fields"]["title"], "Updated title");
 }
 
@@ -215,8 +189,7 @@ async fn update_ticket_transitions_state() {
     let bytes = to_bytes(response.into_body(), 1024 * 1024)
         .await
         .expect("body");
-    let payload: serde_json::Value =
-        serde_json::from_slice(&bytes).expect("json");
+    let payload: serde_json::Value = serde_json::from_slice(&bytes).expect("json");
     assert_eq!(payload["ticket"]["fields"]["state"], "planned");
 }
 
@@ -270,8 +243,7 @@ async fn release_ticket_lease_clears_stale_orphaned_lease() {
     let bytes = to_bytes(response.into_body(), 1024 * 1024)
         .await
         .expect("body");
-    let payload: serde_json::Value =
-        serde_json::from_slice(&bytes).expect("json");
+    let payload: serde_json::Value = serde_json::from_slice(&bytes).expect("json");
     assert_eq!(payload["workspace"], workspace);
     assert_eq!(payload["id"], id.to_string());
     assert_eq!(payload["requester"], "maintenance-bot");
@@ -304,9 +276,7 @@ async fn release_ticket_lease_returns_conflict_for_live_other_holder() {
         State(state),
         Extension(RequestIdExt("rid-conflict".to_string())),
         Path(id),
-        Query(MutationWorkspaceParam {
-            workspace,
-        }),
+        Query(MutationWorkspaceParam { workspace }),
         Json(ReleaseLeaseBody {
             requester: "agent-b".to_string(),
         }),
@@ -323,11 +293,9 @@ async fn move_ticket_dry_run_returns_structured_plan() {
 
     let source_store = make_store(dir.path());
     let target_workspace = dir.path().join("target-workspace");
-    std::fs::create_dir_all(&target_workspace)
-        .expect("create target workspace");
-    let _target_store =
-        ticket_api::storage::store::TicketStore::init(&target_workspace)
-            .expect("init target store");
+    std::fs::create_dir_all(&target_workspace).expect("create target workspace");
+    let _target_store = ticket_api::storage::store::TicketStore::init(&target_workspace)
+        .expect("init target store");
 
     let id = source_store
         .create(
@@ -362,8 +330,7 @@ async fn move_ticket_dry_run_returns_structured_plan() {
     let bytes = to_bytes(response.into_body(), 1024 * 1024)
         .await
         .expect("body");
-    let payload: serde_json::Value =
-        serde_json::from_slice(&bytes).expect("json");
+    let payload: serde_json::Value = serde_json::from_slice(&bytes).expect("json");
     assert_eq!(payload["mode"], "plan");
     assert_eq!(payload["status"], "ok");
     assert!(payload["plan"]["source_ticket_path"].is_string());
@@ -377,11 +344,9 @@ async fn move_ticket_apply_executes_and_returns_journal() {
 
     let source_store = make_store(dir.path());
     let target_workspace = dir.path().join("target-workspace");
-    std::fs::create_dir_all(&target_workspace)
-        .expect("create target workspace");
-    let target_store =
-        ticket_api::storage::store::TicketStore::init(&target_workspace)
-            .expect("init target store");
+    std::fs::create_dir_all(&target_workspace).expect("create target workspace");
+    let target_store = ticket_api::storage::store::TicketStore::init(&target_workspace)
+        .expect("init target store");
 
     let id = source_store
         .create(
@@ -416,8 +381,7 @@ async fn move_ticket_apply_executes_and_returns_journal() {
     let bytes = to_bytes(response.into_body(), 1024 * 1024)
         .await
         .expect("body");
-    let payload: serde_json::Value =
-        serde_json::from_slice(&bytes).expect("json");
+    let payload: serde_json::Value = serde_json::from_slice(&bytes).expect("json");
     assert_eq!(payload["mode"], "apply");
     assert!(payload["outcome"]["journal"]["id"].is_string());
 

@@ -1,40 +1,22 @@
-use chrono::{
-    Duration,
-    Utc,
-};
+use chrono::{Duration, Utc};
 use memory_kernel::model::edge::EdgeRecord;
 use serde_json::Value;
 use std::{
-    collections::{
-        BTreeMap,
-        BTreeSet,
-    },
+    collections::{BTreeMap, BTreeSet},
     fs,
-    path::{
-        Path,
-        PathBuf,
-    },
+    path::{Path, PathBuf},
 };
 
-use memory_kernel::{
-    model::filesystem::ScanRoot,
-    storage::index::RedbIndexStore,
-};
+use memory_kernel::{model::filesystem::ScanRoot, storage::index::RedbIndexStore};
 use tempfile::tempdir;
 use uuid::Uuid;
 
 use super::{
-    DescriptionUpdate,
-    DescriptionUpdateMode,
-    REQUIRED_DESCRIPTION_MODE_ERROR,
-    TicketStore,
+    DescriptionUpdate, DescriptionUpdateMode, REQUIRED_DESCRIPTION_MODE_ERROR, TicketStore,
 };
 use crate::model::{
     manifest_format::format_manifest_toml,
-    ticket::{
-        TicketManifest,
-        TicketManifestExt,
-    },
+    ticket::{TicketManifest, TicketManifestExt},
 };
 
 fn canonical_existing_path(path: &Path) -> PathBuf {

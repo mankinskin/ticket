@@ -1,15 +1,9 @@
 use crate::{
     error::StorageError,
-    model::{
-        edge::EdgeRecord,
-        query::parse_query,
-    },
+    model::{edge::EdgeRecord, query::parse_query},
     storage::{
         indexed::IndexedTicket,
-        search::{
-            SearchResult,
-            TantivySearchIndex,
-        },
+        search::{SearchResult, TantivySearchIndex},
         ticket_fs::TicketFs,
     },
 };
@@ -51,13 +45,7 @@ impl TicketStore {
             .into_iter()
             .filter(|ticket| is_ticket_visible(ticket, &visible_roots))
             .filter(|ticket| matches_filters(ticket, state_filter, type_filter))
-            .filter(|ticket| {
-                matches_field_filters(
-                    ticket,
-                    field_filters,
-                    needs_manifest_check,
-                )
-            })
+            .filter(|ticket| matches_field_filters(ticket, field_filters, needs_manifest_check))
             .collect();
         sort_tickets_by_effort(&mut filtered);
         filtered.truncate(limit.unwrap_or(usize::MAX));
@@ -69,8 +57,8 @@ impl TicketStore {
         query_expr: &str,
         limit: usize,
     ) -> Result<Vec<SearchResult>, StorageError> {
-        let expression = parse_query(query_expr)
-            .map_err(|error| StorageError::QueryParse(error.into()))?;
+        let expression =
+            parse_query(query_expr).map_err(|error| StorageError::QueryParse(error.into()))?;
         // Proactively ensure the search index is valid and complete before the
         // read, repopulating from the on-disk tickets if it is empty or partial.
         self.ensure_search_complete()?;
@@ -80,13 +68,11 @@ impl TicketStore {
             // Deep segment-content corruption keeps `meta.json` valid, so it
             // passes the cheap structural and completeness checks and only
             // surfaces on read. Rebuild from the on-disk tickets and retry once.
-            Err(error)
-                if TantivySearchIndex::is_rebuildable_read_failure(&error) =>
-            {
+            Err(error) if TantivySearchIndex::is_rebuildable_read_failure(&error) => {
                 self.search.reset_dir()?;
                 self.scan(true)?;
                 self.search.search(&expression, limit)?
-            },
+            }
             Err(error) => return Err(error.into()),
         };
 
@@ -114,10 +100,7 @@ impl TicketStore {
         }
     }
 
-    pub fn edges_from(
-        &self,
-        id: &Uuid,
-    ) -> Result<Vec<EdgeRecord>, StorageError> {
+    pub fn edges_from(&self, id: &Uuid) -> Result<Vec<EdgeRecord>, StorageError> {
         Ok(self.index.edges_from(id)?)
     }
 
@@ -133,10 +116,7 @@ impl TicketStore {
         Ok(self.index.count_edges()?)
     }
 
-    pub fn add_edge(
-        &self,
-        edge: EdgeRecord,
-    ) -> Result<(), StorageError> {
+    pub fn add_edge(&self, edge: EdgeRecord) -> Result<(), StorageError> {
         let visible_roots = visible_scan_roots(self)?;
 
         let target = self
@@ -164,22 +144,15 @@ impl TicketStore {
             return Err(StorageError::DependencyCycle);
         }
 
-        let (manifest, changed) = TicketFs::update_edge_field(
-            &source.path,
-            &edge.kind,
-            edge.to,
-            true,
-        )?;
+        let (manifest, changed) =
+            TicketFs::update_edge_field(&source.path, &edge.kind, edge.to, true)?;
 
         self.index.insert_edge(&edge)?;
         if changed {
             source.updated_at = Utc::now();
             self.index.insert_ticket(&source)?;
-            if let Err(error) = TicketFs::append_history(
-                &source.path,
-                manifest.extra.clone(),
-                None,
-            ) {
+            if let Err(error) = TicketFs::append_history(&source.path, manifest.extra.clone(), None)
+            {
                 tracing::error!(
                     ticket_id = %source.id,
                     path = %source.path.display(),
@@ -192,39 +165,25 @@ impl TicketStore {
             hook.edge_upsert(edge.from, edge.to, edge.kind.clone());
         }
         if edge.kind == "depends_on" && changed {
-            self.refresh_workflow_facts_for_roots(
-                &[edge.from],
-                false,
-                source.updated_at,
-            )?;
+            self.refresh_workflow_facts_for_roots(&[edge.from], false, source.updated_at)?;
         }
         Ok(())
     }
 
-    pub fn remove_edge(
-        &self,
-        edge: EdgeRecord,
-    ) -> Result<(), StorageError> {
+    pub fn remove_edge(&self, edge: EdgeRecord) -> Result<(), StorageError> {
         let mut source = self
             .get_indexed(&edge.from)?
             .ok_or(StorageError::NotFound(edge.from))?;
 
-        let (manifest, changed) = TicketFs::update_edge_field(
-            &source.path,
-            &edge.kind,
-            edge.to,
-            false,
-        )?;
+        let (manifest, changed) =
+            TicketFs::update_edge_field(&source.path, &edge.kind, edge.to, false)?;
 
         self.index.delete_edge(&edge)?;
         if changed {
             source.updated_at = Utc::now();
             self.index.insert_ticket(&source)?;
-            if let Err(error) = TicketFs::append_history(
-                &source.path,
-                manifest.extra.clone(),
-                None,
-            ) {
+            if let Err(error) = TicketFs::append_history(&source.path, manifest.extra.clone(), None)
+            {
                 tracing::error!(
                     ticket_id = %source.id,
                     path = %source.path.display(),
@@ -237,19 +196,13 @@ impl TicketStore {
             hook.edge_delete(edge.from, edge.to, edge.kind.clone());
         }
         if edge.kind == "depends_on" && changed {
-            self.refresh_workflow_facts_for_roots(
-                &[edge.from],
-                true,
-                source.updated_at,
-            )?;
+            self.refresh_workflow_facts_for_roots(&[edge.from], true, source.updated_at)?;
         }
         Ok(())
     }
 }
 
-fn visible_scan_roots(
-    store: &TicketStore
-) -> Result<Vec<std::path::PathBuf>, StorageError> {
+fn visible_scan_roots(store: &TicketStore) -> Result<Vec<std::path::PathBuf>, StorageError> {
     // Only surface roots whose persisted policy decision is `included`. Roots
     // marked `ignored` (via marker, glob, or external-path denial) are the
     // final defense against stale/ignored rows leaking into query results.
@@ -259,18 +212,14 @@ fn visible_scan_roots(
         .filter(|persisted| !persisted.metadata.policy_decision.is_ignored())
         .map(|persisted| persisted.root.path)
         .collect::<Vec<_>>();
-    let default_root =
-        store.resolve_scan_root_path(&store.index_root.join("tickets"));
+    let default_root = store.resolve_scan_root_path(&store.index_root.join("tickets"));
     if !roots.iter().any(|root| *root == default_root) {
         roots.push(default_root);
     }
     Ok(roots)
 }
 
-fn is_ticket_visible(
-    ticket: &IndexedTicket,
-    visible_roots: &[std::path::PathBuf],
-) -> bool {
+fn is_ticket_visible(ticket: &IndexedTicket, visible_roots: &[std::path::PathBuf]) -> bool {
     visible_roots
         .iter()
         .any(|root| ticket.path.starts_with(root))
@@ -333,8 +282,7 @@ fn matches_field_filters(
         return true;
     }
 
-    let manifest = match crate::storage::ticket_fs::TicketFs::read(&ticket.path)
-    {
+    let manifest = match crate::storage::ticket_fs::TicketFs::read(&ticket.path) {
         Ok(manifest) => manifest,
         Err(_) => return false,
     };

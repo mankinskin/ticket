@@ -1,8 +1,5 @@
 use super::*;
-use std::sync::{
-    Arc,
-    Mutex,
-};
+use std::sync::{Arc, Mutex};
 
 // Regression coverage for the append_history "swallow" fix: every call site
 // wraps `TicketFs::append_history` in `if let Err(error) = ... {
@@ -16,10 +13,7 @@ use std::sync::{
 struct CapturingWriter(Arc<Mutex<Vec<u8>>>);
 
 impl std::io::Write for CapturingWriter {
-    fn write(
-        &mut self,
-        buf: &[u8],
-    ) -> std::io::Result<usize> {
+    fn write(&mut self, buf: &[u8]) -> std::io::Result<usize> {
         self.0.lock().unwrap().extend_from_slice(buf);
         Ok(buf.len())
     }
@@ -123,8 +117,12 @@ fn write_part_logs_error_when_history_append_fails() {
         .write_part(&id, part_id, "objective", "v1", None)
         .unwrap();
 
-    let history_path =
-        store.get_indexed(&id).unwrap().unwrap().path.join("history.ndjson");
+    let history_path = store
+        .get_indexed(&id)
+        .unwrap()
+        .unwrap()
+        .path
+        .join("history.ndjson");
     make_readonly(&history_path);
 
     let logs = capture_tracing(|| {
@@ -165,19 +163,18 @@ fn write_amendment_part_logs_error_when_history_append_fails() {
         .write_part(&id, target_part_id, "objective", "v1", None)
         .unwrap();
 
-    let history_path =
-        store.get_indexed(&id).unwrap().unwrap().path.join("history.ndjson");
+    let history_path = store
+        .get_indexed(&id)
+        .unwrap()
+        .unwrap()
+        .path
+        .join("history.ndjson");
     make_readonly(&history_path);
 
     let amendment_part_id = Uuid::new_v4();
     let logs = capture_tracing(|| {
-        let result = store.write_amendment_part(
-            &id,
-            amendment_part_id,
-            "correction",
-            target_part_id,
-            None,
-        );
+        let result =
+            store.write_amendment_part(&id, amendment_part_id, "correction", target_part_id, None);
         assert!(
             result.is_ok(),
             "write_amendment_part must succeed even when history append \
@@ -218,8 +215,12 @@ fn undo_part_logs_error_when_history_append_fails() {
         .write_part(&id, part_id, "objective", "v2", None)
         .unwrap();
 
-    let history_path =
-        store.get_indexed(&id).unwrap().unwrap().path.join("history.ndjson");
+    let history_path = store
+        .get_indexed(&id)
+        .unwrap()
+        .unwrap()
+        .path
+        .join("history.ndjson");
     make_readonly(&history_path);
 
     let logs = capture_tracing(|| {
@@ -240,7 +241,6 @@ fn undo_part_logs_error_when_history_append_fails() {
     );
 }
 
-
 #[test]
 fn attach_logs_error_when_history_append_fails() {
     let dir = tempdir().unwrap();
@@ -260,8 +260,12 @@ fn attach_logs_error_when_history_append_fails() {
     let source_path = dir.path().join("attachment.txt");
     fs::write(&source_path, "attachment content").unwrap();
 
-    let history_path =
-        store.get_indexed(&id).unwrap().unwrap().path.join("history.ndjson");
+    let history_path = store
+        .get_indexed(&id)
+        .unwrap()
+        .unwrap()
+        .path
+        .join("history.ndjson");
     make_readonly(&history_path);
 
     let logs = capture_tracing(|| {

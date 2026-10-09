@@ -1,22 +1,9 @@
-use serde_json::{
-    Value,
-    json,
-};
+use serde_json::{Value, json};
 use uuid::Uuid;
 
-use ticket_api::{
-    storage::TicketStore,
-    workspace,
-};
+use ticket_api::{storage::TicketStore, workspace};
 
-use crate::cli::{
-    CancelArgs,
-    ClaimArgs,
-    CliRunError,
-    CloseArgs,
-    MoveArgs,
-    UnclaimArgs,
-};
+use crate::cli::{CancelArgs, ClaimArgs, CliRunError, CloseArgs, MoveArgs, UnclaimArgs};
 
 enum MoveMode {
     Resume,
@@ -32,14 +19,10 @@ fn resolve_author(explicit: Option<&str>) -> Option<String> {
     })
 }
 
-pub(crate) fn cmd_close(
-    args: CloseArgs,
-    store: &TicketStore,
-) -> Result<Value, CliRunError> {
+pub(crate) fn cmd_close(args: CloseArgs, store: &TicketStore) -> Result<Value, CliRunError> {
     let id = super::resolve_uuid_prefix(&args.id, store)?;
     let author = resolve_author(args.author.as_deref());
-    let (manifest, path) =
-        store.close(&id, &args.to_state, author.as_deref())?;
+    let (manifest, path) = store.close(&id, &args.to_state, author.as_deref())?;
     let title = manifest
         .extra
         .get("title")
@@ -55,10 +38,7 @@ pub(crate) fn cmd_close(
     }))
 }
 
-pub(crate) fn cmd_cancel(
-    args: CancelArgs,
-    store: &TicketStore,
-) -> Result<Value, CliRunError> {
+pub(crate) fn cmd_cancel(args: CancelArgs, store: &TicketStore) -> Result<Value, CliRunError> {
     let id = super::resolve_uuid_prefix(&args.id, store)?;
     let author = resolve_author(args.author.as_deref());
     let (manifest, path) = store.close(&id, "cancelled", author.as_deref())?;
@@ -93,13 +73,11 @@ pub(crate) fn cmd_move(
     match resolve_move_mode(&args)? {
         MoveMode::Resume => return handle_move_resume(&args, store),
         MoveMode::Rollback => return handle_move_rollback(&args, store),
-        MoveMode::PlanOrExecute => {},
+        MoveMode::PlanOrExecute => {}
     }
 
     let id = args.id.as_deref().ok_or_else(|| {
-        CliRunError::BadRequest(
-            "move requires <id> unless --resume/--rollback is used".to_string(),
-        )
+        CliRunError::BadRequest("move requires <id> unless --resume/--rollback is used".to_string())
     })?;
     tracing::Span::current().record(
         "mode",
@@ -109,21 +87,16 @@ pub(crate) fn cmd_move(
             "execute"
         },
     );
-    let to_workspace_root =
-        args.to_workspace_root.as_deref().ok_or_else(|| {
-            CliRunError::BadRequest(
-                "move requires --to-workspace-root in plan/execute mode"
-                    .to_string(),
-            )
-        })?;
+    let to_workspace_root = args.to_workspace_root.as_deref().ok_or_else(|| {
+        CliRunError::BadRequest(
+            "move requires --to-workspace-root in plan/execute mode".to_string(),
+        )
+    })?;
 
     let selector = to_workspace_root.to_string_lossy();
-    let selector = workspace::normalize_explicit_workspace_selector(
-        Some(&selector),
-    )
-    .map_err(|error| CliRunError::BadRequest(error.to_string()))?;
-    let requested_workspace_root =
-        workspace::canonicalize_workspace_root_strict(&selector)
+    let selector = workspace::normalize_explicit_workspace_selector(Some(&selector))
+        .map_err(|error| CliRunError::BadRequest(error.to_string()))?;
+    let requested_workspace_root = workspace::canonicalize_workspace_root_strict(&selector)
         .map_err(|error| {
             CliRunError::BadRequest(format!(
                 "workspace root canonicalization failed for '{}': {error}",
@@ -196,8 +169,7 @@ pub(crate) fn cmd_move(
     }
 
     let outcome = store.execute_move_with_journal(&report)?;
-    tracing::Span::current()
-        .record("journal_id", outcome.journal.id.to_string());
+    tracing::Span::current().record("journal_id", outcome.journal.id.to_string());
     tracing::debug!(
         target: "ticket_cli::transport",
         ticket_id = %ticket_id,
@@ -229,10 +201,7 @@ fn resolve_move_mode(args: &MoveArgs) -> Result<MoveMode, CliRunError> {
     }
 }
 
-fn validate_move_mode_args(
-    args: &MoveArgs,
-    mode_flag: &str,
-) -> Result<(), CliRunError> {
+fn validate_move_mode_args(args: &MoveArgs, mode_flag: &str) -> Result<(), CliRunError> {
     if args.id.is_some() || args.to_workspace_root.is_some() {
         return Err(CliRunError::BadRequest(format!(
             "{mode_flag} cannot be combined with id or --to-workspace-root"
@@ -241,29 +210,19 @@ fn validate_move_mode_args(
     Ok(())
 }
 
-fn parse_move_journal_uuid(
-    value: Option<&str>,
-    mode_flag: &str,
-) -> Result<Uuid, CliRunError> {
+fn parse_move_journal_uuid(value: Option<&str>, mode_flag: &str) -> Result<Uuid, CliRunError> {
     let value = value.expect("mode-specific UUID should exist");
     value.parse::<Uuid>().map_err(|error| {
-        CliRunError::BadRequest(format!(
-            "invalid {mode_flag} journal UUID: {error}"
-        ))
+        CliRunError::BadRequest(format!("invalid {mode_flag} journal UUID: {error}"))
     })
 }
 
-fn handle_move_resume(
-    args: &MoveArgs,
-    store: &TicketStore,
-) -> Result<Value, CliRunError> {
+fn handle_move_resume(args: &MoveArgs, store: &TicketStore) -> Result<Value, CliRunError> {
     tracing::Span::current().record("mode", "resume");
     validate_move_mode_args(args, "--resume")?;
-    let journal_id =
-        parse_move_journal_uuid(args.resume.as_deref(), "--resume")?;
+    let journal_id = parse_move_journal_uuid(args.resume.as_deref(), "--resume")?;
     let outcome = store.resume_move_with_journal(journal_id)?;
-    tracing::Span::current()
-        .record("journal_id", outcome.journal.id.to_string());
+    tracing::Span::current().record("journal_id", outcome.journal.id.to_string());
     tracing::debug!(
         target: "ticket_cli::transport",
         journal_id = %outcome.journal.id,
@@ -280,17 +239,12 @@ fn handle_move_resume(
     }))
 }
 
-fn handle_move_rollback(
-    args: &MoveArgs,
-    store: &TicketStore,
-) -> Result<Value, CliRunError> {
+fn handle_move_rollback(args: &MoveArgs, store: &TicketStore) -> Result<Value, CliRunError> {
     tracing::Span::current().record("mode", "rollback");
     validate_move_mode_args(args, "--rollback")?;
-    let journal_id =
-        parse_move_journal_uuid(args.rollback.as_deref(), "--rollback")?;
+    let journal_id = parse_move_journal_uuid(args.rollback.as_deref(), "--rollback")?;
     let outcome = store.rollback_move_with_journal(journal_id)?;
-    tracing::Span::current()
-        .record("journal_id", outcome.journal.id.to_string());
+    tracing::Span::current().record("journal_id", outcome.journal.id.to_string());
     tracing::debug!(
         target: "ticket_cli::transport",
         journal_id = %outcome.journal.id,
@@ -308,7 +262,7 @@ fn handle_move_rollback(
 }
 
 fn move_plan_json(
-    report: &ticket_api::storage::move_planner::MovePreflightReport
+    report: &ticket_api::storage::move_planner::MovePreflightReport,
 ) -> Result<Value, CliRunError> {
     Ok(json!({
         "supported": report.supported(),
@@ -331,9 +285,7 @@ fn move_plan_json(
     }))
 }
 
-fn move_outcome_json(
-    outcome: &ticket_api::storage::move_execution::MoveExecutionOutcome
-) -> Value {
+fn move_outcome_json(outcome: &ticket_api::storage::move_execution::MoveExecutionOutcome) -> Value {
     json!({
         "resumed": outcome.resumed,
         "rolled_back": outcome.rolled_back,
@@ -363,23 +315,16 @@ fn recovery_hint() -> Value {
     })
 }
 
-fn normalize_display_path(
-    path: &std::path::Path
-) -> Result<String, CliRunError> {
-    memory_kernel::workspace::normalize_path_for_display_strict(path).map_err(
-        |error| {
-            CliRunError::BadRequest(format!(
-                "path payload normalization failed for '{}': {error}",
-                path.display()
-            ))
-        },
-    )
+fn normalize_display_path(path: &std::path::Path) -> Result<String, CliRunError> {
+    memory_kernel::workspace::normalize_path_for_display_strict(path).map_err(|error| {
+        CliRunError::BadRequest(format!(
+            "path payload normalization failed for '{}': {error}",
+            path.display()
+        ))
+    })
 }
 
-pub(crate) fn cmd_claim(
-    args: ClaimArgs,
-    store: &TicketStore,
-) -> Result<Value, CliRunError> {
+pub(crate) fn cmd_claim(args: ClaimArgs, store: &TicketStore) -> Result<Value, CliRunError> {
     let id = super::resolve_uuid_prefix(&args.id, store)?;
 
     // Enforce per-ticket exclusivity: `claim` is a single-agent lease, so a
@@ -415,10 +360,7 @@ pub(crate) fn cmd_claim(
     }))
 }
 
-pub(crate) fn cmd_unclaim(
-    args: UnclaimArgs,
-    store: &TicketStore,
-) -> Result<Value, CliRunError> {
+pub(crate) fn cmd_unclaim(args: UnclaimArgs, store: &TicketStore) -> Result<Value, CliRunError> {
     let id = super::resolve_uuid_prefix(&args.id, store)?;
     let manifest = store.get(&id)?;
     let title = manifest
@@ -428,9 +370,10 @@ pub(crate) fn cmd_unclaim(
         .unwrap_or("-");
     // Determine agent_id from the active board snapshot (find any active entry for this ticket).
     let snap = store.board_show(None)?;
-    let entry = snap.entries.iter().find(|e| {
-        e.ticket_id == id && e.status == ticket_api::BoardEntryStatus::Active
-    });
+    let entry = snap
+        .entries
+        .iter()
+        .find(|e| e.ticket_id == id && e.status == ticket_api::BoardEntryStatus::Active);
     let requester = args
         .agent_id
         .clone()
@@ -480,10 +423,7 @@ mod tests {
     use std::process::Command;
     use tempfile::tempdir;
 
-    fn run_git(
-        repo_root: &std::path::Path,
-        args: &[&str],
-    ) {
+    fn run_git(repo_root: &std::path::Path, args: &[&str]) {
         let status = Command::new("git")
             .current_dir(repo_root)
             .args(args)
@@ -589,10 +529,26 @@ mod tests {
         let source_store = TicketStore::init(&source_workspace).unwrap();
         let _target_store = TicketStore::init(&target_workspace).unwrap();
         let first_id = source_store
-            .create(None, "tracker-improvement", Some("first ticket"), Some("planned"), Default::default(), None, None)
+            .create(
+                None,
+                "tracker-improvement",
+                Some("first ticket"),
+                Some("planned"),
+                Default::default(),
+                None,
+                None,
+            )
             .unwrap();
         let second_id = source_store
-            .create(None, "tracker-improvement", Some("second ticket"), Some("planned"), Default::default(), None, None)
+            .create(
+                None,
+                "tracker-improvement",
+                Some("second ticket"),
+                Some("planned"),
+                Default::default(),
+                None,
+                None,
+            )
             .unwrap();
 
         let payload = cmd_move(

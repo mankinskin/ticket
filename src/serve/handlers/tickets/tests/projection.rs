@@ -4,24 +4,15 @@
 
 use axum::{
     body::to_bytes,
-    extract::{
-        Extension,
-        Path,
-        Query,
-        State,
-    },
+    extract::{Extension, Path, Query, State},
     http::StatusCode,
 };
 use std::collections::BTreeMap;
 use viewer_api::error::RequestIdExt;
 
 use super::{
-    super::{
-        TicketIdParam,
-        get_ticket,
-    },
-    make_state,
-    make_store,
+    super::{TicketIdParam, get_ticket},
+    make_state, make_store,
 };
 
 #[tokio::test]
@@ -59,8 +50,7 @@ async fn get_ticket_with_view_summary_projects_to_objective_only() {
     let bytes = to_bytes(response.into_body(), 1024 * 1024)
         .await
         .expect("read body");
-    let payload: serde_json::Value =
-        serde_json::from_slice(&bytes).expect("json body");
+    let payload: serde_json::Value = serde_json::from_slice(&bytes).expect("json body");
 
     let parts = payload["ticket"]["parts"].as_array().expect("parts array");
     assert_eq!(parts.len(), 1);
@@ -83,7 +73,13 @@ async fn get_ticket_with_explicit_parts_returns_exactly_those_kinds() {
         )
         .expect("create ticket");
     store
-        .write_part(&id, uuid::Uuid::new_v4(), "objective", "objective body", None)
+        .write_part(
+            &id,
+            uuid::Uuid::new_v4(),
+            "objective",
+            "objective body",
+            None,
+        )
         .expect("write objective part");
     store
         .write_part(
@@ -114,8 +110,7 @@ async fn get_ticket_with_explicit_parts_returns_exactly_those_kinds() {
     let bytes = to_bytes(response.into_body(), 1024 * 1024)
         .await
         .expect("read body");
-    let payload: serde_json::Value =
-        serde_json::from_slice(&bytes).expect("json body");
+    let payload: serde_json::Value = serde_json::from_slice(&bytes).expect("json body");
 
     let kinds: Vec<String> = payload["ticket"]["parts"]
         .as_array()
@@ -123,7 +118,10 @@ async fn get_ticket_with_explicit_parts_returns_exactly_those_kinds() {
         .iter()
         .map(|part| part["kind"].as_str().unwrap().to_string())
         .collect();
-    assert_eq!(kinds, vec!["objective".to_string(), "acceptance_criteria".to_string()]);
+    assert_eq!(
+        kinds,
+        vec!["objective".to_string(), "acceptance_criteria".to_string()]
+    );
 }
 
 #[tokio::test]

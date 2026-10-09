@@ -1,16 +1,9 @@
 use dioxus::prelude::*;
 
 use crate::{
-    api::{
-        HttpTicketBackend,
-        TicketBackend,
-    },
+    api::{HttpTicketBackend, TicketBackend},
     types::{
-        state_colors,
-        TicketRef,
-        WorkflowCandidateItem,
-        WorkflowNextResponse,
-        WorkflowTreeItem,
+        state_colors, TicketRef, WorkflowCandidateItem, WorkflowNextResponse, WorkflowTreeItem,
         WorkflowTreeResponse,
     },
 };
@@ -34,10 +27,8 @@ impl WorkflowSidebarMode {
     fn description(self) -> &'static str {
         match self {
             Self::Next => "Server-ranked actionable work for this workspace.",
-            Self::Blockers =>
-                "Blocking prerequisites for the pinned root ticket.",
-            Self::UnblockedBy =>
-                "Work that opens up once the pinned root ticket is satisfied.",
+            Self::Blockers => "Blocking prerequisites for the pinned root ticket.",
+            Self::UnblockedBy => "Work that opens up once the pinned root ticket is satisfied.",
         }
     }
 }
@@ -63,10 +54,8 @@ enum WorkflowFetchResult {
 pub fn WorkflowExplorer(props: WorkflowExplorerProps) -> Element {
     let mut loading: Signal<bool> = use_signal(|| false);
     let mut error: Signal<Option<String>> = use_signal(|| None);
-    let mut next_response: Signal<Option<WorkflowNextResponse>> =
-        use_signal(|| None);
-    let mut tree_response: Signal<Option<WorkflowTreeResponse>> =
-        use_signal(|| None);
+    let mut next_response: Signal<Option<WorkflowNextResponse>> = use_signal(|| None);
+    let mut tree_response: Signal<Option<WorkflowTreeResponse>> = use_signal(|| None);
     let mut request_seq: Signal<u64> = use_signal(|| 0);
 
     {
@@ -83,9 +72,7 @@ pub fn WorkflowExplorer(props: WorkflowExplorerProps) -> Element {
             next_response.set(None);
             tree_response.set(None);
 
-            if !matches!(mode, WorkflowSidebarMode::Next)
-                && root_ticket.is_none()
-            {
+            if !matches!(mode, WorkflowSidebarMode::Next) && root_ticket.is_none() {
                 loading.set(false);
                 return;
             }
@@ -122,10 +109,10 @@ pub fn WorkflowExplorer(props: WorkflowExplorerProps) -> Element {
                 match result {
                     Ok(WorkflowFetchResult::Next(response)) => {
                         next_response.set(Some(response));
-                    },
+                    }
                     Ok(WorkflowFetchResult::Tree(response)) => {
                         tree_response.set(Some(response));
-                    },
+                    }
                     Err(message) => error.set(Some(message)),
                 }
                 loading.set(false);
@@ -450,12 +437,11 @@ fn render_tree_node(
         last_blocker_progress_at,
         children,
     } = node;
-    let ticket_ref =
-        if !ticket_ref.workspace.is_empty() && !ticket_ref.id.is_empty() {
-            ticket_ref
-        } else {
-            TicketRef::new(active_workspace, id.clone())
-        };
+    let ticket_ref = if !ticket_ref.workspace.is_empty() && !ticket_ref.id.is_empty() {
+        ticket_ref
+    } else {
+        TicketRef::new(active_workspace, id.clone())
+    };
     let depth_px = depth * 14;
 
     rsx! {
@@ -561,12 +547,11 @@ fn render_candidate_card(
         last_blocker_progress_at,
         created_at: _,
     } = item;
-    let ticket_ref =
-        if !ticket_ref.workspace.is_empty() && !ticket_ref.id.is_empty() {
-            ticket_ref
-        } else {
-            TicketRef::new(active_workspace, id.clone())
-        };
+    let ticket_ref = if !ticket_ref.workspace.is_empty() && !ticket_ref.id.is_empty() {
+        ticket_ref
+    } else {
+        TicketRef::new(active_workspace, id.clone())
+    };
 
     rsx! {
         button {
@@ -662,10 +647,8 @@ fn workflow_evidence(
         (Some(actionable), Some(progress)) => Some(format!(
             "Actionable since {actionable}; last blocker progress {progress}"
         )),
-        (Some(actionable), None) =>
-            Some(format!("Actionable since {actionable}")),
-        (None, Some(progress)) =>
-            Some(format!("Last blocker progress {progress}")),
+        (Some(actionable), None) => Some(format!("Actionable since {actionable}")),
+        (None, Some(progress)) => Some(format!("Last blocker progress {progress}")),
         (None, None) => None,
     }
 }

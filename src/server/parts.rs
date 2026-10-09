@@ -1,29 +1,17 @@
-use serde_json::{
-    Value,
-    json,
-};
-use ticket_api::storage::ticket_fs::TicketFs;
+use serde_json::{Value, json};
 use ticket_api::model::ticket::TicketManifestExt;
+use ticket_api::storage::ticket_fs::TicketFs;
 use uuid::Uuid;
 
-use super::{
-    types::*,
-    *,
-};
+use super::{types::*, *};
 
 fn parse_part_id(value: &str) -> Result<Uuid, McpError> {
     value.parse::<Uuid>().map_err(|error| {
-        McpError::invalid_params(
-            format!("invalid part_id '{value}': {error}"),
-            None,
-        )
+        McpError::invalid_params(format!("invalid part_id '{value}': {error}"), None)
     })
 }
 
-fn part_json(
-    part: &ticket_api::storage::ticket_fs::LoadedPart,
-    with_content: bool,
-) -> Value {
+fn part_json(part: &ticket_api::storage::ticket_fs::LoadedPart, with_content: bool) -> Value {
     let mut item = json!({
         "id": part.id,
         "kind": part.kind,
@@ -43,16 +31,20 @@ fn find_part_in_manifest(
     manifest: &ticket_api::model::ticket::TicketManifest,
     part_id: Uuid,
 ) -> Option<Value> {
-    manifest.parts().into_iter().find(|p| p.id == part_id).map(|p| {
-        json!({
-            "id": p.id,
-            "kind": p.kind,
-            "path": p.path,
-            "frozen": p.frozen,
-            "created_at": p.created_at,
-            "supersedes": p.supersedes,
+    manifest
+        .parts()
+        .into_iter()
+        .find(|p| p.id == part_id)
+        .map(|p| {
+            json!({
+                "id": p.id,
+                "kind": p.kind,
+                "path": p.path,
+                "frozen": p.frozen,
+                "created_at": p.created_at,
+                "supersedes": p.supersedes,
+            })
         })
-    })
 }
 
 impl TicketServer {
@@ -69,13 +61,12 @@ impl TicketServer {
                 let indexed = store
                     .get_indexed(&id)
                     .map_err(Self::store_err)?
-                    .ok_or_else(|| Self::store_err(
-                        ticket_api::error::StorageError::NotFound(id),
-                    ))?;
-                let manifest =
-                    TicketFs::read(&indexed.path).map_err(Self::store_err)?;
-                let report = TicketFs::load_parts(&indexed.path, &manifest)
-                    .map_err(Self::store_err)?;
+                    .ok_or_else(|| {
+                        Self::store_err(ticket_api::error::StorageError::NotFound(id))
+                    })?;
+                let manifest = TicketFs::read(&indexed.path).map_err(Self::store_err)?;
+                let report =
+                    TicketFs::load_parts(&indexed.path, &manifest).map_err(Self::store_err)?;
                 Ok((id, report))
             })
             .await?;
@@ -114,18 +105,15 @@ impl TicketServer {
                 let indexed = store
                     .get_indexed(&id)
                     .map_err(Self::store_err)?
-                    .ok_or_else(|| Self::store_err(
-                        ticket_api::error::StorageError::NotFound(id),
-                    ))?;
-                let manifest =
-                    TicketFs::read(&indexed.path).map_err(Self::store_err)?;
-                let report = TicketFs::load_parts(&indexed.path, &manifest)
-                    .map_err(Self::store_err)?;
+                    .ok_or_else(|| {
+                        Self::store_err(ticket_api::error::StorageError::NotFound(id))
+                    })?;
+                let manifest = TicketFs::read(&indexed.path).map_err(Self::store_err)?;
+                let report =
+                    TicketFs::load_parts(&indexed.path, &manifest).map_err(Self::store_err)?;
                 let part = report.find(part_id).cloned().ok_or_else(|| {
                     McpError::invalid_params(
-                        format!(
-                            "part '{part_id}' was not found on ticket '{id}'"
-                        ),
+                        format!("part '{part_id}' was not found on ticket '{id}'"),
                         None,
                     )
                 })?;
@@ -191,13 +179,7 @@ impl TicketServer {
             .with_store_ext(&workspace.clone(), move |store| {
                 let id = Self::resolve_uuid_with(store, &id_str)?;
                 let manifest = store
-                    .write_amendment_part(
-                        &id,
-                        part_id,
-                        &content,
-                        supersedes,
-                        author.as_deref(),
-                    )
+                    .write_amendment_part(&id, part_id, &content, supersedes, author.as_deref())
                     .map_err(Self::store_err)?;
                 Ok((id, manifest))
             })

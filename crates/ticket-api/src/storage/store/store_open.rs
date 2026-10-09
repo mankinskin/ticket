@@ -25,24 +25,15 @@ impl TicketStore {
             .unwrap_or_else(|_| Self::normalize_path(path.to_path_buf()))
     }
 
-    pub(super) fn resolved_candidate_matches(
-        candidate: &Path,
-        marker_file: Option<&str>,
-    ) -> bool {
+    pub(super) fn resolved_candidate_matches(candidate: &Path, marker_file: Option<&str>) -> bool {
         match marker_file {
             Some(marker_file) => candidate.join(marker_file).is_file(),
             None => candidate.is_dir(),
         }
     }
 
-    pub(super) fn resolve_indexed_path(
-        &self,
-        path: &Path,
-        marker_file: Option<&str>,
-    ) -> PathBuf {
-        if path.is_absolute()
-            && Self::resolved_candidate_matches(path, marker_file)
-        {
+    pub(super) fn resolve_indexed_path(&self, path: &Path, marker_file: Option<&str>) -> PathBuf {
+        if path.is_absolute() && Self::resolved_candidate_matches(path, marker_file) {
             return Self::normalize_path(path.to_path_buf());
         }
 
@@ -60,24 +51,15 @@ impl TicketStore {
         Self::normalize_path(path.to_path_buf())
     }
 
-    pub(super) fn resolve_ticket_path(
-        &self,
-        path: &Path,
-    ) -> PathBuf {
+    pub(super) fn resolve_ticket_path(&self, path: &Path) -> PathBuf {
         self.resolve_indexed_path(path, Some(TICKET_MANIFEST_FILE))
     }
 
-    pub(super) fn resolve_scan_root_path(
-        &self,
-        path: &Path,
-    ) -> PathBuf {
+    pub(super) fn resolve_scan_root_path(&self, path: &Path) -> PathBuf {
         self.resolve_indexed_path(path, None)
     }
 
-    pub(super) fn normalize_indexed_ticket(
-        &self,
-        mut indexed: IndexedTicket,
-    ) -> IndexedTicket {
+    pub(super) fn normalize_indexed_ticket(&self, mut indexed: IndexedTicket) -> IndexedTicket {
         indexed.path = self.resolve_ticket_path(&indexed.path);
         indexed
     }
@@ -154,8 +136,7 @@ impl TicketStore {
             "workspace_exists_check_ms".to_string(),
             elapsed_ms(existence_started),
         );
-        let (store, internal_report) =
-            Self::open_internal_profiled(index_root, schema_registry)?;
+        let (store, internal_report) = Self::open_internal_profiled(index_root, schema_registry)?;
         merge_timings(
             &mut report.phase_timings_ms,
             internal_report.phase_timings_ms,
@@ -178,8 +159,7 @@ impl TicketStore {
         local_workspace: &Path,
         schema_registry: SchemaRegistry,
     ) -> Result<Self, StorageError> {
-        let resolution =
-            Self::resolve_workspace_store(local_workspace, StoreAccessMode::ReadOnly)?;
+        let resolution = Self::resolve_workspace_store(local_workspace, StoreAccessMode::ReadOnly)?;
         let (store, _) =
             Self::open_resolved_with_profiled(&resolution.store_root, schema_registry)?;
         Ok(store)
@@ -196,8 +176,7 @@ impl TicketStore {
     ) -> Result<Self, StorageError> {
         let resolution =
             Self::resolve_workspace_store(local_workspace, StoreAccessMode::CreateOrOpen)?;
-        let (store, _) =
-            Self::init_with_profiled(&resolution.store_root, schema_registry)?;
+        let (store, _) = Self::init_with_profiled(&resolution.store_root, schema_registry)?;
         Ok(store)
     }
 
@@ -273,8 +252,7 @@ impl TicketStore {
         .entered();
         let overall_started = Instant::now();
         let resolve_started = Instant::now();
-        let resolution =
-            Self::resolve_workspace_store(index_root, StoreAccessMode::CreateOrOpen)?;
+        let resolution = Self::resolve_workspace_store(index_root, StoreAccessMode::CreateOrOpen)?;
         let index_root = resolution.store_root;
         let mut report = StoreOpenReport {
             initialized_store: true,
@@ -285,17 +263,12 @@ impl TicketStore {
             elapsed_ms(resolve_started),
         );
         let ensure_started = Instant::now();
-        ensure_sqlite_index_root(
-            &index_root,
-            "tickets.db",
-            &["search_index/"],
-        )?;
+        ensure_sqlite_index_root(&index_root, "tickets.db", &["search_index/"])?;
         report.phase_timings_ms.insert(
             "ensure_index_root_ms".to_string(),
             elapsed_ms(ensure_started),
         );
-        let (store, internal_report) =
-            Self::open_internal_profiled(index_root, schema_registry)?;
+        let (store, internal_report) = Self::open_internal_profiled(index_root, schema_registry)?;
         merge_timings(
             &mut report.phase_timings_ms,
             internal_report.phase_timings_ms,
@@ -315,18 +288,14 @@ impl TicketStore {
         index_root: &Path,
         schema_registry: SchemaRegistry,
     ) -> Result<Self, StorageError> {
-        let (store, _) =
-            Self::open_or_init_with_profiled(index_root, schema_registry)?;
+        let (store, _) = Self::open_or_init_with_profiled(index_root, schema_registry)?;
         Ok(store)
     }
 
     pub fn open_or_init_profiled(
-        index_root: &Path
+        index_root: &Path,
     ) -> Result<(Self, StoreOpenReport), StorageError> {
-        Self::open_or_init_with_profiled(
-            index_root,
-            SchemaRegistry::with_builtins(),
-        )
+        Self::open_or_init_with_profiled(index_root, SchemaRegistry::with_builtins())
     }
 
     pub fn open_or_init_with_profiled(
@@ -378,7 +347,6 @@ impl TicketStore {
         Ok((store, report))
     }
 
-
     pub(super) fn open_internal_profiled(
         index_root: std::path::PathBuf,
         schema_registry: SchemaRegistry,
@@ -411,7 +379,7 @@ impl TicketStore {
             Err(_) => {
                 let _ = std::fs::remove_dir_all(&search_dir);
                 TantivySearchIndex::open_or_create(&search_dir)?
-            },
+            }
         };
         report.phase_timings_ms.insert(
             "open_search_index_ms".to_string(),
@@ -453,8 +421,7 @@ impl TicketStore {
             );
         }
         let bootstrap_started = Instant::now();
-        let bootstrap =
-            store.bootstrap_empty_index_from_manifests_profiled()?;
+        let bootstrap = store.bootstrap_empty_index_from_manifests_profiled()?;
         report.phase_timings_ms.insert(
             "bootstrap_empty_index_ms".to_string(),
             elapsed_ms(bootstrap_started),
@@ -474,7 +441,7 @@ impl TicketStore {
     }
 
     fn bootstrap_empty_index_from_manifests_profiled(
-        &self
+        &self,
     ) -> Result<StoreOpenReport, StorageError> {
         let _span_guard = tracing::debug_span!(
             target: STORE_TRACE_TARGET,
@@ -484,10 +451,9 @@ impl TicketStore {
         let mut report = StoreOpenReport::default();
         let count_started = Instant::now();
         if self.count_tickets()? > 0 {
-            report.phase_timings_ms.insert(
-                "count_tickets_ms".to_string(),
-                elapsed_ms(count_started),
-            );
+            report
+                .phase_timings_ms
+                .insert("count_tickets_ms".to_string(), elapsed_ms(count_started));
             let search_probe_started = Instant::now();
             if self
                 .search
@@ -505,10 +471,9 @@ impl TicketStore {
                     "scan_existing_index_ms".to_string(),
                     elapsed_ms(bootstrap_scan_started),
                 );
-                report.scan_reports.insert(
-                    "bootstrap_existing_index_scan".to_string(),
-                    scan_report,
-                );
+                report
+                    .scan_reports
+                    .insert("bootstrap_existing_index_scan".to_string(), scan_report);
                 return Ok(report);
             }
             report.phase_timings_ms.insert(
@@ -523,10 +488,9 @@ impl TicketStore {
 
         let roots_started = Instant::now();
         for root in self.list_scan_roots()? {
-            report.phase_timings_ms.insert(
-                "list_scan_roots_ms".to_string(),
-                elapsed_ms(roots_started),
-            );
+            report
+                .phase_timings_ms
+                .insert("list_scan_roots_ms".to_string(), elapsed_ms(roots_started));
             let manifest_probe_started = Instant::now();
             if scan_root_has_ticket_manifests(&root.path)? {
                 report.phase_timings_ms.insert(
@@ -551,10 +515,9 @@ impl TicketStore {
         }
 
         if !report.phase_timings_ms.contains_key("list_scan_roots_ms") {
-            report.phase_timings_ms.insert(
-                "list_scan_roots_ms".to_string(),
-                elapsed_ms(roots_started),
-            );
+            report
+                .phase_timings_ms
+                .insert("list_scan_roots_ms".to_string(), elapsed_ms(roots_started));
         }
 
         Ok(report)

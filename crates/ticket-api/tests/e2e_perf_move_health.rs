@@ -1,24 +1,15 @@
-use std::{
-    path::Path,
-    sync::OnceLock,
-    time::Instant,
-};
+use std::{path::Path, sync::OnceLock, time::Instant};
 
 use chrono::Utc;
 use memory_fixtures::{
-    FixtureError,
-    TicketPerfFixtureOptions,
-    append_fixture_ticket,
-    materialize_fixture_with_ticket_perf_load,
-    materialize_git_fixture_with_ticket_perf_load,
+    FixtureError, TicketPerfFixtureOptions, append_fixture_ticket,
+    materialize_fixture_with_ticket_perf_load, materialize_git_fixture_with_ticket_perf_load,
 };
 use ticket_api::{
     health::collect_findings,
     model::edge::EdgeRecord,
     storage::{
-        move_execution::MoveExecutionPhase,
-        move_planner::MovePreflightBlocker,
-        store::TicketStore,
+        move_execution::MoveExecutionPhase, move_planner::MovePreflightBlocker, store::TicketStore,
     },
     workflow::WorkflowModel,
 };
@@ -39,13 +30,11 @@ fn init_perf_test_tracing() {
 }
 
 fn git_available_or_skip(
-    result: Result<memory_fixtures::TicketPerfFixture, FixtureError>
+    result: Result<memory_fixtures::TicketPerfFixture, FixtureError>,
 ) -> Option<memory_fixtures::TicketPerfFixture> {
     match result {
         Ok(fixture) => Some(fixture),
-        Err(FixtureError::Git { detail, .. })
-            if detail.contains("os error 2") =>
-            None,
+        Err(FixtureError::Git { detail, .. }) if detail.contains("os error 2") => None,
         Err(err) => panic!("git perf fixture should materialize: {err}"),
     }
 }
@@ -56,10 +45,7 @@ fn parse_ids(ids: &[String]) -> Vec<Uuid> {
         .collect()
 }
 
-fn add_perf_edges(
-    store: &TicketStore,
-    ids: &[Uuid],
-) {
+fn add_perf_edges(store: &TicketStore, ids: &[Uuid]) {
     let now = Utc::now();
     for pair in ids.windows(2) {
         store
@@ -88,11 +74,7 @@ fn add_perf_edges(
     }
 }
 
-fn append_incremental_fixture_tickets(
-    root_store: &Path,
-    batch: usize,
-    count: usize,
-) {
+fn append_incremental_fixture_tickets(root_store: &Path, batch: usize, count: usize) {
     for offset in 0..count {
         let id = format!(
             "00000000-0000-5000-{batch:04x}-{value:012x}",
@@ -109,10 +91,7 @@ fn append_incremental_fixture_tickets(
     }
 }
 
-fn percentile_nearest_rank(
-    sorted: &[u64],
-    percentile: u32,
-) -> u64 {
+fn percentile_nearest_rank(sorted: &[u64], percentile: u32) -> u64 {
     assert!(!sorted.is_empty(), "percentile input must not be empty");
     assert!(percentile <= 100, "percentile must be <= 100");
 
@@ -121,8 +100,7 @@ fn percentile_nearest_rank(
     }
 
     // Nearest-rank method with 1-based rank, then mapped back to 0-based index.
-    let rank =
-        ((percentile as f64 / 100.0) * sorted.len() as f64).ceil() as usize;
+    let rank = ((percentile as f64 / 100.0) * sorted.len() as f64).ceil() as usize;
     let idx = rank.saturating_sub(1).min(sorted.len() - 1);
     sorted[idx]
 }
@@ -140,16 +118,14 @@ fn percentile_summary(samples: &[u64]) -> (u64, u64, u64) {
 #[test]
 fn reference_heavy_move_e2e_reports_timings() {
     init_perf_test_tracing();
-    let Some(perf) =
-        git_available_or_skip(materialize_git_fixture_with_ticket_perf_load(
-            TicketPerfFixtureOptions {
-                root_generated_ticket_count: 64,
-                submodule_generated_ticket_count: 40,
-                tracked_reference_file_count: 10,
-                references_per_file: 18,
-            },
-        ))
-    else {
+    let Some(perf) = git_available_or_skip(materialize_git_fixture_with_ticket_perf_load(
+        TicketPerfFixtureOptions {
+            root_generated_ticket_count: 64,
+            submodule_generated_ticket_count: 40,
+            tracked_reference_file_count: 10,
+            references_per_file: 18,
+        },
+    )) else {
         eprintln!("git not available; skipping perf move E2E");
         return;
     };
@@ -160,11 +136,9 @@ fn reference_heavy_move_e2e_reports_timings() {
         .expect("submodule ticket store path")
         .to_path_buf();
     let target_workspace = perf.fixture.workspace_root.clone();
-    let source_store =
-        TicketStore::open_or_init(&source_root).expect("open source store");
+    let source_store = TicketStore::open_or_init(&source_root).expect("open source store");
     source_store.scan(true).expect("scan source");
-    let target_store = TicketStore::open_or_init(&target_workspace)
-        .expect("open target store");
+    let target_store = TicketStore::open_or_init(&target_workspace).expect("open target store");
     target_store.scan(true).expect("scan target");
 
     let id: Uuid = perf.submodule_ticket_ids[0]
@@ -244,16 +218,14 @@ fn reference_heavy_move_e2e_reports_timings() {
 #[test]
 fn reference_heavy_move_missing_tracked_file_records_followup_with_timing() {
     init_perf_test_tracing();
-    let Some(perf) =
-        git_available_or_skip(materialize_git_fixture_with_ticket_perf_load(
-            TicketPerfFixtureOptions {
-                root_generated_ticket_count: 48,
-                submodule_generated_ticket_count: 24,
-                tracked_reference_file_count: 8,
-                references_per_file: 14,
-            },
-        ))
-    else {
+    let Some(perf) = git_available_or_skip(materialize_git_fixture_with_ticket_perf_load(
+        TicketPerfFixtureOptions {
+            root_generated_ticket_count: 48,
+            submodule_generated_ticket_count: 24,
+            tracked_reference_file_count: 8,
+            references_per_file: 14,
+        },
+    )) else {
         eprintln!("git not available; skipping missing-file perf move E2E");
         return;
     };
@@ -264,11 +236,9 @@ fn reference_heavy_move_missing_tracked_file_records_followup_with_timing() {
         .expect("submodule ticket store path")
         .to_path_buf();
     let target_workspace = perf.fixture.workspace_root.clone();
-    let source_store =
-        TicketStore::open_or_init(&source_root).expect("open source store");
+    let source_store = TicketStore::open_or_init(&source_root).expect("open source store");
     source_store.scan(true).expect("scan source");
-    let target_store = TicketStore::open_or_init(&target_workspace)
-        .expect("open target store");
+    let target_store = TicketStore::open_or_init(&target_workspace).expect("open target store");
     target_store.scan(true).expect("scan target");
 
     let id: Uuid = perf.submodule_ticket_ids[1]
@@ -321,14 +291,13 @@ fn reference_heavy_move_missing_tracked_file_records_followup_with_timing() {
 #[test]
 fn health_all_e2e_reports_timings_on_large_fixture() {
     init_perf_test_tracing();
-    let perf =
-        materialize_fixture_with_ticket_perf_load(TicketPerfFixtureOptions {
-            root_generated_ticket_count: 96,
-            submodule_generated_ticket_count: 24,
-            tracked_reference_file_count: 4,
-            references_per_file: 10,
-        })
-        .expect("perf fixture should materialize");
+    let perf = materialize_fixture_with_ticket_perf_load(TicketPerfFixtureOptions {
+        root_generated_ticket_count: 96,
+        submodule_generated_ticket_count: 24,
+        tracked_reference_file_count: 4,
+        references_per_file: 10,
+    })
+    .expect("perf fixture should materialize");
 
     let run_id = format!("perf-run-{}", Uuid::new_v4());
     let fixture_profile = "root96_sub24_refs4x10";
@@ -342,18 +311,16 @@ fn health_all_e2e_reports_timings_on_large_fixture() {
         .expect("root ticket store path")
         .to_path_buf();
 
-    let (store, open_report) = TicketStore::open_or_init_profiled(&root_store)
-        .expect("open root store");
+    let (store, open_report) =
+        TicketStore::open_or_init_profiled(&root_store).expect("open root store");
 
     let scan_report = store.scan(true).expect("scan root store");
 
     append_incremental_fixture_tickets(&root_store, 1, 1);
-    let incremental_scan_1 =
-        store.scan(false).expect("incremental scan root store (1)");
+    let incremental_scan_1 = store.scan(false).expect("incremental scan root store (1)");
 
     append_incremental_fixture_tickets(&root_store, 2, 10);
-    let incremental_scan_10 =
-        store.scan(false).expect("incremental scan root store (10)");
+    let incremental_scan_10 = store.scan(false).expect("incremental scan root store (10)");
 
     append_incremental_fixture_tickets(&root_store, 3, 100);
     let incremental_scan_100 = store
@@ -370,8 +337,7 @@ fn health_all_e2e_reports_timings_on_large_fixture() {
 
     let workflow_started = Instant::now();
     let workflow =
-        WorkflowModel::build(&store, tickets.clone(), all_edges.clone())
-            .expect("build workflow");
+        WorkflowModel::build(&store, tickets.clone(), all_edges.clone()).expect("build workflow");
     let workflow_elapsed = workflow_started.elapsed();
 
     let health_started = Instant::now();
@@ -536,11 +502,9 @@ fn health_all_e2e_reports_timings_on_large_fixture() {
 #[test]
 fn stress_reference_heavy_sequential_moves_report_timings() {
     init_perf_test_tracing();
-    let Some(perf) =
-        git_available_or_skip(materialize_git_fixture_with_ticket_perf_load(
-            TicketPerfFixtureOptions::heavy(),
-        ))
-    else {
+    let Some(perf) = git_available_or_skip(materialize_git_fixture_with_ticket_perf_load(
+        TicketPerfFixtureOptions::heavy(),
+    )) else {
         eprintln!("git not available; skipping sequential perf move E2E");
         return;
     };
@@ -551,15 +515,12 @@ fn stress_reference_heavy_sequential_moves_report_timings() {
         .expect("submodule ticket store path")
         .to_path_buf();
     let target_workspace = perf.fixture.workspace_root.clone();
-    let source_store =
-        TicketStore::open_or_init(&source_root).expect("open source store");
+    let source_store = TicketStore::open_or_init(&source_root).expect("open source store");
     source_store.scan(true).expect("scan source");
-    let target_store = TicketStore::open_or_init(&target_workspace)
-        .expect("open target store");
+    let target_store = TicketStore::open_or_init(&target_workspace).expect("open target store");
     target_store.scan(true).expect("scan target");
 
-    let first_id: Uuid =
-        perf.submodule_ticket_ids[0].parse().expect("first move id");
+    let first_id: Uuid = perf.submodule_ticket_ids[0].parse().expect("first move id");
     let second_id: Uuid = perf.submodule_ticket_ids[1]
         .parse()
         .expect("second move id");

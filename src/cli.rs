@@ -1,20 +1,11 @@
 use std::path::PathBuf;
 
-use clap::{
-    Parser,
-    Subcommand,
-};
-use serde_json::{
-    Value,
-    json,
-};
+use clap::{Parser, Subcommand};
+use serde_json::{Value, json};
 use uuid::Uuid;
 
 use ticket_api::{
-    contracts::command_schema::{
-        CommandEnvelope,
-        ErrorEnvelope,
-    },
+    contracts::command_schema::{CommandEnvelope, ErrorEnvelope},
     error::StorageError,
     storage::board::BoardError,
 };
@@ -317,26 +308,22 @@ fn render_human(payload: Value) -> String {
     human_output::render_human_readable(&payload)
 }
 
-pub fn error_output(
-    message: &str,
-    format: Option<MachineOutputFormat>,
-) -> String {
+pub fn error_output(message: &str, format: Option<MachineOutputFormat>) -> String {
     let error = ErrorEnvelope {
         code: "invalid_request".to_string(),
         message: message.to_string(),
     };
     match format {
-        Some(MachineOutputFormat::Json) => serde_json::to_string_pretty(&error)
-            .unwrap_or_else(|_| {
+        Some(MachineOutputFormat::Json) => {
+            serde_json::to_string_pretty(&error).unwrap_or_else(|_| {
                 format!(
                     "{{\"code\":\"invalid_request\",\"message\":\"{}\"}}",
                     message
                 )
-            }),
-        Some(MachineOutputFormat::Toon) =>
-            toon_format::encode_default(&json!(error)).unwrap_or_else(|_| {
-                format!("code: invalid_request\nmessage: {message}")
-            }),
+            })
+        }
+        Some(MachineOutputFormat::Toon) => toon_format::encode_default(&json!(error))
+            .unwrap_or_else(|_| format!("code: invalid_request\nmessage: {message}")),
         None => message.to_string(),
     }
 }
@@ -346,17 +333,16 @@ pub fn render_machine_output(
     format: MachineOutputFormat,
 ) -> Result<String, String> {
     match format {
-        MachineOutputFormat::Json =>
-            serde_json::to_string_pretty(payload).map_err(|err| err.to_string()),
-        MachineOutputFormat::Toon =>
-            toon_format::encode_default(payload).map_err(|err| err.to_string()),
+        MachineOutputFormat::Json => {
+            serde_json::to_string_pretty(payload).map_err(|err| err.to_string())
+        }
+        MachineOutputFormat::Toon => {
+            toon_format::encode_default(payload).map_err(|err| err.to_string())
+        }
     }
 }
 
-pub fn machine_output_format(
-    as_json: bool,
-    as_toon: bool,
-) -> Option<MachineOutputFormat> {
+pub fn machine_output_format(as_json: bool, as_toon: bool) -> Option<MachineOutputFormat> {
     if as_json {
         Some(MachineOutputFormat::Json)
     } else if as_toon {
@@ -366,8 +352,7 @@ pub fn machine_output_format(
     }
 }
 
-pub fn requested_machine_output_format_from_args() -> Option<MachineOutputFormat>
-{
+pub fn requested_machine_output_format_from_args() -> Option<MachineOutputFormat> {
     machine_output_format(
         std::env::args().any(|arg| arg == "--json"),
         std::env::args().any(|arg| arg == "--toon"),
@@ -382,8 +367,6 @@ where
     TicketCli::try_parse_from(args)
 }
 
-pub fn payload_as_json_object(
-    payload: &Value
-) -> Option<&serde_json::Map<String, Value>> {
+pub fn payload_as_json_object(payload: &Value) -> Option<&serde_json::Map<String, Value>> {
     payload.as_object()
 }

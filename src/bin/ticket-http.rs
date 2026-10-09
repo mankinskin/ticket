@@ -20,15 +20,17 @@
 //! error" family of failures.
 
 use memory_kernel::runtime::init_transport_tracing;
+use ticket::serve::{ServeConfig, WorkspaceRegistry};
 use ticket_api::storage::store::TicketStore;
-use ticket::serve::{
-    ServeConfig,
-    WorkspaceRegistry,
-};
 
 fn main() {
-    if std::env::args().skip(1).any(|arg| matches!(arg.as_str(), "-h" | "--help")) {
-        println!("Ticket HTTP server\n\nUsage: ticket-http [--port <port>] [--host <host>] [--index-root <path>] [--log-level <level>] [--log-file <path>]");
+    if std::env::args()
+        .skip(1)
+        .any(|arg| matches!(arg.as_str(), "-h" | "--help"))
+    {
+        println!(
+            "Ticket HTTP server\n\nUsage: ticket-http [--port <port>] [--host <host>] [--index-root <path>] [--log-level <level>] [--log-file <path>]"
+        );
         return;
     }
 
@@ -41,24 +43,26 @@ fn main() {
     let mut args = std::env::args().skip(1);
     while let Some(arg) = args.next() {
         match arg.as_str() {
-            "--port" =>
+            "--port" => {
                 if let Some(v) = args.next() {
                     port = v.parse().unwrap_or(port);
-                },
-            "--host" =>
+                }
+            }
+            "--host" => {
                 if let Some(v) = args.next() {
                     host = v;
-                },
+                }
+            }
             "--index-root" => {
                 index_root = args.next();
-            },
+            }
             "--log-level" => {
                 log_level = args.next();
-            },
+            }
             "--log-file" => {
                 log_file = args.next();
-            },
-            _ => {},
+            }
+            _ => {}
         }
     }
 
@@ -73,11 +77,10 @@ fn main() {
         let (path, _source) = ticket_api::workspace::resolve_workspace();
         path
     });
-    let workspace_root =
-        ticket_api::workspace::resolve_workspace_root_from_store_root(
-            &root,
-            ticket_api::workspace::TICKET_INDEX_DIR,
-        );
+    let workspace_root = ticket_api::workspace::resolve_workspace_root_from_store_root(
+        &root,
+        ticket_api::workspace::TICKET_INDEX_DIR,
+    );
     let store = TicketStore::open_or_init_in_workspace(&workspace_root)
         .expect("failed to open ticket store");
     ticket::serve::reapply_workspace_scan_policy(&store, &workspace_root)

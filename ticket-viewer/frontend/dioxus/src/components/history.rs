@@ -11,10 +11,7 @@
 use dioxus::prelude::*;
 
 use crate::{
-    api::{
-        HttpTicketBackend,
-        TicketBackend,
-    },
+    api::{HttpTicketBackend, TicketBackend},
     types::HistoryEntry,
 };
 
@@ -43,10 +40,7 @@ fn json_display(v: &serde_json::Value) -> String {
     }
 }
 
-fn compute_diff(
-    prev: &serde_json::Value,
-    curr: &serde_json::Value,
-) -> Vec<FieldDiff> {
+fn compute_diff(prev: &serde_json::Value, curr: &serde_json::Value) -> Vec<FieldDiff> {
     let empty = serde_json::Map::new();
     let prev_map = prev.as_object().unwrap_or(&empty);
     let curr_map = curr.as_object().unwrap_or(&empty);
@@ -66,7 +60,7 @@ fn compute_diff(
                 old_val: Some(json_display(old_val)),
                 new_val: Some(json_display(new_val)),
             }),
-            _ => {},
+            _ => {}
         }
     }
     for (key, old_val) in prev_map {
@@ -162,8 +156,8 @@ pub fn HistoryPanel(
         .collect();
 
     // Find the drawer entry for the currently-selected revision.
-    let drawer_view: Option<EntryView> = selected_rev()
-        .and_then(|rev| entry_views.iter().find(|ev| ev.rev == rev).cloned());
+    let drawer_view: Option<EntryView> =
+        selected_rev().and_then(|rev| entry_views.iter().find(|ev| ev.rev == rev).cloned());
 
     // Snapshot drawer metadata (avoids repeated clones inside rsx!).
     let drawer_rev = drawer_view.as_ref().map(|ev| ev.rev);

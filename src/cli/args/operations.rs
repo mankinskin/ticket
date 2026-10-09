@@ -1,9 +1,6 @@
 use std::path::PathBuf;
 
-use clap::{
-    Args,
-    ValueEnum,
-};
+use clap::{Args, ValueEnum};
 use uuid::Uuid;
 
 #[derive(Debug, Args)]
@@ -306,10 +303,8 @@ impl TryFrom<UpdateArgsCli> for UpdateArgs {
             DescriptionMode::Replace => "replace",
             DescriptionMode::Append => "append",
         });
-        let description_update = ticket_api::storage::DescriptionUpdate::decode(
-            cli.description,
-            description_mode_str,
-        )?;
+        let description_update =
+            ticket_api::storage::DescriptionUpdate::decode(cli.description, description_mode_str)?;
         Ok(UpdateArgs {
             id: cli.id,
             transition_states: cli.transition_states,

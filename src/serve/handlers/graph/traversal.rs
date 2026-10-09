@@ -1,48 +1,25 @@
 use std::{
-    collections::{
-        HashMap,
-        HashSet,
-        VecDeque,
-    },
+    collections::{HashMap, HashSet, VecDeque},
     sync::Arc,
     time::Instant,
 };
 
-use axum::response::{
-    IntoResponse,
-    Json,
-    Response,
-};
+use axum::response::{IntoResponse, Json, Response};
 use ticket_api::{
     model::edge::EdgeRecord,
-    storage::{
-        indexed::IndexedTicket,
-        store::TicketStore,
-        ticket_fs::TicketFs,
-    },
+    storage::{indexed::IndexedTicket, store::TicketStore, ticket_fs::TicketFs},
 };
 use uuid::Uuid;
 
 use crate::serve::{
     AppState,
-    error::{
-        storage_err,
-        task_join_err,
-    },
-    handlers::tickets::{
-        TicketRef,
-        ticket_ref_from_indexed,
-    },
+    error::{storage_err, task_join_err},
+    handlers::tickets::{TicketRef, ticket_ref_from_indexed},
     registry::ResolvedIndexedTicket,
 };
 
 use super::{
-    EdgeItem,
-    NodeItem,
-    SubgraphQuery,
-    SubgraphResponse,
-    SubgraphStats,
-    TopgraphQuery,
+    EdgeItem, NodeItem, SubgraphQuery, SubgraphResponse, SubgraphStats, TopgraphQuery,
     WorkspaceGraphQuery,
 };
 
@@ -136,8 +113,7 @@ pub(super) async fn handle_subgraph(
         request_id = %request_id,
         "subgraph request received"
     );
-    run_graph_request(state, request_id, GraphRequest::from_subgraph(params))
-        .await
+    run_graph_request(state, request_id, GraphRequest::from_subgraph(params)).await
 }
 
 pub(super) async fn handle_topgraph(
@@ -145,8 +121,7 @@ pub(super) async fn handle_topgraph(
     request_id: String,
     params: TopgraphQuery,
 ) -> Response {
-    run_graph_request(state, request_id, GraphRequest::from_topgraph(params))
-        .await
+    run_graph_request(state, request_id, GraphRequest::from_topgraph(params)).await
 }
 
 pub(super) async fn handle_workspace_graph(
@@ -162,37 +137,24 @@ pub(super) async fn handle_workspace_graph(
 
     let task_request_id = request_id.clone();
     let request = WorkspaceGraphRequest::from_query(params);
-    tokio::task::spawn_blocking(move || {
-        workspace_graph(state, &task_request_id, request)
-    })
-    .await
-    .unwrap_or_else(|_| task_join_err(&request_id, "workspace graph request"))
+    tokio::task::spawn_blocking(move || workspace_graph(state, &task_request_id, request))
+        .await
+        .unwrap_or_else(|_| task_join_err(&request_id, "workspace graph request"))
 }
 
-async fn run_graph_request(
-    state: AppState,
-    request_id: String,
-    request: GraphRequest,
-) -> Response {
+async fn run_graph_request(state: AppState, request_id: String, request: GraphRequest) -> Response {
     let task_request_id = request_id.clone();
-    tokio::task::spawn_blocking(move || {
-        bfs_graph(state, &task_request_id, request)
-    })
-    .await
-    .unwrap_or_else(|_| task_join_err(&request_id, "graph traversal request"))
+    tokio::task::spawn_blocking(move || bfs_graph(state, &task_request_id, request))
+        .await
+        .unwrap_or_else(|_| task_join_err(&request_id, "graph traversal request"))
 }
 
-fn bfs_graph(
-    state: AppState,
-    request_id: &str,
-    request: GraphRequest,
-) -> Response {
+fn bfs_graph(state: AppState, request_id: &str, request: GraphRequest) -> Response {
     let total_timer = Instant::now();
-    let store =
-        match resolve_workspace_store(&state, &request.workspace, request_id) {
-            Ok(store) => store,
-            Err(response) => return response,
-        };
+    let store = match resolve_workspace_store(&state, &request.workspace, request_id) {
+        Ok(store) => store,
+        Err(response) => return response,
+    };
 
     let phase_timer = Instant::now();
     let all_edges = match store.list_all_edges() {
@@ -212,12 +174,7 @@ fn bfs_graph(
     );
     let phase2_end_ms = phase_timer.elapsed().as_millis();
 
-    let resolved = match resolve_graph_tickets(
-        &state,
-        &request.workspace,
-        &traversal,
-        request_id,
-    ) {
+    let resolved = match resolve_graph_tickets(&state, &request.workspace, &traversal, request_id) {
         Ok(resolved) => resolved,
         Err(response) => return response,
     };
@@ -274,11 +231,7 @@ fn bfs_graph(
     .into_response()
 }
 
-fn workspace_graph(
-    state: AppState,
-    request_id: &str,
-    request: WorkspaceGraphRequest,
-) -> Response {
+fn workspace_graph(state: AppState, request_id: &str, request: WorkspaceGraphRequest) -> Response {
     let total_timer = Instant::now();
     let phase_timer = Instant::now();
     let workspace_data = match workspace_graph_data(
@@ -292,10 +245,8 @@ fn workspace_graph(
     };
     let phase1_edges_ms = phase_timer.elapsed().as_millis();
 
-    let (depths, max_depth_reached) = compute_workspace_depths(
-        &workspace_data.node_ids,
-        &workspace_data.raw_edges,
-    );
+    let (depths, max_depth_reached) =
+        compute_workspace_depths(&workspace_data.node_ids, &workspace_data.raw_edges);
     let phase2_end_ms = phase_timer.elapsed().as_millis();
 
     let resolved = match resolve_graph_tickets_by_ids(
@@ -308,11 +259,10 @@ fn workspace_graph(
         Err(response) => return response,
     };
 
-    let nodes =
-        match build_nodes(&resolved, &depths, &request.workspace, request_id) {
-            Ok(nodes) => nodes,
-            Err(response) => return response,
-        };
+    let nodes = match build_nodes(&resolved, &depths, &request.workspace, request_id) {
+        Ok(nodes) => nodes,
+        Err(response) => return response,
+    };
     let edges = match build_edges(
         workspace_data.raw_edges,
         &resolved,
@@ -367,8 +317,7 @@ fn workspace_graph_data(
     let all_edges = store
         .list_all_edges()
         .map_err(|error| storage_err(error, request_id))?;
-    let raw_edges =
-        dedupe_edges(filter_graph_edges(&all_edges, edge_kind_filter));
+    let raw_edges = dedupe_edges(filter_graph_edges(&all_edges, edge_kind_filter));
     let node_ids = collect_workspace_node_ids(&local_tickets, &raw_edges);
     Ok(WorkspaceGraphData {
         raw_edges,
@@ -412,15 +361,10 @@ fn build_adjacency(
     adjacency
 }
 
-fn filter_graph_edges(
-    all_edges: &[EdgeRecord],
-    edge_kind_filter: &str,
-) -> Vec<RawEdgeItem> {
+fn filter_graph_edges(all_edges: &[EdgeRecord], edge_kind_filter: &str) -> Vec<RawEdgeItem> {
     all_edges
         .iter()
-        .filter(|edge| {
-            edge_kind_filter == "all" || edge.kind == edge_kind_filter
-        })
+        .filter(|edge| edge_kind_filter == "all" || edge.kind == edge_kind_filter)
         .map(|edge| RawEdgeItem {
             from: edge.from,
             to: edge.to,
@@ -486,10 +430,7 @@ fn traverse_graph(
     }
 }
 
-fn direction_allows(
-    direction: &str,
-    is_outbound: bool,
-) -> bool {
+fn direction_allows(direction: &str, is_outbound: bool) -> bool {
     match direction {
         "out" => is_outbound,
         "in" => !is_outbound,
@@ -526,12 +467,8 @@ fn resolve_graph_tickets_by_ids(
         .map_err(|error| storage_err(error, request_id))
 }
 
-fn collect_workspace_node_ids(
-    local_tickets: &[IndexedTicket],
-    edges: &[RawEdgeItem],
-) -> Vec<Uuid> {
-    let mut ids: Vec<Uuid> =
-        local_tickets.iter().map(|ticket| ticket.id).collect();
+fn collect_workspace_node_ids(local_tickets: &[IndexedTicket], edges: &[RawEdgeItem]) -> Vec<Uuid> {
+    let mut ids: Vec<Uuid> = local_tickets.iter().map(|ticket| ticket.id).collect();
     for edge in edges {
         ids.push(edge.from);
         ids.push(edge.to);
@@ -546,8 +483,7 @@ fn compute_workspace_depths(
     edges: &[RawEdgeItem],
 ) -> (HashMap<Uuid, usize>, usize) {
     let node_set: HashSet<Uuid> = node_ids.iter().copied().collect();
-    let mut indegree: HashMap<Uuid, usize> =
-        node_ids.iter().copied().map(|id| (id, 0)).collect();
+    let mut indegree: HashMap<Uuid, usize> = node_ids.iter().copied().map(|id| (id, 0)).collect();
     let mut outgoing: HashMap<Uuid, Vec<Uuid>> = HashMap::new();
 
     for edge in edges {
@@ -566,8 +502,7 @@ fn compute_workspace_depths(
     roots.sort_unstable();
 
     let mut queue: VecDeque<Uuid> = roots.iter().copied().collect();
-    let mut depths: HashMap<Uuid, usize> =
-        roots.into_iter().map(|id| (id, 0)).collect();
+    let mut depths: HashMap<Uuid, usize> = roots.into_iter().map(|id| (id, 0)).collect();
 
     while let Some(current) = queue.pop_front() {
         let current_depth = depths.get(&current).copied().unwrap_or(0);
@@ -629,12 +564,8 @@ fn build_node_item(
     request_id: &str,
 ) -> Result<NodeItem, Response> {
     if let Some(ticket) = ticket {
-        let ticket_ref = ticket_ref_from_indexed(
-            &ticket.store,
-            &ticket.workspace,
-            &ticket.ticket,
-        )
-        .map_err(|error| storage_err(error, request_id))?;
+        let ticket_ref = ticket_ref_from_indexed(&ticket.store, &ticket.workspace, &ticket.ticket)
+            .map_err(|error| storage_err(error, request_id))?;
         return Ok(NodeItem {
             id: node_id.to_string(),
             ticket_ref,
@@ -679,18 +610,8 @@ fn build_edges(
             Ok(EdgeItem {
                 from: edge.from.to_string(),
                 to: edge.to.to_string(),
-                from_ref: resolve_edge_ref(
-                    resolved,
-                    active_workspace,
-                    edge.from,
-                    request_id,
-                )?,
-                to_ref: resolve_edge_ref(
-                    resolved,
-                    active_workspace,
-                    edge.to,
-                    request_id,
-                )?,
+                from_ref: resolve_edge_ref(resolved, active_workspace, edge.from, request_id)?,
+                to_ref: resolve_edge_ref(resolved, active_workspace, edge.to, request_id)?,
                 kind: edge.kind,
             })
         })
@@ -704,20 +625,13 @@ fn resolve_edge_ref(
     request_id: &str,
 ) -> Result<TicketRef, Response> {
     match resolved.get(&id) {
-        Some(ticket) => ticket_ref_from_indexed(
-            &ticket.store,
-            &ticket.workspace,
-            &ticket.ticket,
-        )
-        .map_err(|error| storage_err(error, request_id)),
+        Some(ticket) => ticket_ref_from_indexed(&ticket.store, &ticket.workspace, &ticket.ticket)
+            .map_err(|error| storage_err(error, request_id)),
         None => Ok(fallback_ticket_ref(active_workspace, id)),
     }
 }
 
-fn fallback_ticket_ref(
-    active_workspace: &str,
-    id: Uuid,
-) -> TicketRef {
+fn fallback_ticket_ref(active_workspace: &str, id: Uuid) -> TicketRef {
     TicketRef {
         workspace: active_workspace.to_string(),
         id: id.to_string(),

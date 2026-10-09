@@ -8,11 +8,7 @@ mod common;
 
 use std::process::Command;
 
-use common::{
-    TicketCommands,
-    TicketSandbox as Sandbox,
-    create_ticket,
-};
+use common::{TicketCommands, TicketSandbox as Sandbox, create_ticket};
 
 const TICKET: &str = env!("CARGO_BIN_EXE_ticket");
 

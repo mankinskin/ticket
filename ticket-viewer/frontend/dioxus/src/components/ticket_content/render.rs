@@ -5,19 +5,10 @@ use viewer_api_dioxus::FileContentViewer;
 
 use crate::{
     components::history::HistoryPanel,
-    types::{
-        HistoryEntry,
-        ProjectedPart,
-        ProjectedRef,
-    },
+    types::{HistoryEntry, ProjectedPart, ProjectedRef},
 };
 
-use super::{
-    parts::render_parts_panel,
-    Tab,
-    TAB_ACTIVE_STYLE,
-    TAB_BASE_STYLE,
-};
+use super::{parts::render_parts_panel, Tab, TAB_ACTIVE_STYLE, TAB_BASE_STYLE};
 
 #[derive(Clone, PartialEq)]
 pub(super) struct TicketDocumentContext {
@@ -583,7 +574,7 @@ fn field_label(key: &str) -> String {
                         let mut word = first.to_uppercase().collect::<String>();
                         word.push_str(chars.as_str());
                         word
-                    },
+                    }
                     None => String::new(),
                 }
             })
@@ -601,7 +592,7 @@ fn field_detail_value(value: &serde_json::Value) -> Option<String> {
             } else {
                 Some(trimmed.to_string())
             }
-        },
+        }
         serde_json::Value::Bool(flag) => Some(flag.to_string()),
         serde_json::Value::Number(number) => Some(number.to_string()),
         serde_json::Value::Array(items) => {
@@ -609,28 +600,25 @@ fn field_detail_value(value: &serde_json::Value) -> Option<String> {
                 return None;
             }
 
-            let simple_values: Vec<String> =
-                items.iter().filter_map(value_to_string).collect();
+            let simple_values: Vec<String> = items.iter().filter_map(value_to_string).collect();
             if simple_values.len() == items.len() {
                 Some(simple_values.join("\n"))
             } else {
                 serde_json::to_string_pretty(value).ok()
             }
-        },
-        serde_json::Value::Object(map) =>
+        }
+        serde_json::Value::Object(map) => {
             if map.is_empty() {
                 None
             } else {
                 serde_json::to_string_pretty(value).ok()
-            },
+            }
+        }
         serde_json::Value::Null => None,
     }
 }
 
-fn field_value(
-    fields: &serde_json::Value,
-    key: &str,
-) -> Option<String> {
+fn field_value(fields: &serde_json::Value, key: &str) -> Option<String> {
     let value = fields.get(key)?;
     match value {
         serde_json::Value::String(text) => {
@@ -640,18 +628,17 @@ fn field_value(
             } else {
                 Some(trimmed.to_string())
             }
-        },
+        }
         serde_json::Value::Bool(flag) => Some(flag.to_string()),
         serde_json::Value::Number(number) => Some(number.to_string()),
         serde_json::Value::Array(items) => {
-            let values: Vec<String> =
-                items.iter().filter_map(value_to_string).collect();
+            let values: Vec<String> = items.iter().filter_map(value_to_string).collect();
             if values.is_empty() {
                 None
             } else {
                 Some(values.join(", "))
             }
-        },
+        }
         _ => None,
     }
 }
@@ -665,7 +652,7 @@ fn value_to_string(value: &serde_json::Value) -> Option<String> {
             } else {
                 Some(trimmed.to_string())
             }
-        },
+        }
         serde_json::Value::Bool(flag) => Some(flag.to_string()),
         serde_json::Value::Number(number) => Some(number.to_string()),
         _ => None,

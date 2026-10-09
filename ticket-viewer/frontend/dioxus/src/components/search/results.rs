@@ -1,16 +1,8 @@
 use dioxus::prelude::*;
 
-use crate::{
-    types::{
-        TicketRef,
-        TicketSummary,
-    },
-};
+use crate::types::{TicketRef, TicketSummary};
 
-use super::{
-    facets::ticket_type,
-    recent::save_recent,
-};
+use super::{facets::ticket_type, recent::save_recent};
 
 pub(super) fn activate_search_result(
     ticket: TicketSummary,

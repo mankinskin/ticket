@@ -1,26 +1,13 @@
-use std::collections::{
-    HashMap,
-    HashSet,
-};
+use std::collections::{HashMap, HashSet};
 
-use serde_json::{
-    Value,
-    json,
-};
+use serde_json::{Value, json};
 use ticket_api::{
-    BoardEntryStatus,
-    BoardSnapshot,
-    storage::{
-        indexed::IndexedTicket,
-        store::TicketStore,
-    },
+    BoardEntryStatus, BoardSnapshot,
+    storage::{indexed::IndexedTicket, store::TicketStore},
 };
 use uuid::Uuid;
 
-use crate::cli::{
-    CliRunError,
-    StatusArgs,
-};
+use crate::cli::{CliRunError, StatusArgs};
 
 const DONE_STATES: &[&str] = &["done", "cancelled"];
 const ACTIVE_STATES: &[&str] = &["planned", "in-implementation", "in-review"];
@@ -35,13 +22,9 @@ struct StatusSections {
     total: usize,
 }
 
-pub(super) fn run(
-    args: StatusArgs,
-    store: &TicketStore,
-) -> Result<Value, CliRunError> {
+pub(super) fn run(args: StatusArgs, store: &TicketStore) -> Result<Value, CliRunError> {
     let board_snap = store.board_show(None).ok();
-    let tickets =
-        filtered_tickets(store.list(None, None, None)?, args.filter.as_deref());
+    let tickets = filtered_tickets(store.list(None, None, None)?, args.filter.as_deref());
     let done_ids = done_ticket_ids(&tickets);
     let blockers = unresolved_blockers(store, &done_ids)?;
     let sections = status_sections(&tickets, &blockers, args.show_blocked);
@@ -49,10 +32,7 @@ pub(super) fn run(
     let blocked_count = if args.show_blocked {
         sections.blocked.len()
     } else {
-        sections.total
-            - sections.done_count
-            - sections.active.len()
-            - sections.ready.len()
+        sections.total - sections.done_count - sections.active.len() - sections.ready.len()
     };
 
     Ok(json!({
@@ -73,16 +53,11 @@ pub(super) fn run(
     }))
 }
 
-fn filtered_tickets(
-    tickets: Vec<IndexedTicket>,
-    filter: Option<&str>,
-) -> Vec<IndexedTicket> {
+fn filtered_tickets(tickets: Vec<IndexedTicket>, filter: Option<&str>) -> Vec<IndexedTicket> {
     match filter {
         Some(prefix) => tickets
             .into_iter()
-            .filter(|ticket| {
-                ticket.title.as_deref().unwrap_or("").starts_with(prefix)
-            })
+            .filter(|ticket| ticket.title.as_deref().unwrap_or("").starts_with(prefix))
             .collect(),
         None => tickets,
     }
@@ -164,10 +139,7 @@ fn status_sections(
     sections
 }
 
-fn ticket_entry(
-    ticket: &IndexedTicket,
-    state: &str,
-) -> Value {
+fn ticket_entry(ticket: &IndexedTicket, state: &str) -> Value {
     json!({
         "id": ticket.id,
         "title": ticket.title,
@@ -176,10 +148,7 @@ fn ticket_entry(
     })
 }
 
-fn dependency_entries(
-    unresolved: &[Uuid],
-    tickets: &[IndexedTicket],
-) -> Vec<Value> {
+fn dependency_entries(unresolved: &[Uuid], tickets: &[IndexedTicket]) -> Vec<Value> {
     unresolved
         .iter()
         .map(|ticket_id| {
@@ -189,10 +158,7 @@ fn dependency_entries(
         .collect()
 }
 
-fn dependency_metadata(
-    ticket_id: Uuid,
-    tickets: &[IndexedTicket],
-) -> (String, String) {
+fn dependency_metadata(ticket_id: Uuid, tickets: &[IndexedTicket]) -> (String, String) {
     let title = tickets
         .iter()
         .find(|ticket| ticket.id == ticket_id)
@@ -209,8 +175,7 @@ fn dependency_metadata(
 fn parallel_groups(ready: &[Value]) -> Vec<Value> {
     let mut by_component: HashMap<String, Vec<&Value>> = HashMap::new();
     for entry in ready {
-        let component =
-            entry["component"].as_str().unwrap_or("unknown").to_string();
+        let component = entry["component"].as_str().unwrap_or("unknown").to_string();
         by_component
             .entry(component)
             .or_insert_with(Vec::new)
@@ -260,8 +225,7 @@ fn board_entries(snapshot: &BoardSnapshot) -> Vec<Value> {
         .entries
         .iter()
         .filter(|entry| {
-            entry.status == BoardEntryStatus::Active
-                || entry.status == BoardEntryStatus::Stale
+            entry.status == BoardEntryStatus::Active || entry.status == BoardEntryStatus::Stale
         })
         .map(|entry| {
             json!({

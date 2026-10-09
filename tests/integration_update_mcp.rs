@@ -3,11 +3,8 @@ use std::collections::BTreeMap;
 use rmcp::handler::server::wrapper::Parameters;
 use serde_json::Value;
 use tempfile::TempDir;
+use ticket::server::{TicketServer, UpdateTicketInput};
 use ticket_api::storage::store::TicketStore;
-use ticket::server::{
-    TicketServer,
-    UpdateTicketInput,
-};
 
 fn make_sandbox() -> (TempDir, TicketServer) {
     let tmp = TempDir::new().expect("tempdir");
@@ -121,7 +118,9 @@ async fn update_ticket_blocked_transition_reports_recovery_fields() {
     );
 
     // The blocked transition must not have advanced the ticket.
-    let indexed = store.get_indexed(&ticket_id).expect("indexed").expect("some");
+    let indexed = store
+        .get_indexed(&ticket_id)
+        .expect("indexed")
+        .expect("some");
     assert_eq!(indexed.state.as_deref(), Some("open"));
 }
-

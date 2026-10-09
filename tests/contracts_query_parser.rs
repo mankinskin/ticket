@@ -1,16 +1,9 @@
 use std::collections::BTreeSet;
-use ticket_api::model::query::{
-    CompareOp,
-    Expr,
-    ValueExpr,
-    parse_query,
-    parse_query_strict,
-};
+use ticket_api::model::query::{CompareOp, Expr, ValueExpr, parse_query, parse_query_strict};
 
 #[test]
 fn parse_mixed_fts_and_fields() {
-    let expr = parse_query("status:open assigned:alice \"login page\"")
-        .expect("query parses");
+    let expr = parse_query("status:open assigned:alice \"login page\"").expect("query parses");
 
     match expr {
         Expr::And(parts) => {
@@ -26,7 +19,7 @@ fn parse_mixed_fts_and_fields() {
                 if key == "assigned" && v == "alice"
             ));
             assert!(matches!(parts[2], Expr::Fts(ref v) if v == "login page"));
-        },
+        }
         _ => panic!("expected Expr::And"),
     }
 }
@@ -62,9 +55,8 @@ fn strict_parser_allows_dynamic_namespaced_field() {
         "status".to_string(),
     ]);
 
-    let expr =
-        parse_query_strict("x_feature_story_points:8 status:open", &known)
-            .expect("dynamic namespaced field should be allowed");
+    let expr = parse_query_strict("x_feature_story_points:8 status:open", &known)
+        .expect("dynamic namespaced field should be allowed");
 
     match expr {
         Expr::And(parts) => assert_eq!(parts.len(), 2),
@@ -74,15 +66,14 @@ fn strict_parser_allows_dynamic_namespaced_field() {
 
 #[test]
 fn parse_or_groups_into_disjunction_of_and_clauses() {
-    let expr = parse_query("status:open OR assigned:alice \"login page\"")
-        .expect("query parses");
+    let expr = parse_query("status:open OR assigned:alice \"login page\"").expect("query parses");
 
     match expr {
         Expr::Or(groups) => {
             assert_eq!(groups.len(), 2);
             assert!(matches!(&groups[0], Expr::And(parts) if parts.len() == 1));
             assert!(matches!(&groups[1], Expr::And(parts) if parts.len() == 2));
-        },
+        }
         _ => panic!("expected Expr::Or"),
     }
 }
@@ -95,15 +86,14 @@ fn parse_dash_prefix_as_not_expression() {
         Expr::And(parts) => {
             assert_eq!(parts.len(), 2);
             assert!(matches!(parts[1], Expr::Not(_)));
-        },
+        }
         _ => panic!("expected Expr::And"),
     }
 }
 
 #[test]
 fn parse_or_without_rhs_fails() {
-    let err =
-        parse_query("status:open OR").expect_err("dangling OR should fail");
+    let err = parse_query("status:open OR").expect_err("dangling OR should fail");
     assert!(
         err.to_string()
             .contains("OR must separate two query expressions")
@@ -160,10 +150,8 @@ fn parse_comparison_operators_pick_longest_prefix() {
                 Expr::Compare { key, op, value } => {
                     assert_eq!(key, "created", "key for {token}");
                     assert_eq!(*op, want_op, "op for {token}");
-                    assert!(
-                        matches!(value, ValueExpr::Text(v) if v == want_val)
-                    );
-                },
+                    assert!(matches!(value, ValueExpr::Text(v) if v == want_val));
+                }
                 other => panic!("expected Compare for {token}, got {other:?}"),
             },
             _ => panic!("expected Expr::And for {token}"),
@@ -208,8 +196,7 @@ fn parse_negated_exists_is_not_over_exists() {
 
 #[test]
 fn parse_range_stays_field_range() {
-    let expr = parse_query("created:[2026-01-01 TO 2026-12-31]")
-        .expect("range parses");
+    let expr = parse_query("created:[2026-01-01 TO 2026-12-31]").expect("range parses");
     match expr {
         Expr::And(parts) => match &parts[0] {
             Expr::Field {
@@ -219,7 +206,7 @@ fn parse_range_stays_field_range() {
                 assert_eq!(key, "created");
                 assert_eq!(start, "2026-01-01");
                 assert_eq!(end, "2026-12-31");
-            },
+            }
             other => panic!("expected Field Range, got {other:?}"),
         },
         _ => panic!("expected Expr::And"),
@@ -228,8 +215,7 @@ fn parse_range_stays_field_range() {
 
 #[test]
 fn parse_dotted_dynamic_path_normalizes_to_flat_key() {
-    let expr =
-        parse_query("x.feature.story_points:8").expect("deep path parses");
+    let expr = parse_query("x.feature.story_points:8").expect("deep path parses");
     match expr {
         Expr::And(parts) => assert!(matches!(
             parts[0],

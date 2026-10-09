@@ -4,10 +4,7 @@ use uuid::Uuid;
 use super::TicketStore;
 use crate::{
     error::StorageError,
-    model::ticket::{
-        TicketManifest,
-        TicketManifestExt,
-    },
+    model::ticket::{TicketManifest, TicketManifestExt},
     storage::ticket_fs::TicketFs,
 };
 
@@ -37,17 +34,10 @@ impl TicketStore {
     /// both `pub(crate)` with no caller outside this gate, so there is no
     /// alternate path that can touch frozen content without going through
     /// it.
-    pub fn enforce_part_write_gate(
-        &self,
-        id: &Uuid,
-        part_id: Uuid,
-    ) -> Result<(), StorageError> {
-        let indexed =
-            self.get_indexed(id)?.ok_or(StorageError::NotFound(*id))?;
+    pub fn enforce_part_write_gate(&self, id: &Uuid, part_id: Uuid) -> Result<(), StorageError> {
+        let indexed = self.get_indexed(id)?.ok_or(StorageError::NotFound(*id))?;
         let manifest = TicketFs::read(&indexed.path)?;
-        if let Some(part) =
-            manifest.parts().into_iter().find(|p| p.id == part_id)
-        {
+        if let Some(part) = manifest.parts().into_iter().find(|p| p.id == part_id) {
             if part.frozen {
                 return Err(StorageError::FrozenPartWrite {
                     ticket: *id,
@@ -68,23 +58,15 @@ impl TicketStore {
     /// `objective` entry once one has been materialized (e.g. by plan
     /// freezing); either way, the same gate call is reused rather than a
     /// second parallel frozen check that could drift from it.
-    pub(crate) fn enforce_description_write_gate(
-        &self,
-        id: &Uuid,
-    ) -> Result<(), StorageError> {
-        let indexed =
-            self.get_indexed(id)?.ok_or(StorageError::NotFound(*id))?;
+    pub(crate) fn enforce_description_write_gate(&self, id: &Uuid) -> Result<(), StorageError> {
+        let indexed = self.get_indexed(id)?.ok_or(StorageError::NotFound(*id))?;
         let manifest = TicketFs::read(&indexed.path)?;
         let objective_part_id = manifest
             .parts()
             .into_iter()
             .find(|p| p.kind == "objective")
             .map(|p| p.id)
-            .unwrap_or_else(|| {
-                crate::storage::ticket_fs::implicit_objective_part_id(
-                    manifest.id,
-                )
-            });
+            .unwrap_or_else(|| crate::storage::ticket_fs::implicit_objective_part_id(manifest.id));
         self.enforce_part_write_gate(id, objective_part_id)
     }
 
@@ -111,8 +93,7 @@ impl TicketStore {
         author: Option<&str>,
     ) -> Result<TicketManifest, StorageError> {
         self.enforce_part_write_gate(id, part_id)?;
-        let indexed =
-            self.get_indexed(id)?.ok_or(StorageError::NotFound(*id))?;
+        let indexed = self.get_indexed(id)?.ok_or(StorageError::NotFound(*id))?;
         let (manifest, prior_content) =
             TicketFs::write_part(&indexed.path, part_id, kind, content, None)?;
 
@@ -125,11 +106,9 @@ impl TicketStore {
             PART_HISTORY_CONTENT_KEY.to_string(),
             prior_content.map(Value::String).unwrap_or(Value::Null),
         );
-        if let Err(error) = TicketFs::append_history(
-            &indexed.path,
-            history_fields,
-            author.map(str::to_string),
-        ) {
+        if let Err(error) =
+            TicketFs::append_history(&indexed.path, history_fields, author.map(str::to_string))
+        {
             tracing::error!(
                 ticket_id = %id,
                 path = %indexed.path.display(),
@@ -156,8 +135,7 @@ impl TicketStore {
         author: Option<&str>,
     ) -> Result<TicketManifest, StorageError> {
         self.enforce_part_write_gate(id, part_id)?;
-        let indexed =
-            self.get_indexed(id)?.ok_or(StorageError::NotFound(*id))?;
+        let indexed = self.get_indexed(id)?.ok_or(StorageError::NotFound(*id))?;
         let (manifest, prior_content) = TicketFs::write_part(
             &indexed.path,
             part_id,
@@ -175,11 +153,9 @@ impl TicketStore {
             PART_HISTORY_CONTENT_KEY.to_string(),
             prior_content.map(Value::String).unwrap_or(Value::Null),
         );
-        if let Err(error) = TicketFs::append_history(
-            &indexed.path,
-            history_fields,
-            author.map(str::to_string),
-        ) {
+        if let Err(error) =
+            TicketFs::append_history(&indexed.path, history_fields, author.map(str::to_string))
+        {
             tracing::error!(
                 ticket_id = %id,
                 path = %indexed.path.display(),
@@ -207,21 +183,17 @@ impl TicketStore {
         author: Option<&str>,
     ) -> Result<TicketManifest, StorageError> {
         self.enforce_part_write_gate(id, part_id)?;
-        let indexed =
-            self.get_indexed(id)?.ok_or(StorageError::NotFound(*id))?;
+        let indexed = self.get_indexed(id)?.ok_or(StorageError::NotFound(*id))?;
         let history = TicketFs::read_history(&indexed.path)?;
         let part_id_str = part_id.to_string();
         let revision = history
             .iter()
             .rev()
             .find(|rev| {
-                rev.fields.get(PART_HISTORY_ID_KEY)
-                    == Some(&Value::String(part_id_str.clone()))
+                rev.fields.get(PART_HISTORY_ID_KEY) == Some(&Value::String(part_id_str.clone()))
             })
             .ok_or_else(|| {
-                StorageError::Other(format!(
-                    "no history revision found for part {part_id}"
-                ))
+                StorageError::Other(format!("no history revision found for part {part_id}"))
             })?;
 
         let prior = match revision.fields.get(PART_HISTORY_CONTENT_KEY) {
@@ -231,23 +203,17 @@ impl TicketStore {
                     "cannot undo part {part_id}: the most recent write \
                      created it, so there is no prior content to restore"
                 )));
-            },
+            }
         };
 
-        let (manifest, _) =
-            TicketFs::write_part(&indexed.path, part_id, "", &prior, None)?;
+        let (manifest, _) = TicketFs::write_part(&indexed.path, part_id, "", &prior, None)?;
 
         let mut history_fields = manifest.extra.clone();
-        history_fields.insert(
-            PART_HISTORY_ID_KEY.to_string(),
-            Value::String(part_id_str),
-        );
+        history_fields.insert(PART_HISTORY_ID_KEY.to_string(), Value::String(part_id_str));
         history_fields.insert(PART_HISTORY_CONTENT_KEY.to_string(), Value::Null);
-        if let Err(error) = TicketFs::append_history(
-            &indexed.path,
-            history_fields,
-            author.map(str::to_string),
-        ) {
+        if let Err(error) =
+            TicketFs::append_history(&indexed.path, history_fields, author.map(str::to_string))
+        {
             tracing::error!(
                 ticket_id = %id,
                 path = %indexed.path.display(),

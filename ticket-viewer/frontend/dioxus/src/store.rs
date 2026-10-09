@@ -27,14 +27,8 @@
 
 use dioxus::prelude::*;
 use gloo_events::EventListener;
-use serde::{
-    Deserialize,
-    Serialize,
-};
-use viewer_api_dioxus::{
-    get_hash_param,
-    update_hash_params,
-};
+use serde::{Deserialize, Serialize};
+use viewer_api_dioxus::{get_hash_param, update_hash_params};
 
 use crate::types::TicketRef;
 
@@ -118,16 +112,12 @@ pub fn load_from_local_storage(workspace: &str) -> WorkspaceUiState {
 /// `ticket-viewer:{workspace}:ui`.
 ///
 /// Ignores quota errors silently.
-pub fn save_to_local_storage(
-    workspace: &str,
-    state: &WorkspaceUiState,
-) {
+pub fn save_to_local_storage(workspace: &str, state: &WorkspaceUiState) {
     #[cfg(target_arch = "wasm32")]
     {
         let key = ls_key(workspace);
         if let Ok(json) = serde_json::to_string(state) {
-            if let Some(storage) =
-                web_sys::window().and_then(|w| w.local_storage().ok().flatten())
+            if let Some(storage) = web_sys::window().and_then(|w| w.local_storage().ok().flatten())
             {
                 let _ = storage.set_item(&key, &json);
             }
@@ -185,15 +175,13 @@ impl TicketListStore {
         let saved = load_from_local_storage(workspace);
 
         // URL hash takes priority for the ticket ref (supports deep-links).
-        let initial_ticket =
-            read_hash_ticket_ref(workspace).or(saved.open_ticket.clone());
+        let initial_ticket = read_hash_ticket_ref(workspace).or(saved.open_ticket.clone());
 
         let filter = use_signal(|| saved.filter);
         let state_filter = use_signal(|| saved.state_filter);
         let sort_key = use_signal(|| saved.sort_key);
         #[cfg_attr(not(target_arch = "wasm32"), allow(unused_mut))]
-        let mut open_ticket: Signal<Option<TicketRef>> =
-            use_signal(|| initial_ticket);
+        let mut open_ticket: Signal<Option<TicketRef>> = use_signal(|| initial_ticket);
         let active_tab = use_signal(|| saved.active_tab);
 
         // ── hashchange listener ───────────────────────────────────────────────
@@ -236,10 +224,7 @@ impl TicketListStore {
     ///
     /// Call this inside a `use_effect` — Dioxus will re-run the effect
     /// automatically whenever any of the signals read by this method change.
-    pub fn persist(
-        &self,
-        workspace: &str,
-    ) {
+    pub fn persist(&self, workspace: &str) {
         let state = WorkspaceUiState {
             filter: self.filter.read().clone(),
             state_filter: self.state_filter.read().clone(),
@@ -258,10 +243,9 @@ impl TicketListStore {
 }
 
 fn read_hash_ticket_ref(default_workspace: &str) -> Option<TicketRef> {
-    let ticket_id =
-        get_hash_param("ticket-id").or_else(|| get_hash_param("id"))?;
-    let workspace = get_hash_param("ticket-workspace")
-        .unwrap_or_else(|| default_workspace.to_string());
+    let ticket_id = get_hash_param("ticket-id").or_else(|| get_hash_param("id"))?;
+    let workspace =
+        get_hash_param("ticket-workspace").unwrap_or_else(|| default_workspace.to_string());
 
     Some(TicketRef::new(workspace, ticket_id))
 }

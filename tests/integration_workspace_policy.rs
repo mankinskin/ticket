@@ -5,10 +5,7 @@ mod common;
 
 use std::process::Command;
 
-use common::{
-    TicketCommands,
-    WorkspaceSandbox,
-};
+use common::{TicketCommands, WorkspaceSandbox};
 use ticket_api::storage::TicketStore;
 
 const TICKET: &str = env!("CARGO_BIN_EXE_ticket");
@@ -70,8 +67,7 @@ fn workspace_policy_show_set_ignore_rescan_flow() {
     ]);
 
     // First rescan (no ignore): fixture root is included and indexed.
-    let rescan =
-        sandbox.ticket_json(&["workspace", "rescan", "--apply-policy"]);
+    let rescan = sandbox.ticket_json(&["workspace", "rescan", "--apply-policy"]);
     assert_eq!(rescan["status"], "ok");
     assert_eq!(rescan["apply_policy"], true);
     let visible_before = sandbox
@@ -86,8 +82,7 @@ fn workspace_policy_show_set_ignore_rescan_flow() {
     );
 
     // 4. ignore add — exclude the fixture workspace by relative path.
-    let ignored =
-        sandbox.ticket_json(&["workspace", "ignore", "add", "fixtures"]);
+    let ignored = sandbox.ticket_json(&["workspace", "ignore", "add", "fixtures"]);
     assert_eq!(ignored["status"], "ok");
     assert_eq!(ignored["changed"], true);
     assert_eq!(
@@ -101,8 +96,7 @@ fn workspace_policy_show_set_ignore_rescan_flow() {
     );
 
     // 5. rescan again — the fixture root is now skipped by policy.
-    let rescan =
-        sandbox.ticket_json(&["workspace", "rescan", "--apply-policy"]);
+    let rescan = sandbox.ticket_json(&["workspace", "rescan", "--apply-policy"]);
     let skipped = rescan["skipped_roots"].as_array().unwrap();
     assert!(
         skipped.iter().any(|label| label == "fixtures"),
@@ -150,14 +144,13 @@ fn create_with_dot_workspace_reads_back_from_canonical_store() {
         String::from_utf8_lossy(&output.stderr)
     );
 
-    let envelope: serde_json::Value = serde_json::from_slice(&output.stdout)
-        .expect("parse Ticket CLI output");
+    let envelope: serde_json::Value =
+        serde_json::from_slice(&output.stdout).expect("parse Ticket CLI output");
     let id = envelope["payload"]["id"]
         .as_str()
         .expect("create response includes ticket id");
     let id = uuid::Uuid::parse_str(id).expect("ticket id is a UUID");
-    let store =
-        TicketStore::open(&workspace).expect("open canonical Ticket store");
+    let store = TicketStore::open(&workspace).expect("open canonical Ticket store");
     let ticket = store.get(&id).expect("read created ticket");
 
     assert_eq!(
@@ -174,10 +167,7 @@ fn create_with_dot_workspace_reads_back_from_canonical_store() {
 
 #[test]
 fn workspace_commands_are_forbidden_in_batch() {
-    use std::{
-        io::Write,
-        process::Stdio,
-    };
+    use std::{io::Write, process::Stdio};
 
     let sandbox = WorkspaceSandbox::new();
     let mut child = Command::new(TICKET)
@@ -197,13 +187,12 @@ fn workspace_commands_are_forbidden_in_batch() {
         .write_all(b"workspace policy set --include-descendants false\n")
         .unwrap();
     let out = child.wait_with_output().unwrap();
-    let envelope: serde_json::Value = serde_json::from_slice(&out.stdout)
-        .unwrap_or_else(|e| {
-            panic!(
-                "batch stdout not JSON: {e}\nraw: {}",
-                String::from_utf8_lossy(&out.stdout)
-            )
-        });
+    let envelope: serde_json::Value = serde_json::from_slice(&out.stdout).unwrap_or_else(|e| {
+        panic!(
+            "batch stdout not JSON: {e}\nraw: {}",
+            String::from_utf8_lossy(&out.stdout)
+        )
+    });
     let payload = &envelope["payload"];
     assert_eq!(
         payload["status"], "error",

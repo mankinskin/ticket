@@ -9,8 +9,7 @@ fn ticket_store_reads_seeded_root_ticket_from_materialized_fixture() {
         .store_root("ticket-root")
         .expect("ticket-root store path should exist");
 
-    let store = TicketStore::open_or_init(store_root)
-        .expect("open_or_init should work");
+    let store = TicketStore::open_or_init(store_root).expect("open_or_init should work");
     store
         .scan(true)
         .expect("scan should index seeded manifests");

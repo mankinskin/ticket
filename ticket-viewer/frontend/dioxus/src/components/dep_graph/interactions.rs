@@ -1,16 +1,9 @@
 use dioxus::prelude::*;
 use dioxus_router::Navigator;
 
-use crate::{
-    layout::GraphLayout,
-    routes::Route,
-    types::TicketRef,
-};
+use crate::{layout::GraphLayout, routes::Route, types::TicketRef};
 
-use super::state::{
-    DragKind,
-    DragState,
-};
+use super::state::{DragKind, DragState};
 
 pub(super) fn select_node_or_navigate(
     on_select: Option<EventHandler<TicketRef>>,
@@ -27,10 +20,7 @@ pub(super) fn select_node_or_navigate(
     }
 }
 
-pub(super) fn handle_wheel(
-    mut zoom: Signal<f64>,
-    event: Event<WheelData>,
-) {
+pub(super) fn handle_wheel(mut zoom: Signal<f64>, event: Event<WheelData>) {
     event.prevent_default();
     let delta = event.delta().strip_units().y;
     let factor = if delta < 0.0 { 1.12 } else { 0.89 };
@@ -97,20 +87,18 @@ pub(super) fn update_drag(
         DragKind::Pan => {
             pan_x.set(state.start_pan_x + delta_x);
             pan_y.set(state.start_pan_y + delta_y);
-        },
+        }
         DragKind::Node(node_id) => {
             let node_id = node_id.clone();
             layout.with_mut(|maybe_layout| {
                 if let Some(layout) = maybe_layout {
-                    if let Some(node) =
-                        layout.nodes.iter_mut().find(|node| node.id == node_id)
-                    {
+                    if let Some(node) = layout.nodes.iter_mut().find(|node| node.id == node_id) {
                         node.x = state.start_node_x + delta_x;
                         node.y = state.start_node_y + delta_y;
                     }
                 }
             });
-        },
+        }
     }
 }
 

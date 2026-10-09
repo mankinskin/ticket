@@ -1,10 +1,7 @@
 use std::{
     collections::BTreeMap,
     fs,
-    path::{
-        Path,
-        PathBuf,
-    },
+    path::{Path, PathBuf},
 };
 
 use chrono::Utc;
@@ -14,21 +11,14 @@ use uuid::Uuid;
 use crate::{
     error::StorageError,
     model::ticket::TicketManifest,
-    storage::ticket_fs::{
-        HistoryRevision,
-        TicketFs,
-    },
+    storage::ticket_fs::{HistoryRevision, TicketFs},
 };
 
 use super::TicketStore;
 
 impl TicketStore {
-    pub fn delete(
-        &self,
-        id: &Uuid,
-    ) -> Result<(), StorageError> {
-        let indexed =
-            self.get_indexed(id)?.ok_or(StorageError::NotFound(*id))?;
+    pub fn delete(&self, id: &Uuid) -> Result<(), StorageError> {
+        let indexed = self.get_indexed(id)?.ok_or(StorageError::NotFound(*id))?;
         fs::remove_dir_all(&indexed.path).map_err(StorageError::Io)?;
         self.index.remove_ticket(id)?;
         self.index.remove_workflow_facts(id)?;
@@ -79,25 +69,15 @@ impl TicketStore {
                 effort_str.as_deref(),
             )?)
         })?;
-        let state_progressed = self.state_rank_for_type(
-            &refreshed.type_id,
-            refreshed.state.as_deref(),
-        ) > self
-            .state_rank_for_type(&refreshed.type_id, previous_state.as_deref());
-        self.refresh_workflow_facts_for_roots(
-            &[*id],
-            state_progressed,
-            Utc::now(),
-        )?;
+        let state_progressed = self
+            .state_rank_for_type(&refreshed.type_id, refreshed.state.as_deref())
+            > self.state_rank_for_type(&refreshed.type_id, previous_state.as_deref());
+        self.refresh_workflow_facts_for_roots(&[*id], state_progressed, Utc::now())?;
         Ok(())
     }
 
-    pub fn get_history(
-        &self,
-        id: &Uuid,
-    ) -> Result<Vec<HistoryRevision>, StorageError> {
-        let indexed =
-            self.get_indexed(id)?.ok_or(StorageError::NotFound(*id))?;
+    pub fn get_history(&self, id: &Uuid) -> Result<Vec<HistoryRevision>, StorageError> {
+        let indexed = self.get_indexed(id)?.ok_or(StorageError::NotFound(*id))?;
         TicketFs::read_history(&indexed.path)
     }
 
@@ -107,15 +87,13 @@ impl TicketStore {
         fields: BTreeMap<String, Value>,
         author: Option<&str>,
     ) -> Result<u64, StorageError> {
-        let indexed =
-            self.get_indexed(id)?.ok_or(StorageError::NotFound(*id))?;
+        let indexed = self.get_indexed(id)?.ok_or(StorageError::NotFound(*id))?;
 
         let target_state = fields
             .get("state")
             .and_then(Value::as_str)
             .map(str::to_string);
-        let previous_description =
-            fields.get(super::DESCRIPTION_HISTORY_KEY).cloned();
+        let previous_description = fields.get(super::DESCRIPTION_HISTORY_KEY).cloned();
         let mut patch = fields.clone();
         patch.remove("state");
         patch.remove(super::DESCRIPTION_HISTORY_KEY);
@@ -159,16 +137,10 @@ impl TicketStore {
                 effort_str.as_deref(),
             )?)
         })?;
-        let state_progressed = self.state_rank_for_type(
-            &refreshed.type_id,
-            refreshed.state.as_deref(),
-        ) > self
-            .state_rank_for_type(&refreshed.type_id, previous_state.as_deref());
-        self.refresh_workflow_facts_for_roots(
-            &[*id],
-            state_progressed,
-            Utc::now(),
-        )?;
+        let state_progressed = self
+            .state_rank_for_type(&refreshed.type_id, refreshed.state.as_deref())
+            > self.state_rank_for_type(&refreshed.type_id, previous_state.as_deref());
+        self.refresh_workflow_facts_for_roots(&[*id], state_progressed, Utc::now())?;
 
         let updated_manifest = TicketFs::read(&refreshed.path)?;
         let new_rev = TicketFs::append_history(
@@ -188,8 +160,7 @@ impl TicketStore {
         target_state: &str,
         author: Option<&str>,
     ) -> Result<(TicketManifest, Vec<String>), StorageError> {
-        let indexed =
-            self.get_indexed(id)?.ok_or(StorageError::NotFound(*id))?;
+        let indexed = self.get_indexed(id)?.ok_or(StorageError::NotFound(*id))?;
 
         let current_state = indexed.state.as_deref().unwrap_or("planning");
         if current_state == target_state {
@@ -198,24 +169,18 @@ impl TicketStore {
             return Ok((manifest, vec![]));
         }
 
-        let schema =
-            self.schema_registry.get(&indexed.type_id).ok_or_else(|| {
-                StorageError::Other(format!(
-                    "no schema for type '{}'",
-                    indexed.type_id
-                ))
+        let schema = self.schema_registry.get(&indexed.type_id).ok_or_else(|| {
+            StorageError::Other(format!("no schema for type '{}'", indexed.type_id))
+        })?;
+        let path = schema
+            .find_path(current_state, target_state)
+            .ok_or_else(|| {
+                StorageError::Validation(
+                    schema
+                        .invalid_transition_error(current_state, target_state)
+                        .into(),
+                )
             })?;
-        let path =
-            schema
-                .find_path(current_state, target_state)
-                .ok_or_else(|| {
-                    StorageError::Validation(
-                        schema.invalid_transition_error(
-                            current_state,
-                            target_state,
-                        ).into(),
-                    )
-                })?;
 
         let empty_patch = BTreeMap::new();
         let (final_state, transition_states) = path
@@ -240,8 +205,7 @@ impl TicketStore {
         source_path: &Path,
         asset_name: Option<&str>,
     ) -> Result<PathBuf, StorageError> {
-        let indexed =
-            self.get_indexed(id)?.ok_or(StorageError::NotFound(*id))?;
+        let indexed = self.get_indexed(id)?.ok_or(StorageError::NotFound(*id))?;
 
         let file_name = asset_name.map(String::from).unwrap_or_else(|| {
             source_path
@@ -251,14 +215,12 @@ impl TicketStore {
         });
 
         let assets_dir = indexed.path.join("assets");
-        std::fs::create_dir_all(&assets_dir).map_err(|error| {
-            StorageError::Other(format!("create assets dir: {error}"))
-        })?;
+        std::fs::create_dir_all(&assets_dir)
+            .map_err(|error| StorageError::Other(format!("create assets dir: {error}")))?;
 
         let destination = assets_dir.join(&file_name);
-        std::fs::copy(source_path, &destination).map_err(|error| {
-            StorageError::Other(format!("copy asset: {error}"))
-        })?;
+        std::fs::copy(source_path, &destination)
+            .map_err(|error| StorageError::Other(format!("copy asset: {error}")))?;
 
         let mut event = BTreeMap::new();
         event.insert("_event".to_string(), Value::String("attach".to_string()));
@@ -275,12 +237,8 @@ impl TicketStore {
         Ok(destination)
     }
 
-    pub fn list_assets(
-        &self,
-        id: &Uuid,
-    ) -> Result<Vec<String>, StorageError> {
-        let indexed =
-            self.get_indexed(id)?.ok_or(StorageError::NotFound(*id))?;
+    pub fn list_assets(&self, id: &Uuid) -> Result<Vec<String>, StorageError> {
+        let indexed = self.get_indexed(id)?.ok_or(StorageError::NotFound(*id))?;
 
         let assets_dir = indexed.path.join("assets");
         if !assets_dir.exists() {
@@ -288,9 +246,9 @@ impl TicketStore {
         }
 
         let mut names = Vec::new();
-        for entry in std::fs::read_dir(&assets_dir).map_err(|error| {
-            StorageError::Other(format!("read assets dir: {error}"))
-        })? {
+        for entry in std::fs::read_dir(&assets_dir)
+            .map_err(|error| StorageError::Other(format!("read assets dir: {error}")))?
+        {
             let entry = match entry {
                 Ok(entry) => entry,
                 Err(_) => continue,

@@ -2,20 +2,12 @@
 
 use std::io::ErrorKind;
 
-use axum::{
-    http::StatusCode,
-    response::Response,
-};
+use axum::{http::StatusCode, response::Response};
 use serde_json::json;
-pub use viewer_api::error::{
-    ApiError,
-    RequestIdExt,
-};
+pub use viewer_api::error::{ApiError, RequestIdExt};
 
 /// Helper: extract request_id from extensions or fall back to empty string.
-pub fn request_id(
-    ext: Option<axum::extract::Extension<RequestIdExt>>
-) -> String {
+pub fn request_id(ext: Option<axum::extract::Extension<RequestIdExt>>) -> String {
     ext.map(|e| e.0.0.clone()).unwrap_or_default()
 }
 
@@ -25,10 +17,7 @@ pub fn request_id(
 /// captured in the server log even when the HTTP client ignores the body.
 /// The `rid` (request-id) field is included in every event so log lines can be
 /// correlated with client-side `ApiRequestError` reports.
-pub fn storage_err(
-    e: ticket_api::error::StorageError,
-    rid: &str,
-) -> Response {
+pub fn storage_err(e: ticket_api::error::StorageError, rid: &str) -> Response {
     match classify_storage_error(e) {
         StorageErrClass::Client(error) => client_storage_err(error, rid),
         StorageErrClass::Server(error) => server_storage_err(error, rid),
@@ -40,9 +29,7 @@ enum StorageErrClass {
     Server(ticket_api::error::StorageError),
 }
 
-fn classify_storage_error(
-    error: ticket_api::error::StorageError
-) -> StorageErrClass {
+fn classify_storage_error(error: ticket_api::error::StorageError) -> StorageErrClass {
     if is_client_storage_err(&error) {
         StorageErrClass::Client(error)
     } else {
@@ -67,10 +54,7 @@ fn is_client_storage_err(error: &ticket_api::error::StorageError) -> bool {
     }
 }
 
-fn client_storage_err(
-    error: ticket_api::error::StorageError,
-    rid: &str,
-) -> Response {
+fn client_storage_err(error: ticket_api::error::StorageError, rid: &str) -> Response {
     use ticket_api::error::StorageError;
     match error {
         StorageError::NotFound(id) => {
@@ -81,7 +65,7 @@ fn client_storage_err(
                 rid,
             )
             .into_response_with_status(StatusCode::NOT_FOUND)
-        },
+        }
         StorageError::Io(error) => {
             tracing::warn!(
                 request_id = %rid,
@@ -95,17 +79,17 @@ fn client_storage_err(
             )
             .with_details(json!({ "error": error.to_string() }))
             .into_response_with_status(StatusCode::NOT_FOUND)
-        },
+        }
         StorageError::Validation(error) => {
             tracing::debug!(request_id = %rid, error = %error, "ticket validation failed");
             ApiError::new("ticket.validation_failed", error.to_string(), rid)
                 .into_response_with_status(StatusCode::UNPROCESSABLE_ENTITY)
-        },
+        }
         StorageError::QueryParse(error) => {
             tracing::debug!(request_id = %rid, error = %error, "query parse error");
             ApiError::bad_request("query.invalid", error.to_string(), rid)
                 .into_response_with_status(StatusCode::BAD_REQUEST)
-        },
+        }
         StorageError::LeaseConflict { ticket, holder } => {
             tracing::warn!(
                 request_id = %rid,
@@ -123,7 +107,7 @@ fn client_storage_err(
                 "holder": holder,
             }))
             .into_response_with_status(StatusCode::CONFLICT)
-        },
+        }
         StorageError::DependencyCycle => {
             tracing::debug!(request_id = %rid, "dependency cycle detected");
             ApiError::new(
@@ -132,17 +116,17 @@ fn client_storage_err(
                 rid,
             )
             .into_response_with_status(StatusCode::UNPROCESSABLE_ENTITY)
-        },
+        }
         StorageError::SchemaMismatch(error) => {
             tracing::warn!(request_id = %rid, error = %error, "schema mismatch");
             ApiError::new("storage.schema_mismatch", error.to_string(), rid)
                 .into_response_with_status(StatusCode::CONFLICT)
-        },
+        }
         StorageError::Protocol(error) => {
             tracing::warn!(request_id = %rid, error = %error, "protocol error");
             ApiError::new(error.code(), error.to_string(), rid)
                 .into_response_with_status(StatusCode::UNPROCESSABLE_ENTITY)
-        },
+        }
         StorageError::WorkspaceNotFound { path } => {
             tracing::warn!(
                 request_id = %rid,
@@ -158,7 +142,7 @@ fn client_storage_err(
                 rid,
             )
             .into_response_with_status(StatusCode::SERVICE_UNAVAILABLE)
-        },
+        }
         StorageError::FrozenPartWrite { .. } => {
             // Full message names the part, the freezing state, and both
             // recovery paths — surfaced verbatim, never reworded.
@@ -166,15 +150,12 @@ fn client_storage_err(
             tracing::debug!(request_id = %rid, error = %message, "frozen part write rejected");
             ApiError::new("ticket.frozen_part_write", message, rid)
                 .into_response_with_status(StatusCode::CONFLICT)
-        },
+        }
         _ => unreachable!("client classification mismatch"),
     }
 }
 
-fn server_storage_err(
-    error: ticket_api::error::StorageError,
-    rid: &str,
-) -> Response {
+fn server_storage_err(error: ticket_api::error::StorageError, rid: &str) -> Response {
     use ticket_api::error::StorageError;
     match error {
         StorageError::ParseError { path, reason } => {
@@ -191,7 +172,7 @@ fn server_storage_err(
             )
             .with_details(json!({ "path": path.display().to_string() }))
             .into_response_with_status(StatusCode::INTERNAL_SERVER_ERROR)
-        },
+        }
         StorageError::SchemaFileParse { path, reason } => {
             tracing::error!(
                 request_id = %rid,
@@ -206,7 +187,7 @@ fn server_storage_err(
             )
             .with_details(json!({ "path": path.display().to_string() }))
             .into_response_with_status(StatusCode::INTERNAL_SERVER_ERROR)
-        },
+        }
         StorageError::Database(message) => {
             tracing::error!(request_id = %rid, message = %message, "ticket database error");
             ApiError::new(
@@ -215,7 +196,7 @@ fn server_storage_err(
                 rid,
             )
             .into_response_with_status(StatusCode::INTERNAL_SERVER_ERROR)
-        },
+        }
         StorageError::SearchIndex(message) => {
             tracing::error!(
                 request_id = %rid,
@@ -228,7 +209,7 @@ fn server_storage_err(
                 rid,
             )
             .into_response_with_status(StatusCode::INTERNAL_SERVER_ERROR)
-        },
+        }
         StorageError::Serialization(message) => {
             tracing::error!(
                 request_id = %rid,
@@ -243,7 +224,7 @@ fn server_storage_err(
                 rid,
             )
             .into_response_with_status(StatusCode::INTERNAL_SERVER_ERROR)
-        },
+        }
         StorageError::Io(error) => {
             tracing::error!(
                 request_id = %rid,
@@ -257,20 +238,17 @@ fn server_storage_err(
                 rid,
             )
             .into_response_with_status(StatusCode::INTERNAL_SERVER_ERROR)
-        },
+        }
         StorageError::Other(message) => {
             tracing::error!(request_id = %rid, message = %message, "ticket storage error");
             ApiError::new("storage.error", message, rid)
                 .into_response_with_status(StatusCode::INTERNAL_SERVER_ERROR)
-        },
+        }
         _ => unreachable!("server classification mismatch"),
     }
 }
 
-pub fn task_join_err(
-    rid: &str,
-    operation: &str,
-) -> Response {
+pub fn task_join_err(rid: &str, operation: &str) -> Response {
     tracing::error!(request_id = %rid, operation, "ticket-http worker task aborted");
     ApiError::new(
         "internal.task_failed",
@@ -285,10 +263,7 @@ pub fn task_join_err(
 #[cfg(test)]
 mod tests {
     use super::storage_err;
-    use axum::{
-        body::to_bytes,
-        http::StatusCode,
-    };
+    use axum::{body::to_bytes, http::StatusCode};
     use ticket_api::error::StorageError;
 
     #[tokio::test]
@@ -305,8 +280,7 @@ mod tests {
         let body = to_bytes(response.into_body(), 1024 * 1024)
             .await
             .expect("read body");
-        let payload: serde_json::Value =
-            serde_json::from_slice(&body).expect("json body");
+        let payload: serde_json::Value = serde_json::from_slice(&body).expect("json body");
         assert_eq!(payload["code"], "storage.path_not_found");
         assert!(
             payload["message"]
@@ -327,8 +301,7 @@ mod tests {
         let body = to_bytes(response.into_body(), 1024 * 1024)
             .await
             .expect("read body");
-        let payload: serde_json::Value =
-            serde_json::from_slice(&body).expect("json body");
+        let payload: serde_json::Value = serde_json::from_slice(&body).expect("json body");
         assert_eq!(payload["code"], "storage.error");
         assert_eq!(payload["message"], "workspace index is inconsistent");
     }

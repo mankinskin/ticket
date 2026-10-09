@@ -5,19 +5,10 @@ use crate::{
     error::StorageError,
     storage::{
         board::{
-            BoardCleanPreview,
-            BoardCleanResult,
-            BoardConfig,
-            BoardEntry,
-            BoardError,
-            BoardHistorySnapshot,
-            BoardSnapshot,
-            ReconcileAction,
+            BoardCleanPreview, BoardCleanResult, BoardConfig, BoardEntry, BoardError,
+            BoardHistorySnapshot, BoardSnapshot, ReconcileAction,
         },
-        indexed::{
-            IndexedTicket,
-            LeaseInfo,
-        },
+        indexed::{IndexedTicket, LeaseInfo},
     },
 };
 
@@ -54,10 +45,7 @@ impl TicketStore {
         Ok(lease)
     }
 
-    pub fn unclaim(
-        &self,
-        ticket_id: &Uuid,
-    ) -> Result<(), StorageError> {
+    pub fn unclaim(&self, ticket_id: &Uuid) -> Result<(), StorageError> {
         Ok(self.index.remove_lease(ticket_id)?)
     }
 
@@ -65,11 +53,7 @@ impl TicketStore {
     /// may always release its own lease, and any caller may release a stale
     /// (expired) lease. Releasing a ticket with no active lease is a no-op. A
     /// live lease held by a different agent is rejected with `LeaseConflict`.
-    pub fn release_lease(
-        &self,
-        ticket_id: &Uuid,
-        requester: &str,
-    ) -> Result<(), StorageError> {
+    pub fn release_lease(&self, ticket_id: &Uuid, requester: &str) -> Result<(), StorageError> {
         match self.index.get_lease(ticket_id)? {
             None => Ok(()),
             Some(lease) => {
@@ -81,7 +65,7 @@ impl TicketStore {
                         holder: lease.working_by,
                     })
                 }
-            },
+            }
         }
     }
 
@@ -112,14 +96,12 @@ impl TicketStore {
         )?;
 
         match self.claim(ticket_id, agent_id, ttl_secs, Some(intent)) {
-            Ok(_) | Err(StorageError::LeaseConflict { .. }) => {},
+            Ok(_) | Err(StorageError::LeaseConflict { .. }) => {}
             Err(error) => {
                 return Err(BoardError::Storage(
-                    memory_kernel::error::StorageError::Other(
-                        error.to_string(),
-                    ),
+                    memory_kernel::error::StorageError::Other(error.to_string()),
                 ));
-            },
+            }
         }
 
         Ok(entry)
@@ -131,37 +113,27 @@ impl TicketStore {
         agent_id: &str,
         handoff_reason: Option<&str>,
     ) -> Result<BoardEntry, BoardError> {
-        let entry = self.index.board_complete_entry(
-            ticket_id,
-            agent_id,
-            handoff_reason,
-        );
+        let entry = self
+            .index
+            .board_complete_entry(ticket_id, agent_id, handoff_reason);
 
         match self.release_lease(ticket_id, agent_id) {
-            Ok(_) | Err(StorageError::NotFound(_)) => {},
+            Ok(_) | Err(StorageError::NotFound(_)) => {}
             Err(error) => {
                 return Err(BoardError::Storage(
-                    memory_kernel::error::StorageError::Other(
-                        error.to_string(),
-                    ),
+                    memory_kernel::error::StorageError::Other(error.to_string()),
                 ));
-            },
+            }
         }
 
         entry
     }
 
-    pub fn board_heartbeat(
-        &self,
-        entry_id: &Uuid,
-    ) -> Result<BoardEntry, BoardError> {
+    pub fn board_heartbeat(&self, entry_id: &Uuid) -> Result<BoardEntry, BoardError> {
         self.index.board_refresh_heartbeat(entry_id)
     }
 
-    pub fn board_show(
-        &self,
-        agent_id: Option<&str>,
-    ) -> Result<BoardSnapshot, BoardError> {
+    pub fn board_show(&self, agent_id: Option<&str>) -> Result<BoardSnapshot, BoardError> {
         self.index.board_snapshot(agent_id)
     }
 
@@ -179,30 +151,21 @@ impl TicketStore {
         self.index.board_list_entries_for_ticket(*ticket_id)
     }
 
-    pub fn board_import_entries(
-        &self,
-        entries: &[BoardEntry],
-    ) -> Result<(), BoardError> {
+    pub fn board_import_entries(&self, entries: &[BoardEntry]) -> Result<(), BoardError> {
         self.index.board_upsert_entries_atomic(entries)
     }
 
-    pub fn board_delete_entries(
-        &self,
-        entry_ids: &[Uuid],
-    ) -> Result<(), BoardError> {
+    pub fn board_delete_entries(&self, entry_ids: &[Uuid]) -> Result<(), BoardError> {
         self.index.board_delete_entries_atomic(entry_ids)
     }
 
-    pub fn board_configure(
-        &self,
-        config: Option<BoardConfig>,
-    ) -> Result<BoardConfig, BoardError> {
+    pub fn board_configure(&self, config: Option<BoardConfig>) -> Result<BoardConfig, BoardError> {
         match config {
             None => self.index.board_read_config(),
             Some(config) => {
                 self.index.board_write_config(&config)?;
                 Ok(config)
-            },
+            }
         }
     }
 
@@ -243,11 +206,7 @@ impl TicketStore {
             .board_rename_file_atomic(*ticket_id, agent_id, old_path, new_path)
     }
 
-    pub(super) fn board_reconcile(
-        &self,
-        ticket_id: &Uuid,
-        is_revert: bool,
-    ) {
+    pub(super) fn board_reconcile(&self, ticket_id: &Uuid, is_revert: bool) {
         if is_revert {
             self.log_revert_reconcile_warning(ticket_id);
             return;
@@ -261,10 +220,7 @@ impl TicketStore {
         }
     }
 
-    fn log_revert_reconcile_warning(
-        &self,
-        ticket_id: &Uuid,
-    ) {
+    fn log_revert_reconcile_warning(&self, ticket_id: &Uuid) {
         match self.index.board_find_active_for_ticket(*ticket_id) {
             Ok(Some((entry, _))) => {
                 let state = self
@@ -280,25 +236,21 @@ impl TicketStore {
                     current_state = %state,
                     "board_reconcile: stale intent — ticket reverted but active board entry remains"
                 );
-            },
-            Ok(None) => {},
+            }
+            Ok(None) => {}
             Err(error) => {
                 tracing::warn!(
                     ticket_id = %ticket_id,
                     error = %error,
                     "board_reconcile: failed to look up active entry during revert"
                 );
-            },
+            }
         }
     }
 
-    fn ticket_is_terminal(
-        &self,
-        ticket_id: &Uuid,
-    ) -> Option<bool> {
+    fn ticket_is_terminal(&self, ticket_id: &Uuid) -> Option<bool> {
         match self.index.get_ticket(ticket_id) {
-            Ok(Some(indexed)) =>
-                Some(self.indexed_ticket_is_terminal(&indexed)),
+            Ok(Some(indexed)) => Some(self.indexed_ticket_is_terminal(&indexed)),
             Ok(None) => Some(true),
             Err(error) => {
                 tracing::warn!(
@@ -307,14 +259,11 @@ impl TicketStore {
                     "board_reconcile: failed to fetch ticket — skipping"
                 );
                 None
-            },
+            }
         }
     }
 
-    fn indexed_ticket_is_terminal(
-        &self,
-        indexed: &IndexedTicket,
-    ) -> bool {
+    fn indexed_ticket_is_terminal(&self, indexed: &IndexedTicket) -> bool {
         let current_state = indexed.state.as_deref().unwrap_or("");
         self.schema_registry
             .get(&indexed.type_id)
@@ -327,10 +276,7 @@ impl TicketStore {
             })
     }
 
-    fn complete_active_board_entries(
-        &self,
-        ticket_id: &Uuid,
-    ) {
+    fn complete_active_board_entries(&self, ticket_id: &Uuid) {
         match self.index.board_complete_all_for_ticket(*ticket_id) {
             Ok(entry_ids) if !entry_ids.is_empty() => {
                 tracing::debug!(
@@ -339,15 +285,15 @@ impl TicketStore {
                     action = ?ReconcileAction::MarkedCompleted { entry_id: entry_ids[0] },
                     "board_reconcile: marked active entries completed"
                 );
-            },
-            Ok(_) => {},
+            }
+            Ok(_) => {}
             Err(error) => {
                 tracing::warn!(
                     ticket_id = %ticket_id,
                     error = %error,
                     "board_reconcile: failed to complete board entries"
                 );
-            },
+            }
         }
     }
 }

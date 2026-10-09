@@ -26,10 +26,8 @@ pub fn builtin_schemas() -> Vec<TicketTypeSchema> {
     DELIVERED_SCHEMA_TOML
         .iter()
         .map(|toml_src| {
-            let schema: TicketTypeSchema =
-                toml::from_str(toml_src).unwrap_or_else(|e| {
-                    panic!("delivered ticket schema is invalid TOML: {e}")
-                });
+            let schema: TicketTypeSchema = toml::from_str(toml_src)
+                .unwrap_or_else(|e| panic!("delivered ticket schema is invalid TOML: {e}"));
             assert!(
                 !schema.type_id.is_empty(),
                 "delivered ticket schema is missing a type_id"
@@ -65,15 +63,10 @@ mod tests {
     #[test]
     fn delivered_schema_type_ids_are_unique() {
         let schemas = builtin_schemas();
-        let mut ids: Vec<&str> =
-            schemas.iter().map(|s| s.type_id.as_str()).collect();
+        let mut ids: Vec<&str> = schemas.iter().map(|s| s.type_id.as_str()).collect();
         ids.sort_unstable();
         let total = ids.len();
         ids.dedup();
-        assert_eq!(
-            total,
-            ids.len(),
-            "delivered schema type_ids must be unique"
-        );
+        assert_eq!(total, ids.len(), "delivered schema type_ids must be unique");
     }
 }

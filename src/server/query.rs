@@ -1,9 +1,6 @@
 use ticket_api::storage::ticket_fs::TicketFs;
 
-use super::{
-    types::*,
-    *,
-};
+use super::{types::*, *};
 
 impl TicketServer {
     pub(crate) async fn health_tool(&self) -> Result<CallToolResult, McpError> {
@@ -23,9 +20,7 @@ impl TicketServer {
         }
     }
 
-    pub(crate) async fn list_workspaces_tool(
-        &self
-    ) -> Result<CallToolResult, McpError> {
+    pub(crate) async fn list_workspaces_tool(&self) -> Result<CallToolResult, McpError> {
         let active_path = self.index_root.to_string_lossy().to_string();
         Self::json_result(&serde_json::json!({
             "workspaces": ["default", active_path],
@@ -46,10 +41,8 @@ impl TicketServer {
             })
             .await?
         } else {
-            self.with_store(&workspace, |store| {
-                listed_ticket_summaries(store, &input)
-            })
-            .await?
+            self.with_store(&workspace, |store| listed_ticket_summaries(store, &input))
+                .await?
         };
 
         Self::json_result(&serde_json::json!({
@@ -69,15 +62,12 @@ impl TicketServer {
 
         self.with_store_ext(&workspace.clone(), move |store| {
             let id = Self::resolve_uuid_for_read(store, &id_str)?;
-            let projection = ticket_api::storage::ReadProjection::decode(
-                view.as_deref(),
-                parts.as_deref(),
-            )
-            .map_err(Self::store_err)?;
+            let projection =
+                ticket_api::storage::ReadProjection::decode(view.as_deref(), parts.as_deref())
+                    .map_err(Self::store_err)?;
 
             if let Some(projection) = projection {
-                let projected =
-                    store.project(&id, &projection).map_err(Self::store_err)?;
+                let projected = store.project(&id, &projection).map_err(Self::store_err)?;
                 return Self::json_result(&serde_json::json!({
                     "workspace": workspace,
                     "ticket": projected,
@@ -114,12 +104,7 @@ impl TicketServer {
             let indexed = store
                 .get_indexed(&id)
                 .map_err(Self::store_err)?
-                .ok_or_else(|| {
-                    McpError::invalid_params(
-                        format!("ticket not found: {id}"),
-                        None,
-                    )
-                })?;
+                .ok_or_else(|| McpError::invalid_params(format!("ticket not found: {id}"), None))?;
 
             Self::json_result(&serde_json::json!({
                 "workspace": workspace,
@@ -181,8 +166,7 @@ fn listed_ticket_summaries(
     input: &ListTicketsInput,
 ) -> Result<Vec<TicketSummary>, ticket_api::error::StorageError> {
     let limit = input.limit.map(|value| value.min(1000));
-    let tickets =
-        store.list(input.state.as_deref(), input.type_id.as_deref(), limit)?;
+    let tickets = store.list(input.state.as_deref(), input.type_id.as_deref(), limit)?;
     let model = ticket_api::workflow::WorkflowModel::build(
         store,
         tickets.clone(),
@@ -310,8 +294,7 @@ mod tests {
             })
             .await
             .expect("get_ticket_tool with view=summary ok");
-        let json: Value = serde_json::from_str(&extract_text(&result))
-            .expect("valid json");
+        let json: Value = serde_json::from_str(&extract_text(&result)).expect("valid json");
 
         let parts = json["ticket"]["parts"].as_array().expect("parts array");
         assert_eq!(parts.len(), 1);
@@ -322,7 +305,11 @@ mod tests {
     async fn get_ticket_tool_reads_an_indexed_descendant_from_parent_workspace() {
         let dir = tempfile::tempdir().expect("tempdir");
         let parent = TicketStore::init(dir.path()).expect("parent store");
-        let child_root = dir.path().join("child").join(".workflow-tools").join("ticket");
+        let child_root = dir
+            .path()
+            .join("child")
+            .join(".workflow-tools")
+            .join("ticket");
         let child = TicketStore::init(&child_root).expect("child store");
         let id = child
             .create(
@@ -353,8 +340,7 @@ mod tests {
             })
             .await
             .expect("get indexed descendant ticket");
-        let json: Value = serde_json::from_str(&extract_text(&result))
-            .expect("valid json");
+        let json: Value = serde_json::from_str(&extract_text(&result)).expect("valid json");
 
         assert_eq!(json["ticket"]["id"].as_str(), Some(id.to_string().as_str()));
     }
@@ -461,13 +447,14 @@ mod tests {
             })
             .await
             .expect("description after external write");
-        let json: Value = serde_json::from_str(&extract_text(&result))
-            .expect("valid json");
+        let json: Value = serde_json::from_str(&extract_text(&result)).expect("valid json");
 
-        assert!(json["description"]
-            .as_str()
-            .expect("description string")
-            .contains("## External section"));
+        assert!(
+            json["description"]
+                .as_str()
+                .expect("description string")
+                .contains("## External section")
+        );
     }
 
     #[tokio::test]
@@ -529,12 +516,15 @@ mod tests {
             })
             .await
             .expect("list after external ticket write");
-        let json: Value = serde_json::from_str(&extract_text(&result))
-            .expect("valid json");
+        let json: Value = serde_json::from_str(&extract_text(&result)).expect("valid json");
 
-        assert!(json["items"].as_array().expect("items array").iter().any(
-            |item| item["id"].as_str() == Some(id.to_string().as_str()),
-        ));
+        assert!(
+            json["items"]
+                .as_array()
+                .expect("items array")
+                .iter()
+                .any(|item| item["id"].as_str() == Some(id.to_string().as_str()),)
+        );
     }
 
     #[tokio::test]
@@ -595,8 +585,7 @@ mod tests {
             })
             .await
             .expect("read after external ticket write");
-        let json: Value = serde_json::from_str(&extract_text(&result))
-            .expect("valid json");
+        let json: Value = serde_json::from_str(&extract_text(&result)).expect("valid json");
 
         assert_eq!(
             json["description"].as_str(),
@@ -605,18 +594,11 @@ mod tests {
     }
 }
 
-fn indexed_updated_at(
-    store: &TicketStore,
-    id: &Uuid,
-) -> chrono::DateTime<chrono::Utc> {
+fn indexed_updated_at(store: &TicketStore, id: &Uuid) -> chrono::DateTime<chrono::Utc> {
     store
         .get_indexed(id)
         .ok()
         .flatten()
         .map(|ticket| ticket.updated_at)
-        .unwrap_or_else(|| {
-            chrono::DateTime::<chrono::Utc>::from(
-                std::time::SystemTime::UNIX_EPOCH,
-            )
-        })
+        .unwrap_or_else(|| chrono::DateTime::<chrono::Utc>::from(std::time::SystemTime::UNIX_EPOCH))
 }

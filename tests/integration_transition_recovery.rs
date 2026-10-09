@@ -6,11 +6,7 @@
 
 mod common;
 
-use common::{
-    TicketCommands,
-    TicketSandbox as Sandbox,
-    create_ticket,
-};
+use common::{TicketCommands, TicketSandbox as Sandbox, create_ticket};
 
 #[test]
 fn blocked_transition_reports_current_allowed_and_intermediate_states() {
@@ -84,7 +80,9 @@ fn transitions_command_shows_legal_transition_graph() {
 
     // The full transition graph and declared states are present.
     assert!(
-        overview["transitions"].as_array().is_some_and(|t| !t.is_empty()),
+        overview["transitions"]
+            .as_array()
+            .is_some_and(|t| !t.is_empty()),
         "transition graph should be non-empty"
     );
     let states: Vec<&str> = overview["states"]
@@ -116,8 +114,7 @@ fn multi_hop_transition_auto_walks_by_default() {
 
     // `open -> in-implementation` requires passing through `planned`. Without the
     // `--single-hop` opt-out the update auto-walks the path and succeeds.
-    let updated =
-        s.ticket_json(&["update", &id, "--to-state", "in-implementation"]);
+    let updated = s.ticket_json(&["update", &id, "--to-state", "in-implementation"]);
     assert_eq!(updated["status"], "ok");
     let got = s.ticket_json(&["get", &id]);
     assert_eq!(got["ticket"]["fields"]["state"], "in-implementation");

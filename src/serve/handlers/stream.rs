@@ -4,24 +4,13 @@
 //! channel and streams events to the client as Server-Sent Events.
 
 use axum::{
-    extract::{
-        Query,
-        State,
-    },
+    extract::{Query, State},
     response::{
         IntoResponse,
-        sse::{
-            Event,
-            KeepAlive,
-            Sse,
-        },
+        sse::{Event, KeepAlive, Sse},
     },
 };
-use futures_util::stream::{
-    self,
-    BoxStream,
-    StreamExt,
-};
+use futures_util::stream::{self, BoxStream, StreamExt};
 use serde::Deserialize;
 use std::convert::Infallible;
 use tokio::sync::broadcast::error::RecvError;
@@ -30,10 +19,7 @@ use crate::serve::{
     AppState,
     stream::{
         broker::next_event_id,
-        event::{
-            SnapshotReadyPayload,
-            SseEvent,
-        },
+        event::{SnapshotReadyPayload, SseEvent},
     },
 };
 
@@ -49,9 +35,7 @@ pub async fn stream_handler(
     let workspace = params.workspace.clone();
 
     // Collect baseline counts; 0,0 if workspace is unknown.
-    let combined: BoxStream<'static, Result<Event, Infallible>> = if let Some(
-        store,
-    ) =
+    let combined: BoxStream<'static, Result<Event, Infallible>> = if let Some(store) =
         state.ensure_workspace_runtime(&workspace)
     {
         let (nc, ec) = tokio::task::spawn_blocking(move || {
@@ -75,28 +59,19 @@ pub async fn stream_handler(
         })
         .into_sse_event(next_event_id());
 
-        let initial =
-            stream::once(
-                async move { Ok::<Event, Infallible>(snapshot_event) },
-            );
+        let initial = stream::once(async move { Ok::<Event, Infallible>(snapshot_event) });
 
         // Convert the broadcast receiver into an async stream via unfold.
         let live = stream::unfold(rx, |mut rx| async move {
             loop {
                 match rx.recv().await {
                     Ok((id, event)) => {
-                        return Some((
-                            Ok::<Event, Infallible>(event.into_sse_event(id)),
-                            rx,
-                        ));
-                    },
+                        return Some((Ok::<Event, Infallible>(event.into_sse_event(id)), rx));
+                    }
                     Err(RecvError::Lagged(n)) => {
-                        tracing::warn!(
-                            dropped = n,
-                            "SSE receiver lagged; events dropped"
-                        );
+                        tracing::warn!(dropped = n, "SSE receiver lagged; events dropped");
                         continue;
-                    },
+                    }
                     Err(RecvError::Closed) => return None,
                 }
             }

@@ -1,33 +1,18 @@
 use std::{
     collections::BTreeSet,
     fs,
-    path::{
-        Component,
-        Path,
-        PathBuf,
-    },
+    path::{Component, Path, PathBuf},
 };
 
-use serde_json::{
-    Value,
-    json,
-};
+use serde_json::{Value, json};
 
 use ticket_api::{
-    contracts::command_schema::{
-        export_command_schema,
-        export_command_schema_json,
-    },
+    contracts::command_schema::{export_command_schema, export_command_schema_json},
     model::schema_registry::SchemaRegistry,
     storage::TicketStore,
 };
 
-use super::{
-    CliRunError,
-    TicketCommandCli,
-    batch,
-    commands,
-};
+use super::{CliRunError, TicketCommandCli, batch, commands};
 
 pub(super) fn dispatch(
     command: TicketCommandCli,
@@ -38,13 +23,10 @@ pub(super) fn dispatch(
     dry_run: bool,
 ) -> Result<Value, CliRunError> {
     match command {
-        TicketCommandCli::ExportCommandSchema =>
-            export_command_schema_payload(),
+        TicketCommandCli::ExportCommandSchema => export_command_schema_payload(),
         TicketCommandCli::Catalog => capability_catalog_payload(),
         TicketCommandCli::Init => {
-            if index_root_override.is_none()
-                && workspace_root_override.is_none()
-            {
+            if index_root_override.is_none() && workspace_root_override.is_none() {
                 return Err(CliRunError::BadRequest(
                     "store initialization requires explicit --workspace <path> or --index-root <path>".to_string(),
                 ));
@@ -52,10 +34,8 @@ pub(super) fn dispatch(
             let normalized_workspace_root = workspace_root_override
                 .map(|path| {
                     let selector = path.to_string_lossy();
-                    ticket_api::workspace::normalize_explicit_workspace_selector(
-                        Some(&selector),
-                    )
-                    .map_err(|error| CliRunError::BadRequest(error.to_string()))
+                    ticket_api::workspace::normalize_explicit_workspace_selector(Some(&selector))
+                        .map_err(|error| CliRunError::BadRequest(error.to_string()))
                 })
                 .transpose()?;
             cmd_init(
@@ -65,7 +45,7 @@ pub(super) fn dispatch(
                     .or(workspace_root_override),
                 schema_dir_override,
             )
-        },
+        }
         other => dispatch_store_backed(
             other,
             index_root_override,
@@ -81,8 +61,7 @@ fn cmd_init(
     workspace_root_override: Option<&Path>,
     schema_dir_override: Option<&Path>,
 ) -> Result<Value, CliRunError> {
-    let index_root =
-        resolve_index_root(index_root_override, workspace_root_override)?;
+    let index_root = resolve_index_root(index_root_override, workspace_root_override)?;
     let mut registry = SchemaRegistry::with_builtins();
     if let Some(schema_dir) = schema_dir_override {
         registry.load_dir(schema_dir)?;
@@ -109,86 +88,71 @@ fn dry_run_command_payload(command: &TicketCommandCli) -> Option<Value> {
 
 fn dry_run_payload_core(command: &TicketCommandCli) -> Option<Value> {
     match command {
-        TicketCommandCli::Init =>
-            Some(dry_run_payload("init", "initialize ticket workspace")),
-        TicketCommandCli::Create(_) =>
-            Some(dry_run_payload("create", "create ticket")),
-        TicketCommandCli::Update(_) =>
-            Some(dry_run_payload("update", "update ticket")),
-        TicketCommandCli::Repro(_) =>
-            Some(dry_run_payload("repro", "record repro metadata")),
-        TicketCommandCli::Delete(_) =>
-            Some(dry_run_payload("delete", "permanently delete ticket")),
-        TicketCommandCli::Scan(_) =>
-            Some(dry_run_payload("scan", "scan/reindex ticket roots")),
-        TicketCommandCli::Claim(_) =>
-            Some(dry_run_payload("claim", "claim ticket lease")),
-        TicketCommandCli::Unclaim(_) =>
-            Some(dry_run_payload("unclaim", "release ticket lease")),
-        TicketCommandCli::AddRoot(_) =>
-            Some(dry_run_payload("add_root", "register scan root")),
-        TicketCommandCli::Batch(_) =>
-            Some(dry_run_payload("batch", "execute CLI batch commands")),
-        TicketCommandCli::WritePart(_) =>
-            Some(dry_run_payload("write-part", "write ticket content part")),
+        TicketCommandCli::Init => Some(dry_run_payload("init", "initialize ticket workspace")),
+        TicketCommandCli::Create(_) => Some(dry_run_payload("create", "create ticket")),
+        TicketCommandCli::Update(_) => Some(dry_run_payload("update", "update ticket")),
+        TicketCommandCli::Repro(_) => Some(dry_run_payload("repro", "record repro metadata")),
+        TicketCommandCli::Delete(_) => Some(dry_run_payload("delete", "permanently delete ticket")),
+        TicketCommandCli::Scan(_) => Some(dry_run_payload("scan", "scan/reindex ticket roots")),
+        TicketCommandCli::Claim(_) => Some(dry_run_payload("claim", "claim ticket lease")),
+        TicketCommandCli::Unclaim(_) => Some(dry_run_payload("unclaim", "release ticket lease")),
+        TicketCommandCli::AddRoot(_) => Some(dry_run_payload("add_root", "register scan root")),
+        TicketCommandCli::Batch(_) => Some(dry_run_payload("batch", "execute CLI batch commands")),
+        TicketCommandCli::WritePart(_) => {
+            Some(dry_run_payload("write-part", "write ticket content part"))
+        }
         TicketCommandCli::WriteAmendment(_) => Some(dry_run_payload(
             "write-amendment",
             "write amendment part superseding another part",
         )),
-        TicketCommandCli::UndoPart(_) =>
-            Some(dry_run_payload("undo-part", "restore prior part content")),
+        TicketCommandCli::UndoPart(_) => {
+            Some(dry_run_payload("undo-part", "restore prior part content"))
+        }
         _ => None,
     }
 }
 
 fn dry_run_payload_history(command: &TicketCommandCli) -> Option<Value> {
     match command {
-        TicketCommandCli::Revert(_) =>
-            Some(dry_run_payload("revert", "apply historical snapshot")),
-        TicketCommandCli::FinalizeMerge(_) =>
-            Some(dry_run_payload("finalize_merge", "record merge metadata")),
-        TicketCommandCli::Link(_) =>
-            Some(dry_run_payload("link", "add directed edge")),
-        TicketCommandCli::Unlink(_) =>
-            Some(dry_run_payload("unlink", "remove directed edge")),
-        TicketCommandCli::PruneDangling(_) =>
-            Some(dry_run_payload("prune-dangling", "remove dangling edges")),
-        TicketCommandCli::Close(_) =>
-            Some(dry_run_payload("close", "fast-forward ticket state")),
+        TicketCommandCli::Revert(_) => Some(dry_run_payload("revert", "apply historical snapshot")),
+        TicketCommandCli::FinalizeMerge(_) => {
+            Some(dry_run_payload("finalize_merge", "record merge metadata"))
+        }
+        TicketCommandCli::Link(_) => Some(dry_run_payload("link", "add directed edge")),
+        TicketCommandCli::Unlink(_) => Some(dry_run_payload("unlink", "remove directed edge")),
+        TicketCommandCli::PruneDangling(_) => {
+            Some(dry_run_payload("prune-dangling", "remove dangling edges"))
+        }
+        TicketCommandCli::Close(_) => Some(dry_run_payload("close", "fast-forward ticket state")),
         TicketCommandCli::Cancel(_) => Some(dry_run_payload(
             "cancel",
             "cancel ticket via state transition",
         )),
-        TicketCommandCli::Attach(_) =>
-            Some(dry_run_payload("attach", "attach asset to ticket")),
+        TicketCommandCli::Attach(_) => Some(dry_run_payload("attach", "attach asset to ticket")),
         _ => None,
     }
 }
 
 fn dry_run_payload_runtime(command: &TicketCommandCli) -> Option<Value> {
     match command {
-        TicketCommandCli::Watch(_) =>
-            Some(dry_run_payload("watch", "start watcher/reconcile loop")),
-        TicketCommandCli::Serve(_) =>
-            Some(dry_run_payload("serve", "start HTTP server")),
+        TicketCommandCli::Watch(_) => {
+            Some(dry_run_payload("watch", "start watcher/reconcile loop"))
+        }
+        TicketCommandCli::Serve(_) => Some(dry_run_payload("serve", "start HTTP server")),
         TicketCommandCli::StoreIndex(_) => Some(dry_run_payload(
             "store-index",
             "generate/check ticket catalog",
         )),
-        TicketCommandCli::Fmt(_) =>
-            Some(dry_run_payload("fmt", "reformat ticket.toml files")),
-        TicketCommandCli::Board(_) =>
-            Some(dry_run_payload("board", "board state mutation")),
-        TicketCommandCli::Workspace(_) =>
-            Some(dry_run_payload("workspace", "workspace policy mutation")),
+        TicketCommandCli::Fmt(_) => Some(dry_run_payload("fmt", "reformat ticket.toml files")),
+        TicketCommandCli::Board(_) => Some(dry_run_payload("board", "board state mutation")),
+        TicketCommandCli::Workspace(_) => {
+            Some(dry_run_payload("workspace", "workspace policy mutation"))
+        }
         _ => None,
     }
 }
 
-fn dry_run_payload(
-    command: &str,
-    action: &str,
-) -> Value {
+fn dry_run_payload(command: &str, action: &str) -> Value {
     json!({
         "command": command,
         "status": "ok",
@@ -230,10 +194,7 @@ fn resolve_index_root_from(
     )
 }
 
-fn absolute_path_from(
-    path: &Path,
-    cwd: Option<&Path>,
-) -> PathBuf {
+fn absolute_path_from(path: &Path, cwd: Option<&Path>) -> PathBuf {
     if path.is_absolute() {
         path.to_path_buf()
     } else if let Some(cwd) = cwd {
@@ -255,8 +216,7 @@ fn export_command_schema_payload() -> Result<Value, CliRunError> {
 }
 
 fn capability_catalog_payload() -> Result<Value, CliRunError> {
-    let mut payload =
-        ticket_api::contracts::capability_catalog::capability_catalog();
+    let mut payload = ticket_api::contracts::capability_catalog::capability_catalog();
     if let Value::Object(map) = &mut payload {
         map.insert("command".to_string(), json!("catalog"));
         map.insert("status".to_string(), json!("ok"));
@@ -281,10 +241,8 @@ fn dispatch_store_backed(
         workspace_root_override
             .map(|path| {
                 let selector = path.to_string_lossy();
-                ticket_api::workspace::normalize_explicit_workspace_selector(
-                    Some(&selector),
-                )
-                .map_err(|error| CliRunError::BadRequest(error.to_string()))
+                ticket_api::workspace::normalize_explicit_workspace_selector(Some(&selector))
+                    .map_err(|error| CliRunError::BadRequest(error.to_string()))
             })
             .transpose()?
     } else {
@@ -294,26 +252,17 @@ fn dispatch_store_backed(
         .as_deref()
         .or(workspace_root_override);
 
-    require_explicit_workspace_for_create(
-        &command,
-        index_root_override,
-        workspace_root_override,
-    )?;
+    require_explicit_workspace_for_create(&command, index_root_override, workspace_root_override)?;
 
-    let index_root = resolve_board_index_root(
-        &command,
-        index_root_override,
-        workspace_root_override,
-    )?;
-    let workspace_root =
-        resolve_workspace_root(&index_root, workspace_root_override);
-    let store_workspace_root = if index_root_override.is_some()
-        || matches!(&command, TicketCommandCli::Board(_))
-    {
-        resolve_workspace_root(&index_root, None)
-    } else {
-        workspace_root.clone()
-    };
+    let index_root =
+        resolve_board_index_root(&command, index_root_override, workspace_root_override)?;
+    let workspace_root = resolve_workspace_root(&index_root, workspace_root_override);
+    let store_workspace_root =
+        if index_root_override.is_some() || matches!(&command, TicketCommandCli::Board(_)) {
+            resolve_workspace_root(&index_root, None)
+        } else {
+            workspace_root.clone()
+        };
     let store = open_store(&store_workspace_root, schema_dir_override)?;
     if command_uses_descendant_scan_roots(&command) {
         let reindex = register_descendant_scan_roots(&store, &workspace_root)?;
@@ -364,7 +313,8 @@ fn require_explicit_workspace_for_create(
         && workspace_root_override.is_none()
     {
         return Err(CliRunError::BadRequest(
-            "entity creation requires explicit --workspace <path> or --index-root <path>".to_string(),
+            "entity creation requires explicit --workspace <path> or --index-root <path>"
+                .to_string(),
         ));
     }
     Ok(())
@@ -375,9 +325,7 @@ fn resolve_board_index_root(
     index_root_override: Option<&Path>,
     workspace_root_override: Option<&Path>,
 ) -> Result<PathBuf, CliRunError> {
-    if !matches!(command, TicketCommandCli::Board(_))
-        || index_root_override.is_some()
-    {
+    if !matches!(command, TicketCommandCli::Board(_)) || index_root_override.is_some() {
         return Ok(resolve_index_root(
             index_root_override,
             workspace_root_override,
@@ -400,14 +348,12 @@ fn resolve_board_index_root(
 }
 
 fn canonical_board_workspace(path: &Path) -> Result<PathBuf, CliRunError> {
-    ticket_api::workspace::canonicalize_workspace_root_strict(path).map_err(
-        |error| {
-            CliRunError::BadRequest(format!(
-                "invalid board workspace '{}': {error}",
-                path.display()
-            ))
-        },
-    )
+    ticket_api::workspace::canonicalize_workspace_root_strict(path).map_err(|error| {
+        CliRunError::BadRequest(format!(
+            "invalid board workspace '{}': {error}",
+            path.display()
+        ))
+    })
 }
 
 fn resolve_worktree_git_dir(
@@ -439,17 +385,13 @@ fn resolve_worktree_git_dir(
     canonical_board_workspace(&git_dir)
 }
 
-fn resolve_main_checkout(
-    workspace_root: &Path,
-    git_dir: &Path,
-) -> Result<PathBuf, CliRunError> {
-    let common_dir = fs::read_to_string(git_dir.join("commondir"))
-        .map_err(|error| {
-            CliRunError::BadRequest(format!(
-                "invalid board workspace '{}': Git worktree has no commondir: {error}",
-                workspace_root.display()
-            ))
-        })?;
+fn resolve_main_checkout(workspace_root: &Path, git_dir: &Path) -> Result<PathBuf, CliRunError> {
+    let common_dir = fs::read_to_string(git_dir.join("commondir")).map_err(|error| {
+        CliRunError::BadRequest(format!(
+            "invalid board workspace '{}': Git worktree has no commondir: {error}",
+            workspace_root.display()
+        ))
+    })?;
     let common_dir = common_dir
         .lines()
         .next()
@@ -529,10 +471,7 @@ fn command_uses_descendant_scan_roots(command: &TicketCommandCli) -> bool {
     )
 }
 
-fn resolve_workspace_root(
-    index_root: &Path,
-    workspace_root_override: Option<&Path>,
-) -> PathBuf {
+fn resolve_workspace_root(index_root: &Path, workspace_root_override: Option<&Path>) -> PathBuf {
     if let Some(path) = workspace_root_override {
         let store_root = ticket_api::workspace::resolve_store_root_at_fixed_workspace(
             path,
@@ -607,8 +546,7 @@ fn dispatch_store_command(
         | TicketCommandCli::GetPart(_)
         | TicketCommandCli::WritePart(_)
         | TicketCommandCli::WriteAmendment(_)
-        | TicketCommandCli::UndoPart(_) =>
-            dispatch_store_command_core(command, &store),
+        | TicketCommandCli::UndoPart(_) => dispatch_store_command_core(command, &store),
         TicketCommandCli::Leases
         | TicketCommandCli::Search(_)
         | TicketCommandCli::Query(_)
@@ -617,8 +555,7 @@ fn dispatch_store_command(
         | TicketCommandCli::History(_)
         | TicketCommandCli::Diff(_)
         | TicketCommandCli::Revert(_)
-        | TicketCommandCli::FinalizeMerge(_) =>
-            dispatch_store_command_history(command, &store),
+        | TicketCommandCli::FinalizeMerge(_) => dispatch_store_command_history(command, &store),
         TicketCommandCli::Link(_)
         | TicketCommandCli::Unlink(_)
         | TicketCommandCli::Links(_)
@@ -630,8 +567,7 @@ fn dispatch_store_command(
         | TicketCommandCli::ReadyOverview(_)
         | TicketCommandCli::Next(_)
         | TicketCommandCli::Blockers(_)
-        | TicketCommandCli::UnblockedBy(_) =>
-            dispatch_store_command_graph(command, &store),
+        | TicketCommandCli::UnblockedBy(_) => dispatch_store_command_graph(command, &store),
         TicketCommandCli::Serve(_)
         | TicketCommandCli::Close(_)
         | TicketCommandCli::Cancel(_)
@@ -645,14 +581,13 @@ fn dispatch_store_command(
         | TicketCommandCli::Fmt(_)
         | TicketCommandCli::Board(_)
         | TicketCommandCli::Workspace(_)
-        | TicketCommandCli::ValidateLinks =>
-            dispatch_store_command_ops(command, store, dry_run),
+        | TicketCommandCli::ValidateLinks => dispatch_store_command_ops(command, store, dry_run),
         TicketCommandCli::ExportCommandSchema | TicketCommandCli::Init => {
             unreachable!("handled before store dispatch")
-        },
+        }
         TicketCommandCli::Catalog => {
             unreachable!("handled before store dispatch")
-        },
+        }
     }
 }
 
@@ -671,15 +606,11 @@ fn dispatch_store_command_core(
         TicketCommandCli::Scan(args) => commands::cmd_scan(args, store),
         TicketCommandCli::Claim(args) => commands::cmd_claim(args, store),
         TicketCommandCli::Unclaim(args) => commands::cmd_unclaim(args, store),
-        TicketCommandCli::ListParts(args) =>
-            commands::cmd_list_parts(args, store),
+        TicketCommandCli::ListParts(args) => commands::cmd_list_parts(args, store),
         TicketCommandCli::GetPart(args) => commands::cmd_get_part(args, store),
-        TicketCommandCli::WritePart(args) =>
-            commands::cmd_write_part(args, store),
-        TicketCommandCli::WriteAmendment(args) =>
-            commands::cmd_write_amendment(args, store),
-        TicketCommandCli::UndoPart(args) =>
-            commands::cmd_undo_part(args, store),
+        TicketCommandCli::WritePart(args) => commands::cmd_write_part(args, store),
+        TicketCommandCli::WriteAmendment(args) => commands::cmd_write_amendment(args, store),
+        TicketCommandCli::UndoPart(args) => commands::cmd_undo_part(args, store),
         _ => unreachable!("handled in core store dispatch"),
     }
 }
@@ -705,7 +636,7 @@ fn dispatch_store_command_history(
                 "id": id,
                 "merge_commit": args.merge_commit
             }))
-        },
+        }
         _ => unreachable!("handled in history store dispatch"),
     }
 }
@@ -720,15 +651,13 @@ fn dispatch_store_command_graph(
         | TicketCommandCli::Links(_)
         | TicketCommandCli::PruneDangling(_)
         | TicketCommandCli::Subgraph(_)
-        | TicketCommandCli::Topgraph(_) =>
-            dispatch_store_command_graph_edges(command, store),
+        | TicketCommandCli::Topgraph(_) => dispatch_store_command_graph_edges(command, store),
         TicketCommandCli::Watch(_)
         | TicketCommandCli::Status(_)
         | TicketCommandCli::ReadyOverview(_)
         | TicketCommandCli::Next(_)
         | TicketCommandCli::Blockers(_)
-        | TicketCommandCli::UnblockedBy(_) =>
-            dispatch_store_command_graph_workflow(command, store),
+        | TicketCommandCli::UnblockedBy(_) => dispatch_store_command_graph_workflow(command, store),
         _ => unreachable!("handled in graph store dispatch"),
     }
 }
@@ -741,8 +670,7 @@ fn dispatch_store_command_graph_edges(
         TicketCommandCli::Link(args) => commands::cmd_link(args, store),
         TicketCommandCli::Unlink(args) => commands::cmd_unlink(args, store),
         TicketCommandCli::Links(args) => commands::cmd_links(args, store),
-        TicketCommandCli::PruneDangling(args) =>
-            commands::cmd_prune_dangling(args, store),
+        TicketCommandCli::PruneDangling(args) => commands::cmd_prune_dangling(args, store),
         TicketCommandCli::Subgraph(args) => commands::cmd_subgraph(args, store),
         TicketCommandCli::Topgraph(args) => commands::cmd_topgraph(args, store),
         _ => unreachable!("handled in graph edge dispatch"),
@@ -756,12 +684,10 @@ fn dispatch_store_command_graph_workflow(
     match command {
         TicketCommandCli::Watch(args) => commands::cmd_watch(args, store),
         TicketCommandCli::Status(args) => commands::cmd_status(args, store),
-        TicketCommandCli::ReadyOverview(args) =>
-            commands::cmd_ready_overview(args, store),
+        TicketCommandCli::ReadyOverview(args) => commands::cmd_ready_overview(args, store),
         TicketCommandCli::Next(args) => commands::cmd_next(args, store),
         TicketCommandCli::Blockers(args) => commands::cmd_blockers(args, store),
-        TicketCommandCli::UnblockedBy(args) =>
-            commands::cmd_unblocked_by(args, store),
+        TicketCommandCli::UnblockedBy(args) => commands::cmd_unblocked_by(args, store),
         _ => unreachable!("handled in graph workflow dispatch"),
     }
 }
@@ -778,16 +704,16 @@ fn dispatch_store_command_ops(
         | TicketCommandCli::Move(_)
         | TicketCommandCli::Attach(_)
         | TicketCommandCli::Assets(_)
-        | TicketCommandCli::Transitions(_) =>
-            dispatch_store_command_ops_runtime(command, store, dry_run),
+        | TicketCommandCli::Transitions(_) => {
+            dispatch_store_command_ops_runtime(command, store, dry_run)
+        }
         TicketCommandCli::Health(_)
         | TicketCommandCli::StoreIndex(_)
         | TicketCommandCli::Audit
         | TicketCommandCli::Fmt(_)
         | TicketCommandCli::Board(_)
         | TicketCommandCli::Workspace(_)
-        | TicketCommandCli::ValidateLinks =>
-            dispatch_store_command_ops_admin(command, store),
+        | TicketCommandCli::ValidateLinks => dispatch_store_command_ops_admin(command, store),
         _ => unreachable!("handled in ops store dispatch"),
     }
 }
@@ -801,12 +727,10 @@ fn dispatch_store_command_ops_runtime(
         TicketCommandCli::Serve(args) => commands::cmd_serve(args, store),
         TicketCommandCli::Close(args) => commands::cmd_close(args, &store),
         TicketCommandCli::Cancel(args) => commands::cmd_cancel(args, &store),
-        TicketCommandCli::Move(args) =>
-            commands::cmd_move(args, &store, dry_run),
+        TicketCommandCli::Move(args) => commands::cmd_move(args, &store, dry_run),
         TicketCommandCli::Attach(args) => commands::cmd_attach(args, &store),
         TicketCommandCli::Assets(args) => commands::cmd_assets(args, &store),
-        TicketCommandCli::Transitions(args) =>
-            commands::cmd_transitions(args, &store),
+        TicketCommandCli::Transitions(args) => commands::cmd_transitions(args, &store),
         _ => unreachable!("handled in ops runtime dispatch"),
     }
 }
@@ -817,13 +741,11 @@ fn dispatch_store_command_ops_admin(
 ) -> Result<Value, CliRunError> {
     match command {
         TicketCommandCli::Health(args) => commands::cmd_health(args, &store),
-        TicketCommandCli::StoreIndex(args) =>
-            commands::cmd_store_index(args, &store),
+        TicketCommandCli::StoreIndex(args) => commands::cmd_store_index(args, &store),
         TicketCommandCli::Audit => commands::cmd_audit(&store),
         TicketCommandCli::Fmt(args) => commands::cmd_fmt(args, &store),
         TicketCommandCli::Board(args) => commands::cmd_board(args, &store),
-        TicketCommandCli::Workspace(args) =>
-            commands::cmd_workspace(args, &store),
+        TicketCommandCli::Workspace(args) => commands::cmd_workspace(args, &store),
         TicketCommandCli::ValidateLinks => {
             let aggregate_root = ticket_api::workspace::working_dir()
                 .ok_or_else(|| {
@@ -832,7 +754,7 @@ fn dispatch_store_command_ops_admin(
                     )
                 })?;
             commands::cmd_validate_links(&store, &aggregate_root)
-        },
+        }
         _ => unreachable!("handled in ops admin dispatch"),
     }
 }

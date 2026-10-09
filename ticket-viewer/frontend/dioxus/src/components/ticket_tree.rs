@@ -9,10 +9,7 @@
 
 use dioxus::prelude::*;
 
-use crate::types::{
-    TicketRef,
-    TicketSummary,
-};
+use crate::types::{TicketRef, TicketSummary};
 
 // ── Props ──────────────────────────────────────────────────────────────────
 

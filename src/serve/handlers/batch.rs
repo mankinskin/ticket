@@ -1,39 +1,20 @@
 //! Handler for `POST /api/batch`.
 
 use axum::{
-    extract::{
-        Extension,
-        Json,
-        State,
-    },
+    extract::{Extension, Json, State},
     http::StatusCode,
-    response::{
-        IntoResponse,
-        Response,
-    },
+    response::{IntoResponse, Response},
 };
 use chrono::Utc;
-use serde::{
-    Deserialize,
-    Serialize,
-};
-use serde_json::{
-    Value,
-    json,
-};
+use serde::{Deserialize, Serialize};
+use serde_json::{Value, json};
 use std::collections::BTreeMap;
 use uuid::Uuid;
 
-use ticket_api::{
-    model::edge::EdgeRecord,
-    storage::store::TicketStore,
-};
+use ticket_api::{model::edge::EdgeRecord, storage::store::TicketStore};
 use viewer_api::error::RequestIdExt;
 
-use crate::serve::{
-    AppState,
-    error::task_join_err,
-};
+use crate::serve::{AppState, error::task_join_err};
 
 /// A single mutation command within a batch request body.
 #[derive(Deserialize)]
@@ -109,16 +90,13 @@ enum BatchUndoOp {
 }
 
 /// Apply a single rollback operation, appending any error description to `errors`.
-fn apply_batch_undo(
-    undo: BatchUndoOp,
-    store: &TicketStore,
-    errors: &mut Vec<String>,
-) {
+fn apply_batch_undo(undo: BatchUndoOp, store: &TicketStore, errors: &mut Vec<String>) {
     match undo {
-        BatchUndoOp::Delete { id } =>
+        BatchUndoOp::Delete { id } => {
             if let Err(e) = store.delete(&id) {
                 errors.push(format!("rollback delete {id}: {e}"));
-            },
+            }
+        }
         BatchUndoOp::RestoreUpdate {
             id,
             saved_extra,
@@ -127,7 +105,7 @@ fn apply_batch_undo(
             if let Err(e) = store.force_restore(&id, saved_extra, saved_state) {
                 errors.push(format!("rollback restore {id}: {e}"));
             }
-        },
+        }
         BatchUndoOp::RemoveEdge { from, to, kind } => {
             let edge = EdgeRecord {
                 from,
@@ -138,7 +116,7 @@ fn apply_batch_undo(
             if let Err(e) = store.remove_edge(edge) {
                 errors.push(format!("rollback remove_edge {from}->{to}: {e}"));
             }
-        },
+        }
     }
 }
 
@@ -187,7 +165,7 @@ fn dispatch_command(
                 "fields": manifest.extra,
             });
             Ok((result, Some(BatchUndoOp::Delete { id })))
-        },
+        }
 
         BatchCommand::Update {
             id,
@@ -216,15 +194,13 @@ fn dispatch_command(
                 "created_at": created_at,
                 "fields": manifest.extra,
             });
-            let undo = pre.map(|(saved_extra, saved_state)| {
-                BatchUndoOp::RestoreUpdate {
-                    id,
-                    saved_extra,
-                    saved_state,
-                }
+            let undo = pre.map(|(saved_extra, saved_state)| BatchUndoOp::RestoreUpdate {
+                id,
+                saved_extra,
+                saved_state,
             });
             Ok((result, undo))
-        },
+        }
 
         BatchCommand::Close { id, target_state } => {
             let pre = snapshot_ticket(store, &id);
@@ -242,15 +218,13 @@ fn dispatch_command(
                 "created_at": created_at,
                 "fields": manifest.extra,
             });
-            let undo = pre.map(|(saved_extra, saved_state)| {
-                BatchUndoOp::RestoreUpdate {
-                    id,
-                    saved_extra,
-                    saved_state,
-                }
+            let undo = pre.map(|(saved_extra, saved_state)| BatchUndoOp::RestoreUpdate {
+                id,
+                saved_extra,
+                saved_state,
             });
             Ok((result, undo))
-        },
+        }
 
         BatchCommand::Cancel { id, reason } => {
             let pre = snapshot_ticket(store, &id);
@@ -258,14 +232,7 @@ fn dispatch_command(
             if let Some(r) = reason {
                 patch.insert("cancel_reason".to_string(), Value::String(r));
             }
-            let manifest = store.update(
-                &id,
-                patch,
-                Some(&[]),
-                Some("cancelled"),
-                None,
-                None,
-            )?;
+            let manifest = store.update(&id, patch, Some(&[]), Some("cancelled"), None, None)?;
             let created_at = store
                 .get_indexed(&id)
                 .ok()
@@ -278,15 +245,13 @@ fn dispatch_command(
                 "created_at": created_at,
                 "fields": manifest.extra,
             });
-            let undo = pre.map(|(saved_extra, saved_state)| {
-                BatchUndoOp::RestoreUpdate {
-                    id,
-                    saved_extra,
-                    saved_state,
-                }
+            let undo = pre.map(|(saved_extra, saved_state)| BatchUndoOp::RestoreUpdate {
+                id,
+                saved_extra,
+                saved_state,
             });
             Ok((result, undo))
-        },
+        }
 
         BatchCommand::Link { from, to, kind } => {
             let edge = EdgeRecord {
@@ -303,7 +268,7 @@ fn dispatch_command(
                 "kind": kind.clone(),
             });
             Ok((result, Some(BatchUndoOp::RemoveEdge { from, to, kind })))
-        },
+        }
 
         BatchCommand::Unlink { from, to, kind } => {
             let edge = EdgeRecord {
@@ -321,7 +286,7 @@ fn dispatch_command(
             });
             // Unlink has no rollback entry (matches CLI batch behaviour).
             Ok((result, None))
-        },
+        }
     }
 }
 
@@ -331,11 +296,10 @@ pub async fn batch_tickets(
     Extension(rid): Extension<RequestIdExt>,
     Json(body): Json<BatchBody>,
 ) -> Response {
-    let (workspace, store) =
-        match state.resolve_public_workspace_request(&body.workspace, &rid.0) {
-            Ok(resolved) => resolved,
-            Err(response) => return response,
-        };
+    let (workspace, store) = match state.resolve_public_workspace_request(&body.workspace, &rid.0) {
+        Ok(resolved) => resolved,
+        Err(response) => return response,
+    };
     let commands = body.commands;
     let total = commands.len();
     let request_id = rid.0.clone();
@@ -354,7 +318,7 @@ pub async fn batch_tickets(
                         undo_stack.push(u);
                     }
                     results.push(result);
-                },
+                }
                 Err(e) => {
                     let mut rollback_errors: Vec<String> = Vec::new();
                     for undo in undo_stack.into_iter().rev() {
@@ -376,7 +340,7 @@ pub async fn batch_tickets(
                         })),
                     )
                         .into_response();
-                },
+                }
             }
         }
 

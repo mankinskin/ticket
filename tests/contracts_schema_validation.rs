@@ -4,12 +4,7 @@ use chrono::Utc;
 use serde_json::json;
 use ticket_api::model::{
     edge::EdgeKindRule,
-    schema::{
-        FieldSchema,
-        FieldType,
-        TicketTypeSchema,
-        Transition,
-    },
+    schema::{FieldSchema, FieldType, TicketTypeSchema, Transition},
     ticket::TicketManifest,
 };
 use uuid::Uuid;

@@ -1,45 +1,21 @@
 use dioxus::prelude::*;
 
-use crate::{
-    api::HttpTicketBackend,
-    types::TypeSchema,
-};
+use crate::{api::HttpTicketBackend, types::TypeSchema};
 
 use super::{
     actions::{
-        discard_conflict,
-        keep_conflict,
-        save_bool_field,
-        save_field,
-        submit_ticket_feedback,
-        transition_state,
-        undo_transition,
-        use_conflict_sse,
-        use_ticket_detail_data,
-        SseHandle,
+        discard_conflict, keep_conflict, save_bool_field, save_field, submit_ticket_feedback,
+        transition_state, undo_transition, use_conflict_sse, use_ticket_detail_data, SseHandle,
     },
-    model::{
-        missing_required_states,
-        terminal_states,
-        valid_next_states,
-        ConflictState,
-    },
-    ui::{
-        render_ticket_detail,
-        TicketDetailHandlers,
-        TicketDetailViewState,
-    },
+    model::{missing_required_states, terminal_states, valid_next_states, ConflictState},
+    ui::{render_ticket_detail, TicketDetailHandlers, TicketDetailViewState},
 };
 
 #[component]
-pub fn TicketDetail(
-    workspace: String,
-    id: String,
-) -> Element {
+pub fn TicketDetail(workspace: String, id: String) -> Element {
     let backend = HttpTicketBackend::new(None);
     #[cfg_attr(not(target_arch = "wasm32"), allow(unused_mut))]
-    let mut ticket_fields: Signal<serde_json::Value> =
-        use_signal(|| serde_json::Value::Null);
+    let mut ticket_fields: Signal<serde_json::Value> = use_signal(|| serde_json::Value::Null);
     #[cfg_attr(not(target_arch = "wasm32"), allow(unused_mut))]
     let mut load_error: Signal<Option<String>> = use_signal(|| None);
     #[cfg_attr(not(target_arch = "wasm32"), allow(unused_mut))]
@@ -103,14 +79,8 @@ pub fn TicketDetail(
         current_draft: draft_value(),
         save_pending: save_pending(),
         current_state: current_state.clone(),
-        valid_next_states: valid_next_states(
-            current_schema.as_ref(),
-            &current_state,
-        ),
-        missing_required_states: missing_required_states(
-            current_schema.as_ref(),
-            &visited,
-        ),
+        valid_next_states: valid_next_states(current_schema.as_ref(), &current_state),
+        missing_required_states: missing_required_states(current_schema.as_ref(), &visited),
         terminal_states: terminal_states(current_schema.as_ref()),
         transition_pending: transition_pending(),
         transition_error: transition_error(),

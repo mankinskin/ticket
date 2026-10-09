@@ -42,11 +42,13 @@ fn add_scan_root_allows_own_worktree_root() {
         })
         .unwrap();
 
-    assert!(store
-        .list_scan_roots()
-        .unwrap()
-        .iter()
-        .any(|scan_root| scan_root.path == root));
+    assert!(
+        store
+            .list_scan_roots()
+            .unwrap()
+            .iter()
+            .any(|scan_root| scan_root.path == root)
+    );
 }
 
 #[test]
@@ -135,8 +137,7 @@ fn scan_force_prunes_row_for_physically_removed_ticket() {
 fn scan_force_prunes_empty_uuid_artifact_folder_without_manifest() {
     let dir = tempdir().unwrap();
     let store = TicketStore::init(dir.path()).unwrap();
-    let artifact_id =
-        Uuid::parse_str("4ea42273-a134-4342-b601-1759df6d562f").unwrap();
+    let artifact_id = Uuid::parse_str("4ea42273-a134-4342-b601-1759df6d562f").unwrap();
     let artifact_dir = store
         .index_root
         .join("tickets")
@@ -197,8 +198,7 @@ fn scan_without_reindex_prunes_deleted_nested_ticket_from_search_and_index() {
             .any(|result| result.id == ticket_id)
     );
 
-    let ticket_path =
-        child_store.get_indexed(&ticket_id).unwrap().unwrap().path;
+    let ticket_path = child_store.get_indexed(&ticket_id).unwrap().unwrap().path;
     let parent_path = ticket_path.parent().unwrap().to_path_buf();
     fs::remove_dir_all(&ticket_path).unwrap();
 
@@ -206,8 +206,7 @@ fn scan_without_reindex_prunes_deleted_nested_ticket_from_search_and_index() {
 
     assert_eq!(report.pruned, 1);
     assert!(report.diagnostics.iter().any(|diag| {
-        diag.path.starts_with(&parent_path)
-            && diag.reason.contains("missing on disk")
+        diag.path.starts_with(&parent_path) && diag.reason.contains("missing on disk")
     }));
     assert!(root_store.get_indexed(&ticket_id).unwrap().is_none());
     assert!(root_store.get(&ticket_id).is_err());
@@ -279,9 +278,12 @@ fn scan_without_reindex_prunes_removed_scan_root_visibility() {
     let report = root_store.scan(false).unwrap();
 
     assert_eq!(report.pruned, 1);
-    assert!(report.diagnostics.iter().any(|diag| {
-        diag.path == manifest_path && diag.reason.contains("missing on disk")
-    }));
+    assert!(
+        report
+            .diagnostics
+            .iter()
+            .any(|diag| { diag.path == manifest_path && diag.reason.contains("missing on disk") })
+    );
     assert!(root_store.get_indexed(&ticket_id).unwrap().is_none());
     assert!(root_store.get(&ticket_id).is_err());
     assert!(
@@ -537,10 +539,8 @@ fn reconcile_known_tickets_is_noop_for_unchanged_ticket_and_unaffected_rows() {
         .unwrap();
 
     store.scan(true).unwrap();
-    let before_touched =
-        store.get_indexed(&touched).unwrap().unwrap().updated_at;
-    let before_unaffected =
-        store.get_indexed(&unaffected).unwrap().unwrap().updated_at;
+    let before_touched = store.get_indexed(&touched).unwrap().unwrap().updated_at;
+    let before_unaffected = store.get_indexed(&unaffected).unwrap().unwrap().updated_at;
 
     let report = store.reconcile_known_tickets(&[touched]).unwrap();
 
@@ -619,10 +619,8 @@ fn reconcile_known_tickets_handles_move_and_updates_affected_dependents() {
         .join(blocker.to_string());
     fs::rename(&source_path, &target_path).unwrap();
 
-    let source_report =
-        source_store.reconcile_known_tickets(&[blocker]).unwrap();
-    let target_report =
-        target_store.reconcile_known_tickets(&[blocker]).unwrap();
+    let source_report = source_store.reconcile_known_tickets(&[blocker]).unwrap();
+    let target_report = target_store.reconcile_known_tickets(&[blocker]).unwrap();
 
     assert_eq!(source_report.pruned, 1);
     assert_eq!(source_report.integrated, 0);
@@ -664,8 +662,7 @@ fn scan_force_skips_stale_db_edges_for_missing_ticket_folders() {
         )
         .unwrap();
 
-    let legacy_index =
-        RedbIndexStore::open(&store.index_root.join("tickets.db")).unwrap();
+    let legacy_index = RedbIndexStore::open(&store.index_root.join("tickets.db")).unwrap();
     legacy_index
         .insert_edge(&EdgeRecord {
             from: source_id,

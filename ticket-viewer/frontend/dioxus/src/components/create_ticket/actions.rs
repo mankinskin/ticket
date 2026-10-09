@@ -4,22 +4,12 @@ use dioxus::prelude::*;
 use dioxus_router::Navigator;
 
 use crate::{
-    api::{
-        HttpTicketBackend,
-        TicketBackend,
-    },
+    api::{HttpTicketBackend, TicketBackend},
     routes::Route,
-    types::{
-        CreateTicketRequest,
-        SchemaListResponse,
-        TypeSchema,
-    },
+    types::{CreateTicketRequest, SchemaListResponse, TypeSchema},
 };
 
-use super::draft::{
-    clear_draft,
-    DraftState,
-};
+use super::draft::{clear_draft, DraftState};
 
 pub(crate) fn load_schemas(
     backend: HttpTicketBackend,
@@ -78,16 +68,14 @@ pub(crate) fn build_request(draft: &DraftState) -> CreateTicketRequest {
     }
     for (key, value) in &draft.extra {
         if !value.is_empty() {
-            fields
-                .insert(key.clone(), serde_json::Value::String(value.clone()));
+            fields.insert(key.clone(), serde_json::Value::String(value.clone()));
         }
     }
 
     CreateTicketRequest {
         type_id: draft.type_id.clone(),
         title: (!draft.title.is_empty()).then(|| draft.title.clone()),
-        description: (!draft.description.is_empty())
-            .then(|| draft.description.clone()),
+        description: (!draft.description.is_empty()).then(|| draft.description.clone()),
         fields: (!fields.is_empty()).then_some(fields),
     }
 }
@@ -104,17 +92,16 @@ pub(crate) fn spawn_create_ticket(
         match backend.create_ticket(&workspace, &request).await {
             Ok(response) => {
                 clear_draft();
-                let ticket_ref =
-                    response.ticket.resolved_ticket_ref(&workspace);
+                let ticket_ref = response.ticket.resolved_ticket_ref(&workspace);
                 nav.push(Route::TicketDetailPage {
                     workspace: ticket_ref.workspace,
                     id: ticket_ref.id,
                 });
-            },
+            }
             Err(error) => {
                 submit_err.set(Some(error));
                 submitting.set(false);
-            },
+            }
         }
     });
 }

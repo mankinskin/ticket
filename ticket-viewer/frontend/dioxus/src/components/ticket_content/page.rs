@@ -3,30 +3,16 @@ use std::collections::HashSet;
 use dioxus::prelude::*;
 
 use crate::{
-    api::{
-        HttpTicketBackend,
-        TicketBackend,
-    },
-    types::{
-        HistoryEntry,
-        ProjectedPart,
-        ProjectedRef,
-    },
+    api::{HttpTicketBackend, TicketBackend},
+    types::{HistoryEntry, ProjectedPart, ProjectedRef},
 };
 
 use super::{
     edit::render_edit_panel,
-    helpers::{
-        content_tab_label,
-        fields_to_toml,
-    },
+    helpers::{content_tab_label, fields_to_toml},
     render::{
-        render_document_panel,
-        render_full_document_panel,
-        render_history_panel,
-        render_tab_bar,
-        render_toml_panel,
-        TicketDocumentContext,
+        render_document_panel, render_full_document_panel, render_history_panel, render_tab_bar,
+        render_toml_panel, TicketDocumentContext,
     },
     Tab,
 };
@@ -45,18 +31,12 @@ pub fn TicketContent(
     #[props(default)] asset_path: Option<String>,
 ) -> Element {
     let mut active_tab: Signal<Tab> = use_signal(|| Tab::Description);
-    let mut document_title: Signal<Option<String>> =
-        use_signal(|| ticket_title.clone());
-    let mut document_state: Signal<Option<String>> =
-        use_signal(|| ticket_state.clone());
-    let mut document_type: Signal<Option<String>> =
-        use_signal(|| ticket_type.clone());
-    let mut document_fields: Signal<serde_json::Value> =
-        use_signal(|| fields.clone());
-    let mut document_created_at: Signal<Option<String>> =
-        use_signal(|| created_at.clone());
-    let mut document_updated_at: Signal<Option<String>> =
-        use_signal(|| updated_at.clone());
+    let mut document_title: Signal<Option<String>> = use_signal(|| ticket_title.clone());
+    let mut document_state: Signal<Option<String>> = use_signal(|| ticket_state.clone());
+    let mut document_type: Signal<Option<String>> = use_signal(|| ticket_type.clone());
+    let mut document_fields: Signal<serde_json::Value> = use_signal(|| fields.clone());
+    let mut document_created_at: Signal<Option<String>> = use_signal(|| created_at.clone());
+    let mut document_updated_at: Signal<Option<String>> = use_signal(|| updated_at.clone());
     let mut desc_loading: Signal<bool> = use_signal(|| true);
     let mut desc_text: Signal<Option<String>> = use_signal(|| None);
     let mut desc_error: Signal<Option<String>> = use_signal(|| None);
@@ -76,8 +56,7 @@ pub fn TicketContent(
         .as_deref()
         .map(|path| path == "description.md")
         .unwrap_or(true);
-    let content_tab_label =
-        content_tab_label(asset_path.as_deref(), is_description);
+    let content_tab_label = content_tab_label(asset_path.as_deref(), is_description);
     let show_edit_tab = is_description && HttpTicketBackend::has_auth_token();
     let document_context = TicketDocumentContext {
         workspace: workspace.clone(),
@@ -110,29 +89,22 @@ pub fn TicketContent(
                     )
                     .await
                 {
-                    if let Some(summary) =
-                        response.items.into_iter().find(|ticket| {
-                            ticket.resolved_ticket_ref(&summary_workspace).id
-                                == ticket_id
-                        })
-                    {
+                    if let Some(summary) = response.items.into_iter().find(|ticket| {
+                        ticket.resolved_ticket_ref(&summary_workspace).id == ticket_id
+                    }) {
                         document_title.set(summary.title);
                         document_state.set(summary.state);
                         document_type.set(summary.ticket_type);
                         document_created_at.set(Some(summary.created_at));
-                        document_updated_at.set(
-                            if summary.updated_at.trim().is_empty() {
-                                None
-                            } else {
-                                Some(summary.updated_at)
-                            },
-                        );
+                        document_updated_at.set(if summary.updated_at.trim().is_empty() {
+                            None
+                        } else {
+                            Some(summary.updated_at)
+                        });
                         document_fields.set(summary.fields);
                     }
                 }
-                if let Ok(response) =
-                    backend.get_ticket(&workspace, &ticket_id).await
-                {
+                if let Ok(response) = backend.get_ticket(&workspace, &ticket_id).await {
                     document_fields.set(response.ticket.fields);
                     document_created_at.set(Some(response.ticket.created_at));
                 }
@@ -159,13 +131,9 @@ pub fn TicketContent(
             spawn(async move {
                 let backend = HttpTicketBackend::new(None);
                 if is_description {
-                    match backend
-                        .get_ticket_description(&workspace, &ticket_id)
-                        .await
-                    {
+                    match backend.get_ticket_description(&workspace, &ticket_id).await {
                         Ok(response) => {
-                            let content =
-                                response.description.unwrap_or_default();
+                            let content = response.description.unwrap_or_default();
                             edit_draft.set(content.clone());
                             desc_text.set(if content.is_empty() {
                                 None
@@ -173,10 +141,10 @@ pub fn TicketContent(
                                 Some(content)
                             });
                             desc_loading.set(false);
-                        },
+                        }
                         Err(error) => {
                             desc_error.set(Some(error));
-                        },
+                        }
                     }
                 } else {
                     let path = asset_path.unwrap_or_default();
@@ -192,11 +160,11 @@ pub fn TicketContent(
                                 Some(content)
                             });
                             desc_loading.set(false);
-                        },
+                        }
                         Err(error) => {
                             desc_loading.set(false);
                             desc_error.set(Some(error));
-                        },
+                        }
                     }
                 }
             });
@@ -225,11 +193,11 @@ pub fn TicketContent(
                         full_parts.set(response.ticket.parts);
                         full_refs.set(response.ticket.refs);
                         full_loading.set(false);
-                    },
+                    }
                     Err(error) => {
                         full_error.set(Some(error));
                         full_loading.set(false);
-                    },
+                    }
                 }
             });
         });
@@ -245,9 +213,7 @@ pub fn TicketContent(
             history_entries.set(vec![]);
             spawn(async move {
                 let backend = HttpTicketBackend::new(None);
-                if let Ok(response) =
-                    backend.get_ticket_history(&workspace, &ticket_id).await
-                {
+                if let Ok(response) = backend.get_ticket_history(&workspace, &ticket_id).await {
                     history_entries.set(response.entries);
                 }
             });

@@ -1,23 +1,10 @@
-use notify::{
-    Event,
-    EventKind,
-    RecommendedWatcher,
-    RecursiveMode,
-    Watcher,
-};
-use std::{
-    path::PathBuf,
-    sync::mpsc,
-    time::Duration,
-};
+use notify::{Event, EventKind, RecommendedWatcher, RecursiveMode, Watcher};
+use std::{path::PathBuf, sync::mpsc, time::Duration};
 
 use crate::{
     error::StorageError,
     model::filesystem::ParseDiagnostic,
-    storage::store::{
-        ScanReport,
-        TicketStore,
-    },
+    storage::store::{ScanReport, TicketStore},
     watcher::events::WatchEventKind,
 };
 
@@ -31,10 +18,7 @@ pub struct ReconcileEvent {
 
 /// Perform a one-shot reconciliation pass over all scan roots.
 /// This is the command-line equivalent of `ticket scan`.
-pub fn reconcile_once(
-    store: &TicketStore,
-    reindex: bool,
-) -> Result<ScanReport, StorageError> {
+pub fn reconcile_once(store: &TicketStore, reindex: bool) -> Result<ScanReport, StorageError> {
     let _span_guard = tracing::info_span!(
         target: WATCHER_TRACE_TARGET,
         "ticket_reconcile_once",
@@ -134,15 +118,8 @@ pub fn classify_event(event: &Event) -> WatchEventKind {
 ///
 /// Returns only if the watcher channel closes (which happens when the OS
 /// reports a fatal error).
-pub fn run_watch_loop(
-    handle: &WatchHandle,
-    store: &TicketStore,
-    debounce_ms: u64,
-) {
-    use std::time::{
-        Duration,
-        Instant,
-    };
+pub fn run_watch_loop(handle: &WatchHandle, store: &TicketStore, debounce_ms: u64) {
+    use std::time::{Duration, Instant};
 
     let debounce = Duration::from_millis(debounce_ms);
     let mut pending_paths: Vec<std::path::PathBuf> = Vec::new();
@@ -169,7 +146,7 @@ pub fn run_watch_loop(
                     pending_paths.push(path);
                 }
                 last_event = Some(Instant::now());
-            },
+            }
             Some(Err(error)) => {
                 tracing::warn!(
                     target: WATCHER_TRACE_TARGET,
@@ -177,10 +154,10 @@ pub fn run_watch_loop(
                     "ticket_watch_event_error"
                 );
                 // Watcher error — fall through to debounce-check.
-            },
+            }
             None => {
                 // No event right now — check if the debounce window has elapsed.
-            },
+            }
         }
 
         // Check if we have pending events and the debounce window has elapsed.
@@ -256,7 +233,7 @@ fn reconcile_pending_paths(
                     fallback_scan: true,
                     ..Default::default()
                 }
-            },
+            }
         }
     } else {
         let mut outcome = ReconcileBatchOutcome {
@@ -267,14 +244,14 @@ fn reconcile_pending_paths(
             match store.integrate_orphan(&ticket_path) {
                 Ok(true) => {
                     outcome.integrated_orphans += 1;
-                },
+                }
                 Ok(false) => {
                     tracing::debug!(
                         target: WATCHER_TRACE_TARGET,
                         ticket_path = %ticket_path.display(),
                         "ticket_reconcile_pending_paths_orphan_skipped"
                     );
-                },
+                }
                 Err(error) => {
                     tracing::warn!(
                         target: WATCHER_TRACE_TARGET,
@@ -282,7 +259,7 @@ fn reconcile_pending_paths(
                         error = %error,
                         "ticket_reconcile_pending_paths_orphan_failed"
                     );
-                },
+                }
             }
         }
         outcome
@@ -314,8 +291,7 @@ mod tests {
     #[test]
     fn find_ticket_root_returns_uuid_ancestor() {
         let dir = tempdir().unwrap();
-        let ticket_dir =
-            dir.path().join("123e4567-e89b-12d3-a456-426614174000");
+        let ticket_dir = dir.path().join("123e4567-e89b-12d3-a456-426614174000");
         let nested = ticket_dir.join("child").join("ticket.toml");
         std::fs::create_dir_all(nested.parent().unwrap()).unwrap();
 

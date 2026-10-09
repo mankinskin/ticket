@@ -1,43 +1,26 @@
 use axum::{
     body::to_bytes,
-    extract::{
-        Extension,
-        Path,
-        Query,
-        State,
-    },
+    extract::{Extension, Path, Query, State},
     http::StatusCode,
 };
-use std::{
-    collections::BTreeMap,
-    sync::Arc,
-};
+use std::{collections::BTreeMap, sync::Arc};
 use ticket_api::storage::search::TantivySearchIndex;
 use uuid::Uuid;
 use viewer_api::error::RequestIdExt;
 
 use super::{
     super::{
-        TicketAssetParam,
-        TicketIdParam,
-        WorkspaceParam,
-        get_ticket,
-        get_ticket_asset,
-        get_ticket_description,
-        get_ticket_history,
-        list_ticket_files,
-        list_tickets,
+        TicketAssetParam, TicketIdParam, WorkspaceParam, get_ticket, get_ticket_asset,
+        get_ticket_description, get_ticket_history, list_ticket_files, list_tickets,
     },
-    make_state,
-    make_store,
+    make_state, make_store,
 };
 
 #[tokio::test]
 async fn duplicate_basename_workspaces_keep_followups_distinct() {
     let root = tempfile::tempdir().expect("tempdir");
     let parent_store = Arc::new(
-        ticket_api::storage::store::TicketStore::init(root.path())
-            .expect("open parent store"),
+        ticket_api::storage::store::TicketStore::init(root.path()).expect("open parent store"),
     );
     parent_store
         .add_scan_root(ticket_api::model::filesystem::ScanRoot {
@@ -46,22 +29,26 @@ async fn duplicate_basename_workspaces_keep_followups_distinct() {
         })
         .expect("add parent scan root");
 
-    let left_index_root =
-        root.path().join("alpha").join("shared").join(".workflow-tools").join("ticket");
-    let right_index_root =
-        root.path().join("beta").join("shared").join(".workflow-tools").join("ticket");
-    std::fs::create_dir_all(left_index_root.join("tickets"))
-        .expect("mkdir left store");
-    std::fs::create_dir_all(right_index_root.join("tickets"))
-        .expect("mkdir right store");
+    let left_index_root = root
+        .path()
+        .join("alpha")
+        .join("shared")
+        .join(".workflow-tools")
+        .join("ticket");
+    let right_index_root = root
+        .path()
+        .join("beta")
+        .join("shared")
+        .join(".workflow-tools")
+        .join("ticket");
+    std::fs::create_dir_all(left_index_root.join("tickets")).expect("mkdir left store");
+    std::fs::create_dir_all(right_index_root.join("tickets")).expect("mkdir right store");
 
     let left_store = Arc::new(
-        ticket_api::storage::store::TicketStore::init(&left_index_root)
-            .expect("open left store"),
+        ticket_api::storage::store::TicketStore::init(&left_index_root).expect("open left store"),
     );
     let right_store = Arc::new(
-        ticket_api::storage::store::TicketStore::init(&right_index_root)
-            .expect("open right store"),
+        ticket_api::storage::store::TicketStore::init(&right_index_root).expect("open right store"),
     );
     left_store
         .add_scan_root(ticket_api::model::filesystem::ScanRoot {
@@ -107,8 +94,7 @@ async fn duplicate_basename_workspaces_keep_followups_distinct() {
             .get_indexed(&id)
             .expect("get indexed ticket")
             .expect("indexed ticket");
-        std::fs::create_dir_all(ticket_dir.path.join("assets"))
-            .expect("mkdir assets");
+        std::fs::create_dir_all(ticket_dir.path.join("assets")).expect("mkdir assets");
         std::fs::write(
             ticket_dir.path.join("assets").join("plan.md"),
             asset_content,
@@ -163,26 +149,19 @@ async fn duplicate_basename_workspaces_keep_followups_distinct() {
             serde_json::from_slice(&list_bytes).expect("list json");
         let title = list_payload["items"][0]["title"].as_str().expect("title");
         let (expected_description, expected_asset) = match title {
-            "left shared ticket" =>
-                ("left shared description", "left shared asset"),
-            "right shared ticket" =>
-                ("right shared description", "right shared asset"),
+            "left shared ticket" => ("left shared description", "left shared asset"),
+            "right shared ticket" => ("right shared description", "right shared asset"),
             other => panic!("unexpected shared workspace title: {other}"),
         };
-        let id = Uuid::parse_str(
-            list_payload["items"][0]["id"].as_str().expect("ticket id"),
-        )
-        .expect("valid ticket id");
+        let id = Uuid::parse_str(list_payload["items"][0]["id"].as_str().expect("ticket id"))
+            .expect("valid ticket id");
         assert_eq!(list_payload["active_workspace"], workspace);
         assert_eq!(list_payload["workspace"], workspace);
         assert_eq!(
             list_payload["items"][0]["ticket_ref"]["workspace"],
             workspace
         );
-        assert_eq!(
-            list_payload["items"][0]["ticket_ref"]["id"],
-            id.to_string()
-        );
+        assert_eq!(list_payload["items"][0]["ticket_ref"]["id"], id.to_string());
         assert_eq!(list_payload["items"][0]["title"], title);
 
         let detail = get_ticket(
@@ -220,13 +199,11 @@ async fn duplicate_basename_workspaces_keep_followups_distinct() {
         )
         .await;
         assert_eq!(description_response.status(), StatusCode::OK);
-        let description_bytes =
-            to_bytes(description_response.into_body(), 1024 * 1024)
-                .await
-                .expect("description body");
+        let description_bytes = to_bytes(description_response.into_body(), 1024 * 1024)
+            .await
+            .expect("description body");
         let description_payload: serde_json::Value =
-            serde_json::from_slice(&description_bytes)
-                .expect("description json");
+            serde_json::from_slice(&description_bytes).expect("description json");
         assert_eq!(description_payload["active_workspace"], workspace);
         assert_eq!(description_payload["ticket_ref"]["workspace"], workspace);
         assert_eq!(description_payload["description"], expected_description);
@@ -313,8 +290,7 @@ async fn search_list_excludes_stale_search_hits_and_followups() {
         .get_indexed(&id)
         .expect("get indexed ticket")
         .expect("indexed ticket");
-    std::fs::create_dir_all(ticket_dir.path.join("assets"))
-        .expect("mkdir assets");
+    std::fs::create_dir_all(ticket_dir.path.join("assets")).expect("mkdir assets");
     std::fs::write(
         ticket_dir.path.join("assets").join("plan.md"),
         "deleted hit asset",
@@ -354,8 +330,7 @@ async fn search_list_excludes_stale_search_hits_and_followups() {
     let list_bytes = to_bytes(list.into_body(), 1024 * 1024)
         .await
         .expect("list body");
-    let list_payload: serde_json::Value =
-        serde_json::from_slice(&list_bytes).expect("list json");
+    let list_payload: serde_json::Value = serde_json::from_slice(&list_bytes).expect("list json");
     assert!(
         list_payload["items"]
             .as_array()
@@ -477,8 +452,7 @@ async fn search_list_combines_query_and_state_before_limit() {
     let bytes = to_bytes(response.into_body(), 1024 * 1024)
         .await
         .expect("read body");
-    let payload: serde_json::Value =
-        serde_json::from_slice(&bytes).expect("json body");
+    let payload: serde_json::Value = serde_json::from_slice(&bytes).expect("json body");
     let items = payload["items"].as_array().expect("items array");
     let ready_id = ready_id.to_string();
 
@@ -523,8 +497,7 @@ async fn list_rejects_synthetic_or_unknown_public_workspace_identifiers() {
         let bytes = to_bytes(response.into_body(), 1024 * 1024)
             .await
             .expect("read body");
-        let payload: serde_json::Value =
-            serde_json::from_slice(&bytes).expect("json body");
+        let payload: serde_json::Value = serde_json::from_slice(&bytes).expect("json body");
 
         assert_eq!(payload["code"], "not_found");
         assert!(

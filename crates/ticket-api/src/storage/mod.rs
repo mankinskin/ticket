@@ -13,26 +13,12 @@ pub mod ticket_fs;
 mod tests;
 
 pub use board::{
-    BoardCleanPreview,
-    BoardCleanResult,
-    BoardConfig,
-    BoardEntry,
-    BoardEntryStatus,
-    BoardError,
-    BoardReconcileResult,
-    BoardSnapshot,
-    ReconcileAction,
+    BoardCleanPreview, BoardCleanResult, BoardConfig, BoardEntry, BoardEntryStatus, BoardError,
+    BoardReconcileResult, BoardSnapshot, ReconcileAction,
 };
 pub use domain_store::{TicketCreateInput, TicketListQuery, TicketUpdatePatch};
 pub use store::{
-    DESCRIPTION_HISTORY_KEY,
-    DescriptionUpdate,
-    DescriptionUpdateMode,
-    PART_HISTORY_CONTENT_KEY,
-    PART_HISTORY_ID_KEY,
-    ProjectedPart,
-    REQUIRED_DESCRIPTION_MODE_ERROR,
-    ReadProjection,
-    TicketProjection,
-    TicketStore,
+    DESCRIPTION_HISTORY_KEY, DescriptionUpdate, DescriptionUpdateMode, PART_HISTORY_CONTENT_KEY,
+    PART_HISTORY_ID_KEY, ProjectedPart, REQUIRED_DESCRIPTION_MODE_ERROR, ReadProjection,
+    TicketProjection, TicketStore,
 };

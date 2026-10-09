@@ -4,10 +4,7 @@
 //! that finding keys, severities, and message text are identical regardless of
 //! how they are serialized to their respective envelopes.
 
-use std::{
-    collections::BTreeMap,
-    path::PathBuf,
-};
+use std::{collections::BTreeMap, path::PathBuf};
 
 use serde::Serialize;
 use uuid::Uuid;
@@ -15,20 +12,14 @@ use uuid::Uuid;
 use memory_kernel::{
     ContentKind,
     cross_store_edges::{
-        CrossStoreEdgeClassifier,
-        EdgeReferenceResolution,
-        cross_workspace_edge_instructions,
+        CrossStoreEdgeClassifier, EdgeReferenceResolution, cross_workspace_edge_instructions,
         cross_workspace_edge_message,
     },
 };
 
 use crate::{
     model::edge::EdgeRecord,
-    storage::{
-        indexed::IndexedTicket,
-        store::TicketStore,
-        ticket_fs::TicketFs,
-    },
+    storage::{indexed::IndexedTicket, store::TicketStore, ticket_fs::TicketFs},
     workflow::WorkflowModel,
 };
 
@@ -77,11 +68,7 @@ pub struct HealthReport {
 }
 
 impl HealthReport {
-    fn record(
-        &mut self,
-        check: &str,
-        finding: HealthFinding,
-    ) {
+    fn record(&mut self, check: &str, finding: HealthFinding) {
         *self.summary.entry(check.to_string()).or_insert(0) += 1;
         self.findings.push(finding);
     }
@@ -111,17 +98,12 @@ pub fn collect_findings(
             memory_kernel::workspace::TICKET_INDEX_DIR,
         ),
     );
-    let edge_classifier = CrossStoreEdgeClassifier::for_store(
-        &store.index_root,
-        ContentKind::Ticket,
-        policy,
-    );
+    let edge_classifier =
+        CrossStoreEdgeClassifier::for_store(&store.index_root, ContentKind::Ticket, policy);
 
     let done_ids = tickets
         .iter()
-        .filter(|t| {
-            matches!(t.state.as_deref(), Some("done") | Some("cancelled"))
-        })
+        .filter(|t| matches!(t.state.as_deref(), Some("done") | Some("cancelled")))
         .map(|t| t.id)
         .collect::<std::collections::HashSet<_>>();
 
@@ -146,11 +128,7 @@ pub fn collect_findings(
 
 // ─── Per-ticket finding generators ───────────────────────────────────────────
 
-fn append_schema_findings(
-    store: &TicketStore,
-    ticket: &IndexedTicket,
-    report: &mut HealthReport,
-) {
+fn append_schema_findings(store: &TicketStore, ticket: &IndexedTicket, report: &mut HealthReport) {
     let Some(schema) = store.schema_registry().get(&ticket.type_id) else {
         report.record(
             "unknown_type",
@@ -210,13 +188,7 @@ fn append_ticket_findings(
     append_description_findings(ticket, report);
     append_title_finding(ticket, report);
     append_dependency_state_findings(ticket, workflow, report);
-    append_dangling_edge_findings(
-        store,
-        ticket,
-        all_edges,
-        edge_classifier,
-        report,
-    );
+    append_dangling_edge_findings(store, ticket, all_edges, edge_classifier, report);
 }
 
 fn append_effort_estimation_findings(
@@ -279,10 +251,7 @@ fn append_graph_participation_findings(
     );
 }
 
-fn append_description_findings(
-    ticket: &IndexedTicket,
-    report: &mut HealthReport,
-) {
+fn append_description_findings(ticket: &IndexedTicket, report: &mut HealthReport) {
     match TicketFs::read_description(&ticket.path) {
         None => report.record(
             "missing_description",
@@ -291,7 +260,10 @@ fn append_description_findings(
                 "missing_description",
                 "warning",
                 "No description.md file — ticket lacks detailed context.".into(),
-                vec!["Add a description.md with goal, scope, acceptance checks, and current status.".to_string()],
+                vec![
+                    "Add a description.md with goal, scope, acceptance checks, and current status."
+                        .to_string(),
+                ],
             ),
         ),
         Some(body) => {
@@ -312,14 +284,11 @@ fn append_description_findings(
                     ),
                 );
             }
-        },
+        }
     }
 }
 
-fn append_title_finding(
-    ticket: &IndexedTicket,
-    report: &mut HealthReport,
-) {
+fn append_title_finding(ticket: &IndexedTicket, report: &mut HealthReport) {
     if ticket.title.is_none() || ticket.title.as_deref() == Some("") {
         report.record(
             "missing_title",
@@ -328,7 +297,10 @@ fn append_title_finding(
                 "missing_title",
                 "error",
                 "Ticket has no title.".into(),
-                vec!["Set a concise ticket title describing the change intent and scope.".to_string()],
+                vec![
+                    "Set a concise ticket title describing the change intent and scope."
+                        .to_string(),
+                ],
             ),
         );
     }
@@ -395,8 +367,7 @@ fn append_dangling_edge_findings(
         if edge.from != ticket.id || edge.kind != "depends_on" {
             continue;
         }
-        let target_exists =
-            store.get_indexed(&edge.to).ok().flatten().is_some();
+        let target_exists = store.get_indexed(&edge.to).ok().flatten().is_some();
         if target_exists {
             continue;
         }
@@ -414,16 +385,13 @@ fn append_dangling_edge_findings(
                             ticket,
                             "cross_workspace_edge",
                             "warning",
-                            cross_workspace_edge_message(
-                                edge.to,
-                                &target_workspace_root,
-                            ),
+                            cross_workspace_edge_message(edge.to, &target_workspace_root),
                             cross_workspace_edge_instructions(),
                         ),
                     );
                     continue;
-                },
-                EdgeReferenceResolution::DanglingEdge => {},
+                }
+                EdgeReferenceResolution::DanglingEdge => {}
             }
         }
 
@@ -500,20 +468,12 @@ impl Default for HealthFinding {
 
 #[cfg(test)]
 mod tests {
-    use std::{
-        collections::BTreeMap,
-        fs,
-    };
+    use std::{collections::BTreeMap, fs};
 
-    use memory_kernel::workspace_policy::{
-        WORKSPACE_POLICY_FILE,
-    };
+    use memory_kernel::workspace_policy::WORKSPACE_POLICY_FILE;
     use tempfile::tempdir;
 
-    use crate::{
-        storage::store::TicketStore,
-        workflow::WorkflowModel,
-    };
+    use crate::{storage::store::TicketStore, workflow::WorkflowModel};
 
     fn extra_with_effort(value: &str) -> BTreeMap<String, serde_json::Value> {
         let mut extra = BTreeMap::new();
@@ -566,11 +526,8 @@ mod tests {
 
         let tickets = store.list(None, None, None).unwrap();
         let edges = store.list_all_edges().unwrap();
-        let workflow =
-            WorkflowModel::build(&store, tickets.clone(), edges.clone())
-                .unwrap();
-        let report =
-            super::collect_findings(&store, &tickets, &edges, &workflow);
+        let workflow = WorkflowModel::build(&store, tickets.clone(), edges.clone()).unwrap();
+        let report = super::collect_findings(&store, &tickets, &edges, &workflow);
 
         let ticket_findings: Vec<_> = report
             .findings
@@ -608,8 +565,7 @@ mod tests {
             serde_json::Value::String("made-up-type".to_string()),
         );
         let ticket_path = store.get_indexed(&id).unwrap().unwrap().path;
-        let toml_str =
-            memory_kernel::model::manifest_format::format_manifest_toml(&manifest);
+        let toml_str = memory_kernel::model::manifest_format::format_manifest_toml(&manifest);
         fs::write(
             ticket_path.join(crate::model::filesystem::TICKET_MANIFEST_FILE),
             toml_str,
@@ -619,11 +575,8 @@ mod tests {
 
         let tickets = store.list(None, None, None).unwrap();
         let edges = store.list_all_edges().unwrap();
-        let workflow =
-            WorkflowModel::build(&store, tickets.clone(), edges.clone())
-                .unwrap();
-        let report =
-            super::collect_findings(&store, &tickets, &edges, &workflow);
+        let workflow = WorkflowModel::build(&store, tickets.clone(), edges.clone()).unwrap();
+        let report = super::collect_findings(&store, &tickets, &edges, &workflow);
 
         let finding = report
             .findings
@@ -667,11 +620,8 @@ mod tests {
 
         let tickets = store.list(None, None, None).unwrap();
         let edges = store.list_all_edges().unwrap();
-        let workflow =
-            WorkflowModel::build(&store, tickets.clone(), edges.clone())
-                .unwrap();
-        let report =
-            super::collect_findings(&store, &tickets, &edges, &workflow);
+        let workflow = WorkflowModel::build(&store, tickets.clone(), edges.clone()).unwrap();
+        let report = super::collect_findings(&store, &tickets, &edges, &workflow);
 
         let finding = report
             .findings
@@ -701,11 +651,8 @@ mod tests {
 
         let tickets = store.list(None, None, None).unwrap();
         let edges = store.list_all_edges().unwrap();
-        let workflow =
-            WorkflowModel::build(&store, tickets.clone(), edges.clone())
-                .unwrap();
-        let report =
-            super::collect_findings(&store, &tickets, &edges, &workflow);
+        let workflow = WorkflowModel::build(&store, tickets.clone(), edges.clone()).unwrap();
+        let report = super::collect_findings(&store, &tickets, &edges, &workflow);
 
         assert!(
             !report
@@ -733,11 +680,8 @@ mod tests {
 
         let tickets = store.list(None, None, None).unwrap();
         let edges = store.list_all_edges().unwrap();
-        let workflow =
-            WorkflowModel::build(&store, tickets.clone(), edges.clone())
-                .unwrap();
-        let report =
-            super::collect_findings(&store, &tickets, &edges, &workflow);
+        let workflow = WorkflowModel::build(&store, tickets.clone(), edges.clone()).unwrap();
+        let report = super::collect_findings(&store, &tickets, &edges, &workflow);
 
         let finding = report
             .findings
@@ -772,11 +716,8 @@ mod tests {
 
         let tickets = store.list(None, None, None).unwrap();
         let edges = store.list_all_edges().unwrap();
-        let workflow =
-            WorkflowModel::build(&store, tickets.clone(), edges.clone())
-                .unwrap();
-        let report =
-            super::collect_findings(&store, &tickets, &edges, &workflow);
+        let workflow = WorkflowModel::build(&store, tickets.clone(), edges.clone()).unwrap();
+        let report = super::collect_findings(&store, &tickets, &edges, &workflow);
 
         let finding = report
             .findings
@@ -822,11 +763,8 @@ mod tests {
 
         let tickets = store.list(None, None, None).unwrap();
         let edges = store.list_all_edges().unwrap();
-        let workflow =
-            WorkflowModel::build(&store, tickets.clone(), edges.clone())
-                .unwrap();
-        let report =
-            super::collect_findings(&store, &tickets, &edges, &workflow);
+        let workflow = WorkflowModel::build(&store, tickets.clone(), edges.clone()).unwrap();
+        let report = super::collect_findings(&store, &tickets, &edges, &workflow);
 
         let ticket_findings: Vec<_> = report
             .findings
@@ -856,11 +794,8 @@ mod tests {
 
         let tickets = store.list(None, None, None).unwrap();
         let edges = store.list_all_edges().unwrap();
-        let workflow =
-            WorkflowModel::build(&store, tickets.clone(), edges.clone())
-                .unwrap();
-        let report =
-            super::collect_findings(&store, &tickets, &edges, &workflow);
+        let workflow = WorkflowModel::build(&store, tickets.clone(), edges.clone()).unwrap();
+        let report = super::collect_findings(&store, &tickets, &edges, &workflow);
 
         let finding = report
             .findings
@@ -910,18 +845,13 @@ mod tests {
 
         let tickets = store.list(None, None, None).unwrap();
         let edges = store.list_all_edges().unwrap();
-        let workflow =
-            WorkflowModel::build(&store, tickets.clone(), edges.clone())
-                .unwrap();
-        let report =
-            super::collect_findings(&store, &tickets, &edges, &workflow);
+        let workflow = WorkflowModel::build(&store, tickets.clone(), edges.clone()).unwrap();
+        let report = super::collect_findings(&store, &tickets, &edges, &workflow);
 
         let finding = report
             .findings
             .iter()
-            .find(|f| {
-                f.ticket_id == id && f.check == "missing_effort_estimation"
-            })
+            .find(|f| f.ticket_id == id && f.check == "missing_effort_estimation")
             .expect("expected missing_effort_estimation finding");
         assert_eq!(finding.severity, "warning");
         assert!(
@@ -937,10 +867,8 @@ mod tests {
         let child_repo = root_repo.join("child");
         fs::create_dir_all(&child_repo).unwrap();
 
-        let parent_store =
-            TicketStore::init(&root_repo).unwrap();
-        let child_store =
-            TicketStore::init(&child_repo).unwrap();
+        let parent_store = TicketStore::init(&root_repo).unwrap();
+        let child_store = TicketStore::init(&child_repo).unwrap();
 
         fs::create_dir_all(&child_store.index_root).unwrap();
         fs::write(
@@ -1000,17 +928,20 @@ mod tests {
             kind: "depends_on".to_string(),
             created_at: chrono::Utc::now(),
         }];
-        let workflow =
-            WorkflowModel::build(&child_store, tickets.clone(), Vec::new())
-                .unwrap();
-        let report =
-            super::collect_findings(&child_store, &tickets, &edges, &workflow);
+        let workflow = WorkflowModel::build(&child_store, tickets.clone(), Vec::new()).unwrap();
+        let report = super::collect_findings(&child_store, &tickets, &edges, &workflow);
 
-        assert!(report.findings.iter().any(|f| {
-            f.ticket_id == child_id && f.check == "cross_workspace_edge"
-        }));
-        assert!(!report.findings.iter().any(|f| {
-            f.ticket_id == child_id && f.check == "dangling_edge"
-        }));
+        assert!(
+            report
+                .findings
+                .iter()
+                .any(|f| { f.ticket_id == child_id && f.check == "cross_workspace_edge" })
+        );
+        assert!(
+            !report
+                .findings
+                .iter()
+                .any(|f| { f.ticket_id == child_id && f.check == "dangling_edge" })
+        );
     }
 }

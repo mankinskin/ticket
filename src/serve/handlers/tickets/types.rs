@@ -1,20 +1,13 @@
 use std::collections::BTreeMap;
 
-use serde::{
-    Deserialize,
-    Serialize,
-};
+use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use std::path::Path;
 use uuid::Uuid;
 
 use ticket_api::{
     error::StorageError,
-    storage::{
-        DescriptionUpdate,
-        indexed::IndexedTicket,
-        store::TicketStore,
-    },
+    storage::{DescriptionUpdate, indexed::IndexedTicket, store::TicketStore},
 };
 
 #[derive(Deserialize)]
@@ -169,10 +162,8 @@ impl TryFrom<UpdateTicketBodyWire> for UpdateTicketBody {
     type Error = String;
 
     fn try_from(wire: UpdateTicketBodyWire) -> Result<Self, Self::Error> {
-        let description_update = DescriptionUpdate::decode(
-            wire.description,
-            wire.description_mode.as_deref(),
-        )?;
+        let description_update =
+            DescriptionUpdate::decode(wire.description, wire.description_mode.as_deref())?;
         Ok(UpdateTicketBody {
             fields: wire.fields,
             state: wire.state,
@@ -356,11 +347,7 @@ pub fn ticket_ref_from_indexed(
     ticket: &IndexedTicket,
 ) -> Result<TicketRef, StorageError> {
     Ok(TicketRef {
-        workspace: owning_workspace_for_path(
-            store,
-            active_workspace,
-            &ticket.path,
-        )?,
+        workspace: owning_workspace_for_path(store, active_workspace, &ticket.path)?,
         id: ticket.id.to_string(),
     })
 }

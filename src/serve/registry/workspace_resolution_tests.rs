@@ -1,22 +1,11 @@
-use super::{
-    WorkspaceRegistry,
-    WorkspaceResolveError,
-    workspace_root_for_index_root,
-};
-use std::{
-    collections::BTreeMap,
-    sync::Arc,
-};
-use ticket_api::{
-    model::filesystem::ScanRoot,
-    storage::store::TicketStore,
-};
+use super::{WorkspaceRegistry, WorkspaceResolveError, workspace_root_for_index_root};
+use std::{collections::BTreeMap, sync::Arc};
+use ticket_api::{model::filesystem::ScanRoot, storage::store::TicketStore};
 
 #[test]
 fn canonical_ticket_store_root_maps_to_owning_workspace() {
     let workspace = tempfile::tempdir().expect("tempdir");
-    let store =
-        TicketStore::init_in_workspace(workspace.path()).expect("open store");
+    let store = TicketStore::init_in_workspace(workspace.path()).expect("open store");
 
     assert_eq!(
         workspace_root_for_index_root(&store.index_root),
@@ -27,8 +16,7 @@ fn canonical_ticket_store_root_maps_to_owning_workspace() {
 #[test]
 fn descendant_workspaces_use_workspace_root_name() {
     let root = tempfile::tempdir().expect("tempdir");
-    let parent_store =
-        Arc::new(TicketStore::init(root.path()).expect("open parent store"));
+    let parent_store = Arc::new(TicketStore::init(root.path()).expect("open parent store"));
     parent_store
         .add_scan_root(ScanRoot {
             path: root.path().join("tickets"),
@@ -36,12 +24,13 @@ fn descendant_workspaces_use_workspace_root_name() {
         })
         .expect("add parent scan root");
 
-    let child_index_root = root.path().join("child").join(".workflow-tools").join("ticket");
-    std::fs::create_dir_all(child_index_root.join("tickets"))
-        .expect("mkdir child store");
-    let child_store = Arc::new(
-        TicketStore::init(&child_index_root).expect("open child store"),
-    );
+    let child_index_root = root
+        .path()
+        .join("child")
+        .join(".workflow-tools")
+        .join("ticket");
+    std::fs::create_dir_all(child_index_root.join("tickets")).expect("mkdir child store");
+    let child_store = Arc::new(TicketStore::init(&child_index_root).expect("open child store"));
     child_store
         .add_scan_root(ScanRoot {
             path: child_index_root.join("tickets"),
@@ -93,8 +82,7 @@ fn descendant_workspaces_use_workspace_root_name() {
 #[test]
 fn duplicate_basename_workspaces_receive_distinct_public_ids() {
     let root = tempfile::tempdir().expect("tempdir");
-    let parent_store =
-        Arc::new(TicketStore::init(root.path()).expect("open parent store"));
+    let parent_store = Arc::new(TicketStore::init(root.path()).expect("open parent store"));
     parent_store
         .add_scan_root(ScanRoot {
             path: root.path().join("tickets"),
@@ -102,14 +90,20 @@ fn duplicate_basename_workspaces_receive_distinct_public_ids() {
         })
         .expect("add parent scan root");
 
-    let left_index_root =
-        root.path().join("alpha").join("shared").join(".workflow-tools").join("ticket");
-    let right_index_root =
-        root.path().join("beta").join("shared").join(".workflow-tools").join("ticket");
-    std::fs::create_dir_all(left_index_root.join("tickets"))
-        .expect("mkdir left store");
-    std::fs::create_dir_all(right_index_root.join("tickets"))
-        .expect("mkdir right store");
+    let left_index_root = root
+        .path()
+        .join("alpha")
+        .join("shared")
+        .join(".workflow-tools")
+        .join("ticket");
+    let right_index_root = root
+        .path()
+        .join("beta")
+        .join("shared")
+        .join(".workflow-tools")
+        .join("ticket");
+    std::fs::create_dir_all(left_index_root.join("tickets")).expect("mkdir left store");
+    std::fs::create_dir_all(right_index_root.join("tickets")).expect("mkdir right store");
     TicketStore::init(&left_index_root).expect("open left store");
     TicketStore::init(&right_index_root).expect("open right store");
 
@@ -159,8 +153,7 @@ fn duplicate_basename_workspaces_receive_distinct_public_ids() {
 #[test]
 fn nested_workspace_path_alias_resolves_to_canonical_workspace_id() {
     let root = tempfile::tempdir().expect("tempdir");
-    let parent_store =
-        Arc::new(TicketStore::init(root.path()).expect("open parent store"));
+    let parent_store = Arc::new(TicketStore::init(root.path()).expect("open parent store"));
     parent_store
         .add_scan_root(ScanRoot {
             path: root.path().join("tickets"),
@@ -174,8 +167,7 @@ fn nested_workspace_path_alias_resolves_to_canonical_workspace_id() {
         .join("memory-api")
         .join(".workflow-tools")
         .join("ticket");
-    std::fs::create_dir_all(child_index_root.join("tickets"))
-        .expect("mkdir child store");
+    std::fs::create_dir_all(child_index_root.join("tickets")).expect("mkdir child store");
     TicketStore::init(&child_index_root).expect("open child store");
 
     parent_store
@@ -204,8 +196,7 @@ fn nested_workspace_path_alias_resolves_to_canonical_workspace_id() {
 #[test]
 fn manifest_only_hidden_child_store_is_discovered() {
     let root = tempfile::tempdir().expect("tempdir");
-    let parent_store =
-        Arc::new(TicketStore::init(root.path()).expect("open parent store"));
+    let parent_store = Arc::new(TicketStore::init(root.path()).expect("open parent store"));
     parent_store
         .add_scan_root(ScanRoot {
             path: root.path().join("tickets"),
@@ -219,11 +210,9 @@ fn manifest_only_hidden_child_store_is_discovered() {
         .join("memory-api")
         .join(".workflow-tools")
         .join("ticket");
-    std::fs::create_dir_all(child_index_root.join("tickets"))
-        .expect("mkdir child store");
+    std::fs::create_dir_all(child_index_root.join("tickets")).expect("mkdir child store");
     let hidden_ticket_dir = child_index_root.join("tickets").join("hidden");
-    std::fs::create_dir_all(&hidden_ticket_dir)
-        .expect("mkdir hidden ticket dir");
+    std::fs::create_dir_all(&hidden_ticket_dir).expect("mkdir hidden ticket dir");
     std::fs::write(hidden_ticket_dir.join("ticket.toml"), "")
         .expect("write hidden ticket manifest");
 
@@ -247,8 +236,7 @@ fn manifest_only_hidden_child_store_is_discovered() {
 #[test]
 fn resolve_indexed_many_prefers_deepest_existing_workspace() {
     let root = tempfile::tempdir().expect("tempdir");
-    let parent_store =
-        Arc::new(TicketStore::init(root.path()).expect("open parent store"));
+    let parent_store = Arc::new(TicketStore::init(root.path()).expect("open parent store"));
     parent_store
         .add_scan_root(ScanRoot {
             path: root.path().join("tickets"),
@@ -256,12 +244,13 @@ fn resolve_indexed_many_prefers_deepest_existing_workspace() {
         })
         .expect("add parent scan root");
 
-    let child_index_root = root.path().join("child").join(".workflow-tools").join("ticket");
-    std::fs::create_dir_all(child_index_root.join("tickets"))
-        .expect("mkdir child store");
-    let child_store = Arc::new(
-        TicketStore::init(&child_index_root).expect("open child store"),
-    );
+    let child_index_root = root
+        .path()
+        .join("child")
+        .join(".workflow-tools")
+        .join("ticket");
+    std::fs::create_dir_all(child_index_root.join("tickets")).expect("mkdir child store");
+    let child_store = Arc::new(TicketStore::init(&child_index_root).expect("open child store"));
     child_store
         .add_scan_root(ScanRoot {
             path: child_index_root.join("tickets"),

@@ -12,10 +12,4 @@ mod tests;
 #[path = "tickets/types.rs"]
 pub mod types;
 
-pub use self::{
-    assets::*,
-    mutations::*,
-    parts::*,
-    read::*,
-    types::*,
-};
+pub use self::{assets::*, mutations::*, parts::*, read::*, types::*};

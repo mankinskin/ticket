@@ -1,11 +1,7 @@
 use std::fs;
 
 mod common;
-use common::{
-    TicketCommands,
-    TicketSandbox as Sandbox,
-    create_ticket,
-};
+use common::{TicketCommands, TicketSandbox as Sandbox, create_ticket};
 
 /// Regression test for: `scan --reindex` must purge stale Tantivy entries.
 ///

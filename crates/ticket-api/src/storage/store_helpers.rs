@@ -1,8 +1,6 @@
 use super::*;
 
-pub(super) fn strip_file_backed_edge_fields(
-    patch: &mut BTreeMap<String, Value>
-) {
+pub(super) fn strip_file_backed_edge_fields(patch: &mut BTreeMap<String, Value>) {
     for field in FILE_BACKED_EDGE_FIELDS {
         patch.remove(*field);
     }
@@ -20,12 +18,10 @@ pub(super) fn edge_patch_plans(
         };
 
         let desired = parse_requested_edge_targets(requested_value, field)?;
-        let current =
-            parse_manifest_edge_targets(current_extra.get(*field), field)?;
+        let current = parse_manifest_edge_targets(current_extra.get(*field), field)?;
 
         let to_add = desired.difference(&current).copied().collect::<Vec<_>>();
-        let to_remove =
-            current.difference(&desired).copied().collect::<Vec<_>>();
+        let to_remove = current.difference(&desired).copied().collect::<Vec<_>>();
 
         plans.push(EdgePatchPlan {
             kind: (*field).to_string(),
@@ -81,7 +77,7 @@ pub(super) fn parse_requested_edge_targets(
                 })?;
                 Ok(BTreeSet::from([id]))
             }
-        },
+        }
         _ => Err(StorageError::Other(format!(
             "edge field '{}' must be an array, JSON array string, or UUID string",
             edge_kind
@@ -138,10 +134,7 @@ pub(super) fn apply_edge_patch_plans(
     Ok(())
 }
 
-pub(super) fn emit_store_open_report(
-    event_name: &'static str,
-    report: &StoreOpenReport,
-) {
+pub(super) fn emit_store_open_report(event_name: &'static str, report: &StoreOpenReport) {
     tracing::debug!(
         target: STORE_TRACE_TARGET,
         initialized_store = report.initialized_store,
@@ -155,10 +148,7 @@ pub(super) fn elapsed_ms(started: Instant) -> u64 {
     started.elapsed().as_millis() as u64
 }
 
-pub(super) fn merge_timings(
-    target: &mut BTreeMap<String, u64>,
-    source: BTreeMap<String, u64>,
-) {
+pub(super) fn merge_timings(target: &mut BTreeMap<String, u64>, source: BTreeMap<String, u64>) {
     target.extend(source);
 }
 
@@ -172,9 +162,7 @@ pub(super) fn merge_prefixed_timings(
     }
 }
 
-pub(super) fn scan_root_has_ticket_manifests(
-    root: &Path
-) -> Result<bool, StorageError> {
+pub(super) fn scan_root_has_ticket_manifests(root: &Path) -> Result<bool, StorageError> {
     if !root.exists() {
         return Ok(false);
     }

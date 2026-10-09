@@ -5,15 +5,9 @@
 //! rather than re-implementing selection so the semantics never drift per
 //! transport. This module never writes.
 
-use std::collections::{
-    BTreeMap,
-    BTreeSet,
-};
+use std::collections::{BTreeMap, BTreeSet};
 
-use chrono::{
-    DateTime,
-    Utc,
-};
+use chrono::{DateTime, Utc};
 use serde::Serialize;
 use serde_json::Value;
 use uuid::Uuid;
@@ -22,22 +16,10 @@ use super::TicketStore;
 use crate::{
     error::StorageError,
     model::{
-        parts::{
-            CORE_PART_KINDS,
-            PartKindClass,
-            ViewProfile,
-            classify_part_kind,
-        },
-        ticket::{
-            TicketManifestExt,
-            TicketRefEntry,
-        },
+        parts::{CORE_PART_KINDS, PartKindClass, ViewProfile, classify_part_kind},
+        ticket::{TicketManifestExt, TicketRefEntry},
     },
-    storage::ticket_fs::{
-        LoadedPart,
-        PartsLoadReport,
-        TicketFs,
-    },
+    storage::ticket_fs::{LoadedPart, PartsLoadReport, TicketFs},
 };
 
 /// A caller's requested read projection: a named [`ViewProfile`] or an
@@ -55,10 +37,7 @@ impl ReadProjection {
     /// Decode raw wire `view`/`parts` values. `parts` is a comma-separated
     /// list of part kinds. Returns `Ok(None)` when neither is supplied, so
     /// the caller can default to [`ViewProfile::Summary`] (AC4).
-    pub fn decode(
-        view: Option<&str>,
-        parts: Option<&str>,
-    ) -> Result<Option<Self>, StorageError> {
+    pub fn decode(view: Option<&str>, parts: Option<&str>) -> Result<Option<Self>, StorageError> {
         match (view, parts) {
             (Some(_), Some(_)) => Err(StorageError::Other(
                 "cannot pass both `view` and `parts`: choose a named view profile or an explicit part-kind list, not both".to_string(),
@@ -134,27 +113,27 @@ impl TicketStore {
         id: &Uuid,
         projection: &ReadProjection,
     ) -> Result<TicketProjection, StorageError> {
-        let indexed =
-            self.get_indexed(id)?.ok_or(StorageError::NotFound(*id))?;
+        let indexed = self.get_indexed(id)?.ok_or(StorageError::NotFound(*id))?;
         let manifest = TicketFs::read(&indexed.path)?;
         let report = TicketFs::load_parts(&indexed.path, &manifest)?;
 
         let (profile, selected_kinds) = match projection {
-            ReadProjection::Profile(profile) => {
-                (Some(*profile), profile.kinds().map(|k| {
-                    k.iter().map(|s| s.to_string()).collect::<Vec<_>>()
-                }))
-            },
+            ReadProjection::Profile(profile) => (
+                Some(*profile),
+                profile
+                    .kinds()
+                    .map(|k| k.iter().map(|s| s.to_string()).collect::<Vec<_>>()),
+            ),
             ReadProjection::Kinds(kinds) => {
                 validate_explicit_kinds(kinds, &report)?;
                 (None, Some(kinds.clone()))
-            },
+            }
         };
 
-        let inline_amendments =
-            profile.map(ViewProfile::inlines_amendments).unwrap_or(false);
-        let parts =
-            select_parts(&report, selected_kinds.as_deref(), inline_amendments);
+        let inline_amendments = profile
+            .map(ViewProfile::inlines_amendments)
+            .unwrap_or(false);
+        let parts = select_parts(&report, selected_kinds.as_deref(), inline_amendments);
 
         let refs = profile
             .map(ViewProfile::includes_refs)
@@ -176,15 +155,11 @@ impl TicketStore {
 /// kind (always known, present-or-empty per AC2) nor an attachment kind
 /// actually present on this ticket. Free-form kind vocabulary is per-ticket,
 /// not global, so "unknown" here means "not core and not on this ticket".
-fn validate_explicit_kinds(
-    kinds: &[String],
-    report: &PartsLoadReport,
-) -> Result<(), StorageError> {
-    let present: BTreeSet<&str> =
-        report.parts.iter().map(|p| p.kind.as_str()).collect();
+fn validate_explicit_kinds(kinds: &[String], report: &PartsLoadReport) -> Result<(), StorageError> {
+    let present: BTreeSet<&str> = report.parts.iter().map(|p| p.kind.as_str()).collect();
     for kind in kinds {
         match classify_part_kind(kind)? {
-            PartKindClass::Core(_) => {},
+            PartKindClass::Core(_) => {}
             PartKindClass::Attachment(ref k) => {
                 if !present.contains(k.as_str()) {
                     let mut known: Vec<&str> = CORE_PART_KINDS.to_vec();
@@ -194,7 +169,7 @@ fn validate_explicit_kinds(
                         known.join(", ")
                     )));
                 }
-            },
+            }
         }
     }
     Ok(())
@@ -205,11 +180,13 @@ fn select_parts(
     kinds: Option<&[String]>,
     inline_amendments: bool,
 ) -> Vec<ProjectedPart> {
-    let is_selected =
-        |kind: &str| kinds.map(|list| list.iter().any(|k| k == kind)).unwrap_or(true);
+    let is_selected = |kind: &str| {
+        kinds
+            .map(|list| list.iter().any(|k| k == kind))
+            .unwrap_or(true)
+    };
 
-    let mut amendments_by_parent: BTreeMap<Uuid, Vec<&LoadedPart>> =
-        BTreeMap::new();
+    let mut amendments_by_parent: BTreeMap<Uuid, Vec<&LoadedPart>> = BTreeMap::new();
     if inline_amendments {
         for part in &report.parts {
             if part.kind == "amendment" {
@@ -247,10 +224,7 @@ fn select_parts(
 
     if inline_amendments {
         for part in &report.parts {
-            if part.kind == "amendment"
-                && !consumed.contains(&part.id)
-                && is_selected(&part.kind)
-            {
+            if part.kind == "amendment" && !consumed.contains(&part.id) && is_selected(&part.kind) {
                 out.push(to_projected(part));
             }
         }

@@ -170,9 +170,7 @@ fn edit_distance(a: &str, b: &str) -> usize {
         curr[0] = i;
         for j in 1..=m {
             let cost = if a[i - 1] == b[j - 1] { 0 } else { 1 };
-            curr[j] = (prev[j] + 1)
-                .min(curr[j - 1] + 1)
-                .min(prev[j - 1] + cost);
+            curr[j] = (prev[j] + 1).min(curr[j - 1] + 1).min(prev[j - 1] + cost);
         }
         std::mem::swap(&mut prev, &mut curr);
     }
@@ -210,10 +208,7 @@ pub fn classify_part_kind(kind: &str) -> Result<PartKindClass, StorageError> {
         return Err(StorageError::Validation(
             SchemaValidationError::InvalidCoreKind {
                 kind: kind.to_string(),
-                valid_kinds: CORE_PART_KINDS
-                    .iter()
-                    .map(|&k| k.to_string())
-                    .collect(),
+                valid_kinds: CORE_PART_KINDS.iter().map(|&k| k.to_string()).collect(),
             },
         ));
     }

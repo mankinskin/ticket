@@ -1,22 +1,13 @@
 //! Route table for `ticket serve`.
 
 use axum::{
-    Router,
-    middleware,
-    routing::{
-        get,
-        patch,
-        post,
-    },
+    Router, middleware,
+    routing::{get, patch, post},
 };
 
 use viewer_api::middleware::request_id::add_request_id;
 
-use super::{
-    AppState,
-    handlers,
-    middleware as mw,
-};
+use super::{AppState, handlers, middleware as mw};
 
 /// Build the full Axum router.
 pub fn build_router(state: AppState) -> Router {
@@ -78,8 +69,7 @@ pub fn build_router(state: AppState) -> Router {
         .route("/api/tickets", post(handlers::tickets::create_ticket))
         .route(
             "/api/tickets/{id}",
-            patch(handlers::tickets::update_ticket)
-                .delete(handlers::tickets::delete_ticket),
+            patch(handlers::tickets::update_ticket).delete(handlers::tickets::delete_ticket),
         )
         .route(
             "/api/tickets/{id}/close",
@@ -119,8 +109,7 @@ pub fn build_router(state: AppState) -> Router {
         )
         .route(
             "/api/edges",
-            post(handlers::edges::add_edge)
-                .delete(handlers::edges::remove_edge),
+            post(handlers::edges::add_edge).delete(handlers::edges::remove_edge),
         )
         .route_layer(middleware::from_fn_with_state(
             state.clone(),

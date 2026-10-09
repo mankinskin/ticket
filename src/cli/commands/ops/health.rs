@@ -1,52 +1,30 @@
 use std::{
-    collections::{
-        HashSet,
-        VecDeque,
-    },
+    collections::{HashSet, VecDeque},
     io::BufRead,
 };
 
-use serde_json::{
-    Value,
-    json,
-};
+use serde_json::{Value, json};
 use ticket_api::{
     health::collect_findings,
     model::edge::EdgeRecord,
     query_helpers::apply_field_filters,
-    storage::{
-        indexed::IndexedTicket,
-        store::TicketStore,
-    },
+    storage::{indexed::IndexedTicket, store::TicketStore},
     workflow::WorkflowModel,
 };
 use uuid::Uuid;
 
-use crate::cli::{
-    CliRunError,
-    HealthArgs,
-    helpers::parse_fields,
-};
+use crate::cli::{CliRunError, HealthArgs, helpers::parse_fields};
 
-pub(super) fn run(
-    args: HealthArgs,
-    store: &TicketStore,
-) -> Result<Value, CliRunError> {
+pub(super) fn run(args: HealthArgs, store: &TicketStore) -> Result<Value, CliRunError> {
     let all_edges = store.list_all_edges()?;
     let field_filters = parse_field_filters(&args)?;
     let tickets = scoped_tickets(&args, store, &all_edges)?;
     let tickets = apply_field_filters(tickets, &field_filters);
-    let workflow = WorkflowModel::build(
-        store,
-        store.list(None, None, None)?,
-        all_edges.to_vec(),
-    )?;
+    let workflow = WorkflowModel::build(store, store.list(None, None, None)?, all_edges.to_vec())?;
     let report = collect_findings(store, &tickets, &all_edges, &workflow);
     let tickets_checked = tickets
         .iter()
-        .filter(|ticket| {
-            !matches!(ticket.state.as_deref(), Some("done") | Some("cancelled"))
-        })
+        .filter(|ticket| !matches!(ticket.state.as_deref(), Some("done") | Some("cancelled")))
         .count();
 
     Ok(json!({
@@ -59,9 +37,7 @@ pub(super) fn run(
     }))
 }
 
-fn parse_field_filters(
-    args: &HealthArgs
-) -> Result<Vec<(String, String)>, CliRunError> {
+fn parse_field_filters(args: &HealthArgs) -> Result<Vec<(String, String)>, CliRunError> {
     Ok(parse_fields(&args.where_clauses)?.into_iter().collect())
 }
 
@@ -92,9 +68,7 @@ fn explicit_tickets(
     Ok(load_live_tickets(store, &resolved))
 }
 
-fn stdin_tickets(
-    store: &TicketStore
-) -> Result<Vec<IndexedTicket>, CliRunError> {
+fn stdin_tickets(store: &TicketStore) -> Result<Vec<IndexedTicket>, CliRunError> {
     let stdin = std::io::stdin();
     let mut ids = Vec::new();
 
@@ -120,12 +94,7 @@ fn root_scope_tickets(
         .as_ref()
         .expect("clap ensures root is present when --all/--stdin is not set");
     let root = super::super::resolve_uuid_prefix(root_str, store)?;
-    let ids = collect_scope_ids(
-        root,
-        args.direction.as_str(),
-        args.depth.min(8),
-        all_edges,
-    );
+    let ids = collect_scope_ids(root, args.direction.as_str(), args.depth.min(8), all_edges);
     Ok(load_live_tickets(store, &ids))
 }
 
@@ -149,8 +118,7 @@ fn collect_scope_ids(
         }
 
         for edge in all_edges {
-            let Some(neighbor) = scope_neighbor(edge, current_id, direction)
-            else {
+            let Some(neighbor) = scope_neighbor(edge, current_id, direction) else {
                 continue;
             };
             if !visited.contains(&neighbor) {
@@ -162,11 +130,7 @@ fn collect_scope_ids(
     ids
 }
 
-fn scope_neighbor(
-    edge: &EdgeRecord,
-    current_id: Uuid,
-    direction: &str,
-) -> Option<Uuid> {
+fn scope_neighbor(edge: &EdgeRecord, current_id: Uuid, direction: &str) -> Option<Uuid> {
     if edge.kind != "depends_on" && edge.kind != "linked" {
         return None;
     }
@@ -179,10 +143,7 @@ fn scope_neighbor(
     }
 }
 
-fn edge_neighbor(
-    edge: &EdgeRecord,
-    current_id: Uuid,
-) -> Option<(Uuid, bool)> {
+fn edge_neighbor(edge: &EdgeRecord, current_id: Uuid) -> Option<(Uuid, bool)> {
     if edge.from == current_id {
         Some((edge.to, true))
     } else if edge.to == current_id {
@@ -192,10 +153,7 @@ fn edge_neighbor(
     }
 }
 
-fn direction_allows(
-    direction: &str,
-    is_outbound: bool,
-) -> bool {
+fn direction_allows(direction: &str, is_outbound: bool) -> bool {
     match direction {
         "out" => is_outbound,
         "in" => !is_outbound,
@@ -203,10 +161,7 @@ fn direction_allows(
     }
 }
 
-fn load_live_tickets(
-    store: &TicketStore,
-    ids: &[Uuid],
-) -> Vec<IndexedTicket> {
+fn load_live_tickets(store: &TicketStore, ids: &[Uuid]) -> Vec<IndexedTicket> {
     ids.iter()
         .filter_map(|id| store.get_indexed(id).ok().flatten())
         .collect()

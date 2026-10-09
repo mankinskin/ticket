@@ -5,40 +5,19 @@
 //! real TCP socket required.
 
 use super::build_router;
-use crate::serve::{
-    AppState,
-    StreamBroker,
-    WorkspaceRegistry,
-};
+use crate::serve::{AppState, StreamBroker, WorkspaceRegistry};
 
 use axum::{
-    body::{
-        Body,
-        to_bytes,
-    },
-    http::{
-        Method,
-        Request,
-        StatusCode,
-        header,
-    },
+    body::{Body, to_bytes},
+    http::{Method, Request, StatusCode, header},
 };
-use std::{
-    collections::BTreeMap,
-    sync::Arc,
-};
-use ticket_api::{
-    model::filesystem::ScanRoot,
-    storage::store::TicketStore,
-};
+use std::{collections::BTreeMap, sync::Arc};
+use ticket_api::{model::filesystem::ScanRoot, storage::store::TicketStore};
 use tower::ServiceExt;
 use uuid::Uuid;
 
 fn primary_workspace_name(dir: &std::path::Path) -> String {
-    crate::serve::registry::canonical_workspace_name_for_index_root(
-        dir,
-        "workspace",
-    )
+    crate::serve::registry::canonical_workspace_name_for_index_root(dir, "workspace")
 }
 
 fn make_router(dir: &std::path::Path) -> axum::Router {
@@ -66,10 +45,7 @@ fn make_router_from_store(store: Arc<TicketStore>) -> axum::Router {
 }
 
 /// Create a ticket via the store and return its UUID string.
-fn create_ticket(
-    dir: &std::path::Path,
-    title: &str,
-) -> (Arc<TicketStore>, Uuid) {
+fn create_ticket(dir: &std::path::Path, title: &str) -> (Arc<TicketStore>, Uuid) {
     let store = Arc::new(TicketStore::init(dir).expect("open store"));
     store
         .add_scan_root(ScanRoot {
@@ -225,10 +201,7 @@ async fn history_route_returns_200_with_revision_entries() {
 /// below would fire.
 #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn concurrent_subgraph_requests_all_complete() {
-    use tokio::time::{
-        Duration,
-        timeout,
-    };
+    use tokio::time::{Duration, timeout};
 
     let dir = tempfile::tempdir().expect("tempdir");
     let store = Arc::new(TicketStore::init(dir.path()).expect("open store"));
@@ -302,10 +275,7 @@ fn open_workspace_store(dir: &std::path::Path) -> Arc<TicketStore> {
     store
 }
 
-fn register_child_workspace(
-    parent_store: &TicketStore,
-    child_store: &TicketStore,
-) {
+fn register_child_workspace(parent_store: &TicketStore, child_store: &TicketStore) {
     parent_store
         .add_scan_root(ScanRoot {
             path: child_store.index_root.join("tickets"),
@@ -320,10 +290,7 @@ fn register_child_workspace(
 /// once confirms there is no mutex starvation or deadlock.
 #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn concurrent_list_requests_all_complete() {
-    use tokio::time::{
-        Duration,
-        timeout,
-    };
+    use tokio::time::{Duration, timeout};
     let dir = tempfile::tempdir().expect("tempdir");
     let store = Arc::new(TicketStore::init(dir.path()).expect("open store"));
     let workspace = primary_workspace_name(dir.path());
@@ -419,8 +386,7 @@ async fn descendant_ticket_ref_from_list_is_followable() {
     let list_bytes = to_bytes(list_response.into_body(), 1024 * 1024)
         .await
         .unwrap();
-    let list_payload: serde_json::Value =
-        serde_json::from_slice(&list_bytes).unwrap();
+    let list_payload: serde_json::Value = serde_json::from_slice(&list_bytes).unwrap();
     assert_eq!(
         list_payload["items"][0]["ticket_ref"]["workspace"],
         child_workspace
@@ -444,8 +410,7 @@ async fn descendant_ticket_ref_from_list_is_followable() {
     let detail_bytes = to_bytes(detail_response.into_body(), 1024 * 1024)
         .await
         .unwrap();
-    let detail_payload: serde_json::Value =
-        serde_json::from_slice(&detail_bytes).unwrap();
+    let detail_payload: serde_json::Value = serde_json::from_slice(&detail_bytes).unwrap();
     assert_eq!(detail_payload["active_workspace"], child_workspace);
     assert_eq!(
         detail_payload["ticket"]["ticket_ref"]["workspace"],
@@ -518,8 +483,7 @@ async fn ancestor_graph_ref_from_child_workspace_is_followable() {
     let graph_bytes = to_bytes(graph_response.into_body(), 1024 * 1024)
         .await
         .unwrap();
-    let graph_payload: serde_json::Value =
-        serde_json::from_slice(&graph_bytes).unwrap();
+    let graph_payload: serde_json::Value = serde_json::from_slice(&graph_bytes).unwrap();
 
     let parent_node = graph_payload["nodes"]
         .as_array()
@@ -551,8 +515,7 @@ async fn ancestor_graph_ref_from_child_workspace_is_followable() {
     let history_bytes = to_bytes(history_response.into_body(), 1024 * 1024)
         .await
         .unwrap();
-    let history_payload: serde_json::Value =
-        serde_json::from_slice(&history_bytes).unwrap();
+    let history_payload: serde_json::Value = serde_json::from_slice(&history_bytes).unwrap();
     assert_eq!(
         history_payload["active_workspace"],
         parent_workspace.clone()
@@ -621,18 +584,20 @@ async fn workspace_graph_includes_isolated_local_and_cross_workspace_nodes() {
         .uri("/api/workspaces")
         .body(Body::empty())
         .unwrap();
-    let workspace_response =
-        app.clone().oneshot(workspace_request).await.unwrap();
+    let workspace_response = app.clone().oneshot(workspace_request).await.unwrap();
     assert_eq!(workspace_response.status(), StatusCode::OK);
     let workspace_bytes = to_bytes(workspace_response.into_body(), 1024 * 1024)
         .await
         .unwrap();
-    let workspace_payload: serde_json::Value =
-        serde_json::from_slice(&workspace_bytes).unwrap();
+    let workspace_payload: serde_json::Value = serde_json::from_slice(&workspace_bytes).unwrap();
     let child_workspace = primary_workspace_name(child_dir.as_path());
-    assert!(workspace_payload["workspaces"].as_array().unwrap().iter().any(
-        |workspace| workspace["name"] == child_workspace
-    ));
+    assert!(
+        workspace_payload["workspaces"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .any(|workspace| workspace["name"] == child_workspace)
+    );
     let request = Request::builder()
         .method(Method::GET)
         .uri(format!("/api/graph/workspace?workspace={child_workspace}"))
@@ -665,8 +630,7 @@ async fn workspace_graph_includes_isolated_local_and_cross_workspace_nodes() {
     let edges = payload["edges"].as_array().expect("edges array");
     assert!(
         edges.iter().any(|edge| {
-            edge["from"] == child_id.to_string()
-                && edge["to"] == parent_id.to_string()
+            edge["from"] == child_id.to_string() && edge["to"] == parent_id.to_string()
         }),
         "workspace graph should preserve mixed-workspace relationship metadata"
     );

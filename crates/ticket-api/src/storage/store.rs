@@ -1,26 +1,13 @@
 use std::{
-    collections::{
-        BTreeMap,
-        BTreeSet,
-        HashMap,
-    },
+    collections::{BTreeMap, BTreeSet, HashMap},
     fs,
-    path::{
-        Path,
-        PathBuf,
-    },
+    path::{Path, PathBuf},
     sync::OnceLock,
     time::Instant,
 };
 
-use chrono::{
-    DateTime,
-    Utc,
-};
-use memory_kernel::{
-    model::filesystem::ScanRoot,
-    storage::ensure_sqlite_index_root,
-};
+use chrono::{DateTime, Utc};
+use memory_kernel::{model::filesystem::ScanRoot, storage::ensure_sqlite_index_root};
 use serde_json::Value;
 use tracing::field::Empty;
 use uuid::Uuid;
@@ -31,15 +18,10 @@ use crate::{
         filesystem::TICKET_MANIFEST_FILE,
         schema::TicketTypeSchemaExt,
         schema_registry::SchemaRegistry,
-        ticket::{
-            TicketId,
-            TicketManifest,
-        },
+        ticket::{TicketId, TicketManifest},
     },
     storage::{
-        index::RedbIndexStore,
-        indexed::IndexedTicket,
-        search::TantivySearchIndex,
+        index::RedbIndexStore, indexed::IndexedTicket, search::TantivySearchIndex,
         ticket_fs::TicketFs,
     },
     workspace,
@@ -58,28 +40,12 @@ mod workflow_facts;
 
 pub use self::{
     migration::{
-        split_description,
-        MigrationApplyReport,
-        MigrationDryRunReport,
-        MigrationSegment,
-        TicketMigrationPlan,
-        MIGRATION_CREATED_PART_IDS_KEY,
+        MIGRATION_CREATED_PART_IDS_KEY, MigrationApplyReport, MigrationDryRunReport,
+        MigrationSegment, TicketMigrationPlan, split_description,
     },
-    parts::{
-        PART_HISTORY_CONTENT_KEY,
-        PART_HISTORY_ID_KEY,
-    },
-    projection::{
-        ProjectedPart,
-        ReadProjection,
-        TicketProjection,
-    },
-    release::{
-        GateCheckOutcome,
-        GateStatus,
-        PromoteOutcome,
-        ValidationResultOutcome,
-    },
+    parts::{PART_HISTORY_CONTENT_KEY, PART_HISTORY_ID_KEY},
+    projection::{ProjectedPart, ReadProjection, TicketProjection},
+    release::{GateCheckOutcome, GateStatus, PromoteOutcome, ValidationResultOutcome},
     scan::ScanReport,
 };
 
@@ -161,10 +127,10 @@ impl DescriptionUpdate {
             DescriptionUpdate::Unchanged => (None, None),
             DescriptionUpdate::Replace(text) => {
                 (Some(text.as_str()), Some(DescriptionUpdateMode::Replace))
-            },
+            }
             DescriptionUpdate::Append(text) => {
                 (Some(text.as_str()), Some(DescriptionUpdateMode::Append))
-            },
+            }
         }
     }
 }
@@ -187,22 +153,9 @@ pub trait StoreHook: Send + Sync + 'static {
         title: Option<String>,
         updated_at: chrono::DateTime<chrono::Utc>,
     );
-    fn ticket_delete(
-        &self,
-        id: Uuid,
-    );
-    fn edge_upsert(
-        &self,
-        from: Uuid,
-        to: Uuid,
-        kind: String,
-    );
-    fn edge_delete(
-        &self,
-        from: Uuid,
-        to: Uuid,
-        kind: String,
-    );
+    fn ticket_delete(&self, id: Uuid);
+    fn edge_upsert(&self, from: Uuid, to: Uuid, kind: String);
+    fn edge_delete(&self, from: Uuid, to: Uuid, kind: String);
 }
 
 /// The central ticket store: filesystem source-of-truth + SQLite metadata index +
@@ -228,10 +181,7 @@ const FILE_BACKED_EDGE_FIELDS: &[&str] = &["depends_on", "linked"];
 impl TicketStore {
     /// Attach a mutation hook. May only be called once; subsequent calls
     /// are silently ignored (the first hook wins).
-    pub fn set_hook(
-        &self,
-        hook: impl StoreHook,
-    ) {
+    pub fn set_hook(&self, hook: impl StoreHook) {
         let _ = self.hook.set(Box::new(hook));
     }
 
@@ -240,10 +190,7 @@ impl TicketStore {
         self.hook.get().map(|b| b.as_ref())
     }
 
-    pub(crate) fn with_search_repair<T, F>(
-        &self,
-        mut op: F,
-    ) -> Result<T, StorageError>
+    pub(crate) fn with_search_repair<T, F>(&self, mut op: F) -> Result<T, StorageError>
     where
         F: FnMut() -> Result<T, StorageError>,
     {
@@ -351,9 +298,7 @@ impl TicketStore {
         // that later explodes at transition resolution.
         schema.validate_manifest(&manifest)?;
 
-        let ticket_path = Self::normalize_existing_path(&TicketFs::create(
-            &manifest, &root, body,
-        )?);
+        let ticket_path = Self::normalize_existing_path(&TicketFs::create(&manifest, &root, body)?);
 
         let indexed = IndexedTicket {
             id,
@@ -390,11 +335,7 @@ impl TicketStore {
         })?;
 
         // Append initial history snapshot (rev 1).
-        if let Err(error) = TicketFs::append_history(
-            &indexed.path,
-            manifest.extra.clone(),
-            None,
-        ) {
+        if let Err(error) = TicketFs::append_history(&indexed.path, manifest.extra.clone(), None) {
             tracing::error!(
                 ticket_id = %id,
                 path = %indexed.path.display(),
@@ -418,10 +359,7 @@ impl TicketStore {
         Ok(id)
     }
 
-    fn resolve_target_root(
-        &self,
-        target_root: Option<&Path>,
-    ) -> Result<PathBuf, StorageError> {
+    fn resolve_target_root(&self, target_root: Option<&Path>) -> Result<PathBuf, StorageError> {
         let Some(target_root) = target_root else {
             // Canonical: write into the workspace's own .workflow-tools/ticket/tickets/
             // directory (resolved via the index_root), ignoring any registered
@@ -447,10 +385,8 @@ impl TicketStore {
             return Ok(root);
         }
 
-        let store_root = workspace::resolve_store_root_from(
-            target_root,
-            workspace::TICKET_INDEX_DIR,
-        );
+        let store_root =
+            workspace::resolve_store_root_from(target_root, workspace::TICKET_INDEX_DIR);
         if store_root.exists() {
             return Ok(self.resolve_scan_root_path(&store_root.join("tickets")));
         }
@@ -462,26 +398,17 @@ impl TicketStore {
     }
 
     /// Read the full manifest for a ticket by ID.
-    pub fn get(
-        &self,
-        id: &Uuid,
-    ) -> Result<TicketManifest, StorageError> {
-        let mut indexed =
-            self.get_indexed(id)?.ok_or(StorageError::NotFound(*id))?;
+    pub fn get(&self, id: &Uuid) -> Result<TicketManifest, StorageError> {
+        let mut indexed = self.get_indexed(id)?.ok_or(StorageError::NotFound(*id))?;
         if self.is_external_worktree_path(&indexed.path) {
             self.scan(false)?;
-            indexed = self
-                .get_indexed(id)?
-                .ok_or(StorageError::NotFound(*id))?;
+            indexed = self.get_indexed(id)?.ok_or(StorageError::NotFound(*id))?;
         }
         TicketFs::read(&indexed.path)
     }
 
     /// Get just the indexed metadata (faster than a full read).
-    pub fn get_indexed(
-        &self,
-        id: &Uuid,
-    ) -> Result<Option<IndexedTicket>, StorageError> {
+    pub fn get_indexed(&self, id: &Uuid) -> Result<Option<IndexedTicket>, StorageError> {
         Ok(self
             .index
             .get_ticket(id)?
@@ -496,8 +423,7 @@ impl TicketStore {
     pub fn get_indexed_many(
         &self,
         ids: &[Uuid],
-    ) -> Result<std::collections::HashMap<Uuid, IndexedTicket>, StorageError>
-    {
+    ) -> Result<std::collections::HashMap<Uuid, IndexedTicket>, StorageError> {
         Ok(self
             .index
             .get_tickets_by_ids(ids)?
@@ -509,18 +435,14 @@ impl TicketStore {
     pub fn get_workflow_facts(
         &self,
         id: &Uuid,
-    ) -> Result<Option<crate::storage::indexed::WorkflowFacts>, StorageError>
-    {
+    ) -> Result<Option<crate::storage::indexed::WorkflowFacts>, StorageError> {
         Ok(self.index.get_workflow_facts(id)?)
     }
 
     pub fn get_workflow_facts_many(
         &self,
         ids: &[Uuid],
-    ) -> Result<
-        HashMap<Uuid, crate::storage::indexed::WorkflowFacts>,
-        StorageError,
-    > {
+    ) -> Result<HashMap<Uuid, crate::storage::indexed::WorkflowFacts>, StorageError> {
         Ok(self.index.get_workflow_facts_many(ids)?)
     }
 
@@ -580,33 +502,26 @@ impl TicketStore {
             )));
         }
 
-        let mut indexed =
-            self.get_indexed(id)?.ok_or(StorageError::NotFound(*id))?;
+        let mut indexed = self.get_indexed(id)?.ok_or(StorageError::NotFound(*id))?;
         let current_manifest = TicketFs::read(&indexed.path)?;
-        let edge_patch_plans =
-            edge_patch_plans(&patch, &current_manifest.extra)?;
+        let edge_patch_plans = edge_patch_plans(&patch, &current_manifest.extra)?;
         strip_file_backed_edge_fields(&mut patch);
 
         // Determine the target state and transition path.
         // Priority: to_state > last element of transition_states > current state (no change)
-        let (new_state, transition_path) = self.resolve_update_target(
-            &indexed,
-            transition_states,
-            to_state,
-            single_hop,
-        )?;
+        let (new_state, transition_path) =
+            self.resolve_update_target(&indexed, transition_states, to_state, single_hop)?;
         let previous_state = indexed.state.clone();
-        let (updated_manifest, previous_description) = self
-            .apply_manifest_update(
-                id,
-                &indexed.path,
-                &patch,
-                &new_state,
-                &transition_path,
-                &indexed.type_id,
-                description,
-                description_mode,
-            )?;
+        let (updated_manifest, previous_description) = self.apply_manifest_update(
+            id,
+            &indexed.path,
+            &patch,
+            &new_state,
+            &transition_path,
+            &indexed.type_id,
+            description,
+            description_mode,
+        )?;
 
         // Route edge-field updates through canonical graph APIs.
         apply_edge_patch_plans(self, *id, edge_patch_plans)?;
@@ -643,11 +558,9 @@ impl TicketStore {
                     .unwrap_or(Value::Null),
             );
         }
-        if let Err(error) = TicketFs::append_history(
-            &indexed.path,
-            history_fields,
-            author.map(str::to_string),
-        ) {
+        if let Err(error) =
+            TicketFs::append_history(&indexed.path, history_fields, author.map(str::to_string))
+        {
             tracing::error!(
                 ticket_id = %id,
                 path = %indexed.path.display(),
@@ -655,7 +568,6 @@ impl TicketStore {
                 "failed to append history revision; manifest write succeeded but undo history is now incomplete"
             );
         }
-
 
         // Emit SSE hook event.
         if let Some(h) = self.hook() {
@@ -670,13 +582,9 @@ impl TicketStore {
         // Reconcile board: mark completed on terminal states.
         self.board_reconcile(id, false);
 
-        let state_progressed = previous_state.as_deref()
-            != new_state.as_deref()
+        let state_progressed = previous_state.as_deref() != new_state.as_deref()
             && self.state_rank_for_type(&indexed.type_id, new_state.as_deref())
-                > self.state_rank_for_type(
-                    &indexed.type_id,
-                    previous_state.as_deref(),
-                );
+                > self.state_rank_for_type(&indexed.type_id, previous_state.as_deref());
         let workflow_progress = previous_state.as_deref() != new_state.as_deref()
             || new_state.as_deref() == Some("planning");
         if workflow_progress {
@@ -704,15 +612,14 @@ impl TicketStore {
                 to,
                 single_hop,
             )?;
-            let final_state =
-                path.last().cloned().unwrap_or_else(|| to.to_string());
+            let final_state = path.last().cloned().unwrap_or_else(|| to.to_string());
             return Ok((Some(final_state), path));
         }
 
         if let Some(transition_states_slice) = transition_states {
             if let Some(final_target) = transition_states_slice.last() {
-                let intermediate_steps = &transition_states_slice
-                    [..transition_states_slice.len() - 1];
+                let intermediate_steps =
+                    &transition_states_slice[..transition_states_slice.len() - 1];
                 let path = self.resolve_transition_path(
                     indexed,
                     intermediate_steps,
@@ -758,9 +665,8 @@ impl TicketStore {
             // AC1/AC2: an omitted description_mode is a hard error, not a
             // silent default — the silent `Replace` default was the direct
             // cause of destructive description overwrites.
-            let mode = description_mode.ok_or_else(|| {
-                StorageError::Other(REQUIRED_DESCRIPTION_MODE_ERROR.to_string())
-            })?;
+            let mode = description_mode
+                .ok_or_else(|| StorageError::Other(REQUIRED_DESCRIPTION_MODE_ERROR.to_string()))?;
             let existing = TicketFs::read_description(ticket_path);
             previous_description = existing.clone();
             let final_text = match mode {
@@ -768,7 +674,7 @@ impl TicketStore {
                 DescriptionUpdateMode::Append => match existing {
                     Some(existing) if !existing.is_empty() => {
                         format!("{existing}\n{desc}")
-                    },
+                    }
                     _ => desc.to_string(),
                 },
             };
@@ -779,15 +685,12 @@ impl TicketStore {
         }
 
         let updated_manifest = if transition_path.is_empty() {
-            let mut manifest =
-                TicketFs::update(ticket_path, patch, new_state.as_deref())?;
+            let mut manifest = TicketFs::update(ticket_path, patch, new_state.as_deref())?;
             let planned_rank = self.state_rank_for_type(type_id, Some("planning"));
             if let Some(final_state) = new_state.as_deref() {
                 if final_state == "ready" {
                     manifest = TicketFs::apply_plan_freeze(ticket_path, true)?;
-                } else if self.state_rank_for_type(type_id, Some(final_state))
-                    < planned_rank
-                {
+                } else if self.state_rank_for_type(type_id, Some(final_state)) < planned_rank {
                     manifest = TicketFs::apply_plan_freeze(ticket_path, false)?;
                 }
             }
@@ -799,8 +702,7 @@ impl TicketStore {
             // missing) and cuts a plan revision; landing on any state ranked
             // below `ready` clears every frozen flag. States ranked at or
             // above `ready` otherwise leave frozen flags untouched.
-            let planned_rank =
-                self.state_rank_for_type(type_id, Some("ready"));
+            let planned_rank = self.state_rank_for_type(type_id, Some("ready"));
             let mut manifest = None;
             for (index, state) in transition_path.iter().enumerate() {
                 let step_patch = if index + 1 == transition_path.len() {
@@ -808,19 +710,12 @@ impl TicketStore {
                 } else {
                     BTreeMap::new()
                 };
-                let mut step_manifest = TicketFs::update(
-                    ticket_path,
-                    &step_patch,
-                    Some(state.as_str()),
-                )?;
+                let mut step_manifest =
+                    TicketFs::update(ticket_path, &step_patch, Some(state.as_str()))?;
                 if state.as_str() == "ready" {
-                    step_manifest =
-                        TicketFs::apply_plan_freeze(ticket_path, true)?;
-                } else if self.state_rank_for_type(type_id, Some(state.as_str()))
-                    < planned_rank
-                {
-                    step_manifest =
-                        TicketFs::apply_plan_freeze(ticket_path, false)?;
+                    step_manifest = TicketFs::apply_plan_freeze(ticket_path, true)?;
+                } else if self.state_rank_for_type(type_id, Some(state.as_str())) < planned_rank {
+                    step_manifest = TicketFs::apply_plan_freeze(ticket_path, false)?;
                 }
                 manifest = Some(step_manifest);
             }
@@ -850,12 +745,11 @@ impl TicketStore {
 
         let body = TicketFs::read_description(&indexed.path);
         let created_at_str = indexed.created_at.to_rfc3339();
-        let effort_str =
-            updated_manifest.extra.get("effort").and_then(|v| match v {
-                serde_json::Value::String(s) => Some(s.clone()),
-                serde_json::Value::Number(n) => Some(n.to_string()),
-                _ => None,
-            });
+        let effort_str = updated_manifest.extra.get("effort").and_then(|v| match v {
+            serde_json::Value::String(s) => Some(s.clone()),
+            serde_json::Value::Number(n) => Some(n.to_string()),
+            _ => None,
+        });
         self.with_search_repair(|| {
             Ok(self.search.upsert(
                 id,
@@ -878,13 +772,9 @@ impl TicketStore {
         target_state: &str,
         single_hop: bool,
     ) -> Result<Vec<String>, StorageError> {
-        let schema =
-            self.schema_registry.get(&indexed.type_id).ok_or_else(|| {
-                StorageError::Other(format!(
-                    "no schema for type '{}'",
-                    indexed.type_id
-                ))
-            })?;
+        let schema = self.schema_registry.get(&indexed.type_id).ok_or_else(|| {
+            StorageError::Other(format!("no schema for type '{}'", indexed.type_id))
+        })?;
         let current_state = indexed.state.as_deref().unwrap_or("planning");
         if current_state == target_state && transition_states.is_empty() {
             return Ok(vec![]);
@@ -930,9 +820,7 @@ impl TicketStore {
                 // a multi-hop path that would skip a required waypoint is
                 // rejected with recovery guidance instead of being walked.
                 Some(mut segment) => {
-                    if segment.last().map(String::as_str)
-                        != Some(checkpoint.as_str())
-                    {
+                    if segment.last().map(String::as_str) != Some(checkpoint.as_str()) {
                         segment.push(checkpoint.clone());
                     }
                     if single_hop && segment.len() > 1 {
@@ -947,23 +835,20 @@ impl TicketStore {
                     }
                     path.extend(segment);
                     from = checkpoint;
-                },
+                }
                 // No path exists at all: the target is unreachable from here.
                 None => {
                     return Err(StorageError::Validation(
-                        schema
-                            .invalid_transition_error(&from, &checkpoint)
-                            .into(),
+                        schema.invalid_transition_error(&from, &checkpoint).into(),
                     ));
-                },
+                }
             }
         }
 
         if !schema.required_states.is_empty()
             && schema.terminal_states.contains(&target_state.to_string())
         {
-            let history =
-                TicketFs::read_history(&indexed.path).unwrap_or_default();
+            let history = TicketFs::read_history(&indexed.path).unwrap_or_default();
             let mut visited: Vec<String> = history
                 .iter()
                 .filter_map(|r| {
@@ -996,11 +881,9 @@ impl TicketStore {
         if target_state == "cancelled" || target_state == "on-hold" {
             return Ok(());
         }
-        let target_rank =
-            self.state_rank_for_type(&indexed.type_id, Some(target_state));
+        let target_rank = self.state_rank_for_type(&indexed.type_id, Some(target_state));
         // Demotions/no-ops can never violate dependency ordering, only advances can.
-        let current_rank =
-            self.state_rank_for_type(&indexed.type_id, indexed.state.as_deref());
+        let current_rank = self.state_rank_for_type(&indexed.type_id, indexed.state.as_deref());
         if target_rank <= current_rank {
             return Ok(());
         }
@@ -1015,16 +898,13 @@ impl TicketStore {
             if matches!(dependency_state, Some("done") | Some("cancelled")) {
                 continue;
             }
-            let dependency_rank =
-                self.state_rank_for_type(&dependency.type_id, dependency_state);
+            let dependency_rank = self.state_rank_for_type(&dependency.type_id, dependency_state);
             if target_rank > dependency_rank {
                 return Err(StorageError::DependencyNotProgressed {
                     ticket: indexed.id,
                     target_state: target_state.to_string(),
                     dependency: edge.to,
-                    dependency_state: dependency_state
-                        .unwrap_or("planning")
-                        .to_string(),
+                    dependency_state: dependency_state.unwrap_or("planning").to_string(),
                 });
             }
         }

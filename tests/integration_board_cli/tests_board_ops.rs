@@ -135,12 +135,7 @@ fn board_configure_round_trip() {
 
     // Patch max_wip.
     let new_max = (default_max_wip + 3) as u32;
-    let patched = s.ticket_json(&[
-        "board",
-        "configure",
-        "--max-wip",
-        &new_max.to_string(),
-    ]);
+    let patched = s.ticket_json(&["board", "configure", "--max-wip", &new_max.to_string()]);
     assert_eq!(patched["status"], "ok");
     assert_eq!(
         patched["config"]["max_wip"].as_u64().unwrap(),
@@ -165,23 +160,11 @@ fn board_clean_preview_and_apply() {
     let ticket_id = create_ticket(&s, "Clean test ticket");
 
     // Check in.
-    let ci = s.ticket_json(&[
-        "board",
-        "check-in",
-        &ticket_id,
-        "--agent",
-        "agent-beta",
-    ]);
+    let ci = s.ticket_json(&["board", "check-in", &ticket_id, "--agent", "agent-beta"]);
     assert_eq!(ci["status"], "ok");
 
     // Check out (marks entry completed).
-    let co = s.ticket_json(&[
-        "board",
-        "check-out",
-        &ticket_id,
-        "--agent",
-        "agent-beta",
-    ]);
+    let co = s.ticket_json(&["board", "check-out", &ticket_id, "--agent", "agent-beta"]);
     assert_eq!(co["status"], "ok");
 
     // Preview — should see 1 completed entry eligible for removal.
@@ -244,13 +227,7 @@ fn board_show_with_agent_refreshes_heartbeat() {
     let s = Sandbox::new();
     let ticket_id = create_ticket(&s, "Heartbeat refresh ticket");
 
-    let ci = s.ticket_json(&[
-        "board",
-        "check-in",
-        &ticket_id,
-        "--agent",
-        "agent-delta",
-    ]);
+    let ci = s.ticket_json(&["board", "check-in", &ticket_id, "--agent", "agent-delta"]);
     assert_eq!(ci["status"], "ok");
 
     // show --agent should succeed and report the caller's active entry.

@@ -1,21 +1,10 @@
-use std::{
-    env,
-    time::Duration,
-};
+use std::{env, time::Duration};
 
 use reqwest::{
     blocking::Client,
-    header::{
-        AUTHORIZATION,
-        CONTENT_TYPE,
-        HeaderMap,
-        HeaderValue,
-    },
+    header::{AUTHORIZATION, CONTENT_TYPE, HeaderMap, HeaderValue},
 };
-use serde::{
-    Deserialize,
-    Serialize,
-};
+use serde::{Deserialize, Serialize};
 use thiserror::Error;
 use url::Url;
 
@@ -23,9 +12,7 @@ const DEFAULT_TIMEOUT_SECS: u64 = 60;
 
 #[derive(Debug, Error)]
 pub enum ProviderError {
-    #[error(
-        "provider.config.missing_api_key: missing environment variable '{env_var}'"
-    )]
+    #[error("provider.config.missing_api_key: missing environment variable '{env_var}'")]
     MissingApiKey { env_var: String },
     #[error("provider.config.invalid_base_url: {0}")]
     InvalidBaseUrl(url::ParseError),
@@ -57,8 +44,7 @@ impl CopilotApiConfig {
             .unwrap_or(DEFAULT_TIMEOUT_SECS);
 
         Ok(Self {
-            base_url: Url::parse(&base_url)
-                .map_err(ProviderError::InvalidBaseUrl)?,
+            base_url: Url::parse(&base_url).map_err(ProviderError::InvalidBaseUrl)?,
             api_key_env: "COPILOT_API_KEY".to_string(),
             endpoint_path,
             timeout: Duration::from_secs(timeout_secs),
@@ -109,11 +95,10 @@ impl CopilotApiClient {
     }
 
     pub fn redacted_api_key_for_logs(&self) -> Result<String, ProviderError> {
-        let value = env::var(&self.config.api_key_env).map_err(|_| {
-            ProviderError::MissingApiKey {
+        let value =
+            env::var(&self.config.api_key_env).map_err(|_| ProviderError::MissingApiKey {
                 env_var: self.config.api_key_env.clone(),
-            }
-        })?;
+            })?;
         Ok(redact_secret(&value))
     }
 }
@@ -124,19 +109,16 @@ impl SubagentProvider for CopilotApiClient {
         request: &StartSubagentRequest,
     ) -> Result<StartSubagentResponse, ProviderError> {
         let endpoint = self.config.resolve_endpoint()?;
-        let api_key = env::var(&self.config.api_key_env).map_err(|_| {
-            ProviderError::MissingApiKey {
+        let api_key =
+            env::var(&self.config.api_key_env).map_err(|_| ProviderError::MissingApiKey {
                 env_var: self.config.api_key_env.clone(),
-            }
-        })?;
+            })?;
 
         let mut headers = HeaderMap::new();
         let auth = format!("Bearer {api_key}");
-        let auth_value = HeaderValue::from_str(&auth)
-            .map_err(|_| ProviderError::InvalidHeader)?;
+        let auth_value = HeaderValue::from_str(&auth).map_err(|_| ProviderError::InvalidHeader)?;
         headers.insert(AUTHORIZATION, auth_value);
-        headers
-            .insert(CONTENT_TYPE, HeaderValue::from_static("application/json"));
+        headers.insert(CONTENT_TYPE, HeaderValue::from_static("application/json"));
 
         let response = self
             .http

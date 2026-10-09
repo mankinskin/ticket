@@ -13,15 +13,7 @@ fn blockers_returns_nested_dependency_tree() {
         (&root, &direct_leaf),
         (&nested_parent, &nested_leaf),
     ] {
-        let linked = s.ticket_json(&[
-            "link",
-            "--from",
-            from,
-            "--to",
-            to,
-            "--kind",
-            "depends_on",
-        ]);
+        let linked = s.ticket_json(&["link", "--from", from, "--to", to, "--kind", "depends_on"]);
         assert_eq!(linked["status"], "ok");
     }
 
@@ -56,12 +48,7 @@ fn unblocked_by_returns_nested_unlock_tree_and_frontier_summary() {
     let still_blocked = create_ticket(&s, "Still blocked dependent");
     let transitive = create_ticket(&s, "Transitive dependent");
 
-    let priority = s.ticket_json(&[
-        "update",
-        &still_blocked,
-        "--field",
-        "priority=critical",
-    ]);
+    let priority = s.ticket_json(&["update", &still_blocked, "--field", "priority=critical"]);
     assert_eq!(priority["status"], "ok");
 
     for (from, to) in [
@@ -70,15 +57,7 @@ fn unblocked_by_returns_nested_unlock_tree_and_frontier_summary() {
         (&still_blocked, &extra_blocker),
         (&transitive, &actionable),
     ] {
-        let linked = s.ticket_json(&[
-            "link",
-            "--from",
-            from,
-            "--to",
-            to,
-            "--kind",
-            "depends_on",
-        ]);
+        let linked = s.ticket_json(&["link", "--from", from, "--to", to, "--kind", "depends_on"]);
         assert_eq!(linked["status"], "ok");
     }
 
@@ -123,15 +102,7 @@ fn blockers_text_output_shows_nested_tree_and_frontier_summary() {
         (&root, &direct_leaf),
         (&nested_parent, &nested_leaf),
     ] {
-        let linked = s.ticket_json(&[
-            "link",
-            "--from",
-            from,
-            "--to",
-            to,
-            "--kind",
-            "depends_on",
-        ]);
+        let linked = s.ticket_json(&["link", "--from", from, "--to", to, "--kind", "depends_on"]);
         assert_eq!(linked["status"], "ok");
     }
 
@@ -149,8 +120,7 @@ fn blockers_text_output_shows_nested_tree_and_frontier_summary() {
         String::from_utf8_lossy(&out.stderr),
     );
 
-    let stdout = String::from_utf8(out.stdout)
-        .expect("blockers stdout should be valid UTF-8");
+    let stdout = String::from_utf8(out.stdout).expect("blockers stdout should be valid UTF-8");
 
     assert!(stdout.contains("blockers ok"));
     assert!(stdout.contains("frontier_count: 2"));
@@ -211,8 +181,7 @@ fn unblocked_by_text_output_shows_nested_tree_and_frontier_summary() {
         String::from_utf8_lossy(&out.stderr),
     );
 
-    let stdout = String::from_utf8(out.stdout)
-        .expect("unblocked-by stdout should be valid UTF-8");
+    let stdout = String::from_utf8(out.stdout).expect("unblocked-by stdout should be valid UTF-8");
 
     assert!(stdout.contains("unblocked_by ok"));
     assert!(stdout.contains("reachable_dependents: 2"));
@@ -263,8 +232,7 @@ fn blockers_reports_empty_leaf_cleanly_in_json_and_text() {
         String::from_utf8_lossy(&out.stderr),
     );
 
-    let stdout = String::from_utf8(out.stdout)
-        .expect("blockers leaf stdout should be valid UTF-8");
+    let stdout = String::from_utf8(out.stdout).expect("blockers leaf stdout should be valid UTF-8");
 
     assert!(stdout.contains("blockers ok"));
     assert!(stdout.contains("frontier_count: 1"));
@@ -309,8 +277,8 @@ fn unblocked_by_reports_empty_leaf_cleanly_in_json_and_text() {
         String::from_utf8_lossy(&out.stderr),
     );
 
-    let stdout = String::from_utf8(out.stdout)
-        .expect("unblocked-by leaf stdout should be valid UTF-8");
+    let stdout =
+        String::from_utf8(out.stdout).expect("unblocked-by leaf stdout should be valid UTF-8");
 
     assert!(stdout.contains("unblocked_by ok"));
     assert!(stdout.contains("reachable_dependents: 0"));

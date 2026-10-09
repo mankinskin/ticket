@@ -3,10 +3,7 @@
 //! Kept separate from the HTTP client so components can import types without
 //! pulling in the transport layer.
 
-use serde::{
-    Deserialize,
-    Serialize,
-};
+use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, Default)]
 pub struct TicketRef {
@@ -17,10 +14,7 @@ pub struct TicketRef {
 }
 
 impl TicketRef {
-    pub fn new(
-        workspace: impl Into<String>,
-        id: impl Into<String>,
-    ) -> Self {
+    pub fn new(workspace: impl Into<String>, id: impl Into<String>) -> Self {
         Self {
             workspace: workspace.into(),
             id: id.into(),
@@ -59,10 +53,7 @@ pub struct WorkspacesResponse {
 }
 
 impl WorkspacesResponse {
-    pub fn label_for_name(
-        &self,
-        workspace_name: &str,
-    ) -> Option<String> {
+    pub fn label_for_name(&self, workspace_name: &str) -> Option<String> {
         self.workspaces
             .iter()
             .find(|workspace| workspace.name == workspace_name)
@@ -89,13 +80,8 @@ pub struct TicketSummary {
 }
 
 impl TicketSummary {
-    pub fn resolved_ticket_ref(
-        &self,
-        active_workspace: &str,
-    ) -> TicketRef {
-        if !self.ticket_ref.workspace.is_empty()
-            && !self.ticket_ref.id.is_empty()
-        {
+    pub fn resolved_ticket_ref(&self, active_workspace: &str) -> TicketRef {
+        if !self.ticket_ref.workspace.is_empty() && !self.ticket_ref.id.is_empty() {
             return self.ticket_ref.clone();
         }
 
@@ -123,13 +109,8 @@ pub struct TicketDetail {
 }
 
 impl TicketDetail {
-    pub fn resolved_ticket_ref(
-        &self,
-        active_workspace: &str,
-    ) -> TicketRef {
-        if !self.ticket_ref.workspace.is_empty()
-            && !self.ticket_ref.id.is_empty()
-        {
+    pub fn resolved_ticket_ref(&self, active_workspace: &str) -> TicketRef {
+        if !self.ticket_ref.workspace.is_empty() && !self.ticket_ref.id.is_empty() {
             return self.ticket_ref.clone();
         }
 
@@ -290,13 +271,8 @@ pub struct GraphNodeItem {
 }
 
 impl GraphNodeItem {
-    pub fn resolved_ticket_ref(
-        &self,
-        active_workspace: &str,
-    ) -> TicketRef {
-        if !self.ticket_ref.workspace.is_empty()
-            && !self.ticket_ref.id.is_empty()
-        {
+    pub fn resolved_ticket_ref(&self, active_workspace: &str) -> TicketRef {
+        if !self.ticket_ref.workspace.is_empty() && !self.ticket_ref.id.is_empty() {
             return self.ticket_ref.clone();
         }
 
@@ -316,10 +292,7 @@ pub struct GraphEdgeItem {
 }
 
 impl GraphEdgeItem {
-    pub fn resolved_from_ref(
-        &self,
-        active_workspace: &str,
-    ) -> TicketRef {
+    pub fn resolved_from_ref(&self, active_workspace: &str) -> TicketRef {
         if !self.from_ref.workspace.is_empty() && !self.from_ref.id.is_empty() {
             return self.from_ref.clone();
         }
@@ -327,10 +300,7 @@ impl GraphEdgeItem {
         TicketRef::new(active_workspace, self.from.clone())
     }
 
-    pub fn resolved_to_ref(
-        &self,
-        active_workspace: &str,
-    ) -> TicketRef {
+    pub fn resolved_to_ref(&self, active_workspace: &str) -> TicketRef {
         if !self.to_ref.workspace.is_empty() && !self.to_ref.id.is_empty() {
             return self.to_ref.clone();
         }
@@ -397,13 +367,8 @@ pub struct WorkflowCandidateItem {
 
 impl WorkflowCandidateItem {
     #[allow(dead_code)]
-    pub fn resolved_ticket_ref(
-        &self,
-        active_workspace: &str,
-    ) -> TicketRef {
-        if !self.ticket_ref.workspace.is_empty()
-            && !self.ticket_ref.id.is_empty()
-        {
+    pub fn resolved_ticket_ref(&self, active_workspace: &str) -> TicketRef {
+        if !self.ticket_ref.workspace.is_empty() && !self.ticket_ref.id.is_empty() {
             return self.ticket_ref.clone();
         }
 
@@ -441,13 +406,8 @@ pub struct WorkflowTreeItem {
 
 impl WorkflowTreeItem {
     #[allow(dead_code)]
-    pub fn resolved_ticket_ref(
-        &self,
-        active_workspace: &str,
-    ) -> TicketRef {
-        if !self.ticket_ref.workspace.is_empty()
-            && !self.ticket_ref.id.is_empty()
-        {
+    pub fn resolved_ticket_ref(&self, active_workspace: &str) -> TicketRef {
+        if !self.ticket_ref.workspace.is_empty() && !self.ticket_ref.id.is_empty() {
             return self.ticket_ref.clone();
         }
 
@@ -624,10 +584,7 @@ pub enum BatchCommand {
         state: Option<String>,
         #[serde(skip_serializing_if = "Option::is_none")]
         from_state: Option<String>,
-        #[serde(
-            default,
-            skip_serializing_if = "std::collections::BTreeMap::is_empty"
-        )]
+        #[serde(default, skip_serializing_if = "std::collections::BTreeMap::is_empty")]
         fields: std::collections::BTreeMap<String, serde_json::Value>,
     },
     Close {

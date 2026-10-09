@@ -37,11 +37,7 @@ fn open_prunes_persisted_sibling_worktree_scan_root() {
 
 #[test]
 fn scan_skips_policy_ignored_scan_roots() {
-    use memory_kernel::model::filesystem::{
-        PolicyDecision,
-        ScanRootMetadata,
-        ScanRootSource,
-    };
+    use memory_kernel::model::filesystem::{PolicyDecision, ScanRootMetadata, ScanRootSource};
 
     // A separate fixture store whose tickets must not leak into the main store.
     let fixture_dir = tempdir().unwrap();
@@ -87,11 +83,7 @@ fn scan_skips_policy_ignored_scan_roots() {
 
 #[test]
 fn query_guard_excludes_tickets_under_ignored_roots() {
-    use memory_kernel::model::filesystem::{
-        PolicyDecision,
-        ScanRootMetadata,
-        ScanRootSource,
-    };
+    use memory_kernel::model::filesystem::{PolicyDecision, ScanRootMetadata, ScanRootSource};
 
     // Fixture store whose ticket rows will be indexed while the root is
     // `included`, then must disappear from query surfaces once the root is
@@ -183,11 +175,7 @@ fn query_guard_excludes_tickets_under_ignored_roots() {
 #[test]
 fn add_edge_rejects_targets_under_policy_ignored_roots() {
     use crate::error::StorageError;
-    use memory_kernel::model::filesystem::{
-        PolicyDecision,
-        ScanRootMetadata,
-        ScanRootSource,
-    };
+    use memory_kernel::model::filesystem::{PolicyDecision, ScanRootMetadata, ScanRootSource};
 
     let fixture_dir = tempdir().unwrap();
     let fixture = TicketStore::init(fixture_dir.path()).unwrap();
@@ -282,10 +270,7 @@ fn add_edge_rejects_targets_under_policy_ignored_roots() {
 // ---------------------------------------------------------------------------
 
 /// Initialize a store at `index_root` and create one ticket in it.
-fn init_store_with_ticket(
-    index_root: &Path,
-    title: &str,
-) -> (TicketStore, Uuid) {
+fn init_store_with_ticket(index_root: &Path, title: &str) -> (TicketStore, Uuid) {
     let store = TicketStore::init(index_root).unwrap();
     let id = store
         .create(
@@ -301,10 +286,7 @@ fn init_store_with_ticket(
     (store, id)
 }
 
-fn write_policy(
-    workspace_root: &Path,
-    contents: &str,
-) {
+fn write_policy(workspace_root: &Path, contents: &str) {
     let ticket_dir = workspace_root.join(".workflow-tools").join("ticket");
     fs::create_dir_all(&ticket_dir).unwrap();
     fs::write(ticket_dir.join("workspace-policy.toml"), contents).unwrap();
@@ -317,8 +299,7 @@ fn policy_e2e_child_included_by_default() {
     let dir = tempdir().unwrap();
     let repo = dir.path();
     let (main, _root) = init_store_with_ticket(repo, "Root");
-    let (child, child_id) =
-        init_store_with_ticket(&repo.join("child"), "Child");
+    let (child, child_id) = init_store_with_ticket(&repo.join("child"), "Child");
     drop(child);
 
     let report = main.reapply_workspace_policy(repo).unwrap();
@@ -342,8 +323,7 @@ fn policy_e2e_child_ignored_via_marker() {
     let dir = tempdir().unwrap();
     let repo = dir.path();
     let (main, _root) = init_store_with_ticket(repo, "Root");
-    let (child, child_id) =
-        init_store_with_ticket(&repo.join("child"), "Child");
+    let (child, child_id) = init_store_with_ticket(&repo.join("child"), "Child");
     drop(child);
 
     // Default policy present (ignore_markers includes `.ticket-ignore`).
@@ -370,10 +350,7 @@ fn policy_e2e_child_ignored_via_glob() {
     let dir = tempdir().unwrap();
     let repo = dir.path();
     let (main, _root) = init_store_with_ticket(repo, "Root");
-    let (fixture, fixture_id) = init_store_with_ticket(
-        &repo.join("fixtures"),
-        "Fixture",
-    );
+    let (fixture, fixture_id) = init_store_with_ticket(&repo.join("fixtures"), "Fixture");
     drop(fixture);
 
     write_policy(repo, "ignore_workspaces = [\"fixtures*\"]\n");
@@ -398,10 +375,7 @@ fn policy_e2e_include_override_wins() {
     let dir = tempdir().unwrap();
     let repo = dir.path();
     let (main, _root) = init_store_with_ticket(repo, "Root");
-    let (fixture, fixture_id) = init_store_with_ticket(
-        &repo.join("fixtures"),
-        "Fixture",
-    );
+    let (fixture, fixture_id) = init_store_with_ticket(&repo.join("fixtures"), "Fixture");
     drop(fixture);
 
     // Matches both the ignore glob and an include override -> override wins.
@@ -430,12 +404,10 @@ fn policy_e2e_external_path_denied() {
     // be indexed or queryable when external paths are denied.
     let dir = tempdir().unwrap();
     let repo = dir.path();
-    let (ancestor, ancestor_id) =
-        init_store_with_ticket(repo, "Ancestor");
+    let (ancestor, ancestor_id) = init_store_with_ticket(repo, "Ancestor");
     drop(ancestor);
     let child_root = repo.join("child");
-    let (main, _child_ticket) =
-        init_store_with_ticket(&child_root, "Child");
+    let (main, _child_ticket) = init_store_with_ticket(&child_root, "Child");
 
     // Request ancestors but deny external paths -> ancestor suppressed.
     write_policy(

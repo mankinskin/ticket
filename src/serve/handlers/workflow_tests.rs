@@ -1,45 +1,22 @@
 use super::*;
 
-use std::{
-    collections::BTreeMap,
-    sync::Arc,
-};
+use std::{collections::BTreeMap, sync::Arc};
 
 use axum::{
-    body::{
-        Body,
-        to_bytes,
-    },
-    http::{
-        Request,
-        StatusCode,
-    },
+    body::{Body, to_bytes},
+    http::{Request, StatusCode},
 };
-use serde_json::{
-    Value,
-    json,
-};
+use serde_json::{Value, json};
 use ticket_api::{
-    model::{
-        edge::EdgeRecord,
-        filesystem::ScanRoot,
-    },
+    model::{edge::EdgeRecord, filesystem::ScanRoot},
     storage::store::TicketStore,
 };
 use tower::ServiceExt;
 
-use crate::serve::{
-    AppState,
-    StreamBroker,
-    WorkspaceRegistry,
-    routes::build_router,
-};
+use crate::serve::{AppState, StreamBroker, WorkspaceRegistry, routes::build_router};
 
 fn workspace_name(dir: &std::path::Path) -> String {
-    crate::serve::registry::canonical_workspace_name_for_index_root(
-        dir,
-        "workspace",
-    )
+    crate::serve::registry::canonical_workspace_name_for_index_root(dir, "workspace")
 }
 
 fn make_store(dir: &std::path::Path) -> Arc<TicketStore> {
@@ -61,10 +38,7 @@ fn make_router(store: Arc<TicketStore>) -> axum::Router {
     build_router(state)
 }
 
-async fn get_json(
-    app: axum::Router,
-    uri: String,
-) -> Value {
+async fn get_json(app: axum::Router, uri: String) -> Value {
     let response = app
         .oneshot(Request::builder().uri(uri).body(Body::empty()).unwrap())
         .await
@@ -75,15 +49,13 @@ async fn get_json(
 }
 
 #[tokio::test]
-async fn workflow_next_preserves_recent_actionable_order_and_supports_root_scope()
- {
+async fn workflow_next_preserves_recent_actionable_order_and_supports_root_scope() {
     let dir = tempfile::tempdir().unwrap();
     let workspace = workspace_name(dir.path());
     let store = make_store(dir.path());
     let app = make_router(Arc::clone(&store));
 
-    let high_fields =
-        BTreeMap::from([(String::from("priority"), json!("high"))]);
+    let high_fields = BTreeMap::from([(String::from("priority"), json!("high"))]);
     let recently_actionable = store
         .create(
             None,
@@ -242,8 +214,7 @@ async fn workflow_next_preserves_recent_actionable_order_and_supports_root_scope
 }
 
 #[tokio::test]
-async fn workflow_next_filters_board_active_candidates_into_excluded_by_board()
-{
+async fn workflow_next_filters_board_active_candidates_into_excluded_by_board() {
     let dir = tempfile::tempdir().unwrap();
     let workspace = workspace_name(dir.path());
     let store = make_store(dir.path());
@@ -292,9 +263,7 @@ async fn workflow_next_filters_board_active_candidates_into_excluded_by_board()
         )
         .unwrap();
 
-    let next =
-        get_json(app, format!("/api/workflow/next?workspace={workspace}"))
-            .await;
+    let next = get_json(app, format!("/api/workflow/next?workspace={workspace}")).await;
     let items = next["items"].as_array().unwrap();
     let excluded = next["excluded_by_board"].as_array().unwrap();
     let warnings = next["warnings"].as_array().unwrap();
@@ -308,10 +277,9 @@ async fn workflow_next_filters_board_active_candidates_into_excluded_by_board()
         "active board ticket must be surfaced in excluded_by_board: {excluded:?}"
     );
     assert!(
-        warnings.iter().any(|warning| warning
-            .as_str()
-            .unwrap_or("")
-            .contains("WIP limit reached")),
+        warnings
+            .iter()
+            .any(|warning| warning.as_str().unwrap_or("").contains("WIP limit reached")),
         "expected WIP warning, got {warnings:?}"
     );
 }

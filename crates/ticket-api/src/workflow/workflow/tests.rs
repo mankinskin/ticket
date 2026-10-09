@@ -1,27 +1,11 @@
+use std::{collections::BTreeMap, path::PathBuf};
 
-use std::{
-    collections::BTreeMap,
-    path::PathBuf,
-};
-
-use chrono::{
-    TimeZone,
-    Utc,
-};
+use chrono::{TimeZone, Utc};
 
 use super::*;
-use crate::{
-    BoardConfig,
-    BoardEntry,
-    BoardEntryStatus,
-    BoardSnapshot,
-};
+use crate::{BoardConfig, BoardEntry, BoardEntryStatus, BoardSnapshot};
 
-fn ticket(
-    title: &str,
-    state: &str,
-    created_at: chrono::DateTime<Utc>,
-) -> IndexedTicket {
+fn ticket(title: &str, state: &str, created_at: chrono::DateTime<Utc>) -> IndexedTicket {
     IndexedTicket {
         id: Uuid::new_v4(),
         path: PathBuf::from(title),
@@ -38,13 +22,7 @@ fn build_model(
     edges: Vec<EdgeRecord>,
     priorities: HashMap<Uuid, String>,
 ) -> WorkflowModel {
-    build_model_with_facts(
-        tickets,
-        edges,
-        priorities,
-        HashMap::new(),
-        HashMap::new(),
-    )
+    build_model_with_facts(tickets, edges, priorities, HashMap::new(), HashMap::new())
 }
 
 fn build_model_with_facts(
@@ -98,8 +76,7 @@ fn sort_candidates_prefers_newer_tickets_before_older_ones_without_pressure() {
 }
 
 #[test]
-fn sort_candidates_prefers_more_dependees_before_newer_tickets_without_pressure()
- {
+fn sort_candidates_prefers_more_dependees_before_newer_tickets_without_pressure() {
     let older = ticket(
         "Older blocker",
         "planning",
@@ -166,10 +143,8 @@ fn sort_candidates_prefers_more_recent_actionable_time_before_creation_time() {
         "planning",
         Utc.with_ymd_and_hms(2026, 5, 18, 12, 0, 0).unwrap(),
     );
-    let recent_actionable_at =
-        Utc.with_ymd_and_hms(2026, 5, 19, 12, 0, 0).unwrap();
-    let stale_actionable_at =
-        Utc.with_ymd_and_hms(2026, 5, 17, 12, 0, 0).unwrap();
+    let recent_actionable_at = Utc.with_ymd_and_hms(2026, 5, 19, 12, 0, 0).unwrap();
+    let stale_actionable_at = Utc.with_ymd_and_hms(2026, 5, 17, 12, 0, 0).unwrap();
     let mut candidates = vec![newer_created.id, older_created.id];
     let model = build_model_with_facts(
         vec![older_created.clone(), newer_created.clone()],
@@ -551,8 +526,7 @@ fn apply_board_filter_respects_skip_board_but_keeps_warnings() {
         warnings: Vec::new(),
     };
 
-    let result =
-        apply_board_filter(vec![tracked_candidate], Some(&snapshot), true);
+    let result = apply_board_filter(vec![tracked_candidate], Some(&snapshot), true);
 
     assert_eq!(result.candidates, vec![tracked_candidate]);
     assert!(result.excluded_by_board.is_empty());
@@ -586,10 +560,7 @@ fn sort_candidates_prefers_lower_effort_before_newer_tickets() {
             (lower_effort.id, "high".to_string()),
             (higher_effort.id, "high".to_string()),
         ]),
-        HashMap::from([
-            (lower_effort.id, 1_200_u64),
-            (higher_effort.id, 8_000_u64),
-        ]),
+        HashMap::from([(lower_effort.id, 1_200_u64), (higher_effort.id, 8_000_u64)]),
         HashMap::new(),
     );
 

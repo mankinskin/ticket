@@ -2,22 +2,13 @@ use serde_json::Value;
 use ticket_api::model::edge::EdgeRecord;
 use uuid::Uuid;
 
-use super::{
-    types::*,
-    *,
-};
+use super::{types::*, *};
 
 #[path = "mutations/helpers.rs"]
 mod mutations_helpers;
 use mutations_helpers::{
-    detail_from_manifest,
-    indexed_ticket_path,
-    move_outcome_json,
-    move_plan_json,
-    move_recovery_json,
-    normalize_workspace_root,
-    parse_field_patch,
-    resolve_edge_for_remove,
+    detail_from_manifest, indexed_ticket_path, move_outcome_json, move_plan_json,
+    move_recovery_json, normalize_workspace_root, parse_field_patch, resolve_edge_for_remove,
 };
 
 impl TicketServer {
@@ -93,8 +84,7 @@ impl TicketServer {
             );
         }
         if description_updated {
-            response
-                .insert("description_updated".to_string(), Value::Bool(true));
+            response.insert("description_updated".to_string(), Value::Bool(true));
         }
 
         Self::json_result(&Value::Object(response))
@@ -156,12 +146,10 @@ impl TicketServer {
     ) -> Result<CallToolResult, McpError> {
         let extra = parse_field_patch(Some(input.fields.clone()), None)?;
         let workspace =
-            ticket_api::workspace::normalize_explicit_workspace_selector(Some(
-                &input.workspace,
-            ))
-            .map_err(|err| McpError::invalid_params(err.to_string(), None))?
-            .to_string_lossy()
-            .into_owned();
+            ticket_api::workspace::normalize_explicit_workspace_selector(Some(&input.workspace))
+                .map_err(|err| McpError::invalid_params(err.to_string(), None))?
+                .to_string_lossy()
+                .into_owned();
         let type_id = input.type_id;
         let title = input.title;
         let state = input.state;
@@ -256,8 +244,7 @@ impl TicketServer {
         let kind = input.kind;
 
         self.with_store_ext(&workspace.clone(), move |store| {
-            let edge =
-                resolve_edge_for_remove(&from_str, &to_str, &kind, store)?;
+            let edge = resolve_edge_for_remove(&from_str, &to_str, &kind, store)?;
             store.remove_edge(edge.clone()).map_err(Self::store_err)?;
             Self::json_result(&serde_json::json!({
                 "workspace": workspace,
@@ -288,10 +275,7 @@ impl TicketServer {
                 None
             } else {
                 let raw = root_str.as_deref().ok_or_else(|| {
-                    McpError::invalid_params(
-                        "root is required when all=false".to_string(),
-                        None,
-                    )
+                    McpError::invalid_params("root is required when all=false".to_string(), None)
                 })?;
                 Some(Self::resolve_uuid_with(store, raw)?)
             };
@@ -358,8 +342,7 @@ impl TicketServer {
         let tool_request_id = Uuid::new_v4();
         let workspace = input.workspace;
         let id_str = input.id;
-        let target_workspace =
-            normalize_workspace_root(&input.to_workspace_root)?;
+        let target_workspace = normalize_workspace_root(&input.to_workspace_root)?;
         let span = tracing::info_span!(
             target: "ticket_mcp::transport",
             "ticket_mcp_move_preflight",
@@ -406,8 +389,7 @@ impl TicketServer {
         let tool_request_id = Uuid::new_v4();
         let workspace = input.workspace;
         let id_str = input.id;
-        let target_workspace =
-            normalize_workspace_root(&input.to_workspace_root)?;
+        let target_workspace = normalize_workspace_root(&input.to_workspace_root)?;
         let span = tracing::info_span!(
             target: "ticket_mcp::transport",
             "ticket_mcp_move_apply",
@@ -587,14 +569,11 @@ impl TicketServer {
         let (previous_rev, new_rev, updated, path) = self
             .with_store_ext(&workspace.clone(), move |store| {
                 let id = Self::resolve_uuid_with(store, &id_str)?;
-                let revisions =
-                    store.get_history(&id).map_err(Self::store_err)?;
+                let revisions = store.get_history(&id).map_err(Self::store_err)?;
                 if revisions.len() < 2 {
-                    return Err(Self::store_err(
-                        ticket_api::error::StorageError::Database(
-                            "cannot undo: not enough history revisions".into(),
-                        ),
-                    ));
+                    return Err(Self::store_err(ticket_api::error::StorageError::Database(
+                        "cannot undo: not enough history revisions".into(),
+                    )));
                 }
                 let previous = &revisions[revisions.len() - 2];
                 let mut revert_fields = previous.fields.clone();
@@ -603,8 +582,7 @@ impl TicketServer {
                     .get(ticket_api::storage::DESCRIPTION_HISTORY_KEY)
                 {
                     revert_fields.insert(
-                        ticket_api::storage::DESCRIPTION_HISTORY_KEY
-                            .to_string(),
+                        ticket_api::storage::DESCRIPTION_HISTORY_KEY.to_string(),
                         desc_val.clone(),
                     );
                 }

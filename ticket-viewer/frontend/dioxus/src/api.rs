@@ -4,10 +4,7 @@
 //! `ticket-http`. The HTTP implementation calls those endpoints using the
 //! browser Fetch API via `gloo-net`.
 
-use percent_encoding::{
-    utf8_percent_encode,
-    NON_ALPHANUMERIC,
-};
+use percent_encoding::{utf8_percent_encode, NON_ALPHANUMERIC};
 use serde::Deserialize;
 
 mod backend;
@@ -65,12 +62,8 @@ impl HttpTicketBackend {
         }
     }
 
-    async fn fetch<T: for<'de> Deserialize<'de>>(
-        &self,
-        url: &str,
-    ) -> Result<T, String> {
-        let mut req = gloo_net::http::Request::get(url)
-            .header("Accept", "application/json");
+    async fn fetch<T: for<'de> Deserialize<'de>>(&self, url: &str) -> Result<T, String> {
+        let mut req = gloo_net::http::Request::get(url).header("Accept", "application/json");
         if let Some(ref t) = self.token {
             req = req.header("Authorization", &format!("Bearer {t}"));
         }
@@ -180,11 +173,7 @@ impl TicketBackend for HttpTicketBackend {
         self.fetch(&url).await
     }
 
-    async fn get_ticket(
-        &self,
-        workspace: &str,
-        id: &str,
-    ) -> Result<TicketDetailResponse, String> {
+    async fn get_ticket(&self, workspace: &str, id: &str) -> Result<TicketDetailResponse, String> {
         self.fetch(&format!("/api/tickets/{id}?workspace={}", enc(workspace)))
             .await
     }
@@ -228,10 +217,7 @@ impl TicketBackend for HttpTicketBackend {
         .await
     }
 
-    async fn get_workspace_graph(
-        &self,
-        workspace: &str,
-    ) -> Result<GraphSubgraphResponse, String> {
+    async fn get_workspace_graph(&self, workspace: &str) -> Result<GraphSubgraphResponse, String> {
         self.fetch(&format!(
             "/api/graph/workspace?workspace={}",
             enc(workspace),
@@ -239,10 +225,7 @@ impl TicketBackend for HttpTicketBackend {
         .await
     }
 
-    async fn get_workflow_next(
-        &self,
-        workspace: &str,
-    ) -> Result<WorkflowNextResponse, String> {
+    async fn get_workflow_next(&self, workspace: &str) -> Result<WorkflowNextResponse, String> {
         self.fetch(&format!(
             "/api/workflow/next?workspace={}&limit=50",
             enc(workspace)
@@ -287,22 +270,14 @@ impl TicketBackend for HttpTicketBackend {
         self.send_json("PATCH", &url, &body).await
     }
 
-    async fn list_schemas(
-        &self,
-        workspace: &str,
-    ) -> Result<SchemaListResponse, String> {
+    async fn list_schemas(&self, workspace: &str) -> Result<SchemaListResponse, String> {
         self.fetch(&format!("/api/schema?workspace={}", enc(workspace)))
             .await
     }
 
-    async fn create_edge(
-        &self,
-        workspace: &str,
-        body: &EdgeMutationBody,
-    ) -> Result<(), String> {
+    async fn create_edge(&self, workspace: &str, body: &EdgeMutationBody) -> Result<(), String> {
         let url = format!("/api/edges?workspace={}", enc(workspace));
-        let json_body =
-            serde_json::to_string(body).map_err(|e| e.to_string())?;
+        let json_body = serde_json::to_string(body).map_err(|e| e.to_string())?;
         let mut req = gloo_net::http::Request::post(&url)
             .header("Accept", "application/json")
             .header("Content-Type", "application/json");
@@ -316,7 +291,9 @@ impl TicketBackend for HttpTicketBackend {
             .await
             .map_err(|e| e.to_string())?;
         if resp.status() == 422 {
-            return Err("cycle_detected: Adding this edge would create a dependency cycle".to_string());
+            return Err(
+                "cycle_detected: Adding this edge would create a dependency cycle".to_string(),
+            );
         }
         if !resp.ok() {
             let status = resp.status();
@@ -326,14 +303,9 @@ impl TicketBackend for HttpTicketBackend {
         Ok(())
     }
 
-    async fn delete_edge(
-        &self,
-        workspace: &str,
-        body: &EdgeMutationBody,
-    ) -> Result<(), String> {
+    async fn delete_edge(&self, workspace: &str, body: &EdgeMutationBody) -> Result<(), String> {
         let url = format!("/api/edges?workspace={}", enc(workspace));
-        let json_body =
-            serde_json::to_string(body).map_err(|e| e.to_string())?;
+        let json_body = serde_json::to_string(body).map_err(|e| e.to_string())?;
         let mut req = gloo_net::http::Request::delete(&url)
             .header("Accept", "application/json")
             .header("Content-Type", "application/json");
@@ -360,8 +332,7 @@ impl TicketBackend for HttpTicketBackend {
         body: &CreateTicketRequest,
     ) -> Result<CreateTicketResponse, String> {
         let url = format!("/api/tickets?workspace={}", enc(workspace));
-        let json_body =
-            serde_json::to_string(body).map_err(|e| e.to_string())?;
+        let json_body = serde_json::to_string(body).map_err(|e| e.to_string())?;
         self.send_json("POST", &url, &json_body).await
     }
 
@@ -396,21 +367,14 @@ impl TicketBackend for HttpTicketBackend {
         id: &str,
         revision: u64,
     ) -> Result<TicketDetailResponse, String> {
-        let url =
-            format!("/api/tickets/{id}/revert?workspace={}", enc(workspace));
+        let url = format!("/api/tickets/{id}/revert?workspace={}", enc(workspace));
         let body = serde_json::json!({ "revision": revision }).to_string();
         self.send_json("POST", &url, &body).await
     }
 
-    async fn undo_ticket(
-        &self,
-        workspace: &str,
-        id: &str,
-    ) -> Result<TicketDetailResponse, String> {
-        let url =
-            format!("/api/tickets/{id}/undo?workspace={}", enc(workspace));
-        let mut req = gloo_net::http::Request::post(&url)
-            .header("Accept", "application/json");
+    async fn undo_ticket(&self, workspace: &str, id: &str) -> Result<TicketDetailResponse, String> {
+        let url = format!("/api/tickets/{id}/undo?workspace={}", enc(workspace));
+        let mut req = gloo_net::http::Request::post(&url).header("Accept", "application/json");
         if let Some(ref t) = self.token {
             req = req.header("Authorization", &format!("Bearer {t}"));
         }
@@ -440,8 +404,7 @@ impl TicketBackend for HttpTicketBackend {
             "description": text,
             "description_mode": "replace",
         });
-        let body_str =
-            serde_json::to_string(&body).map_err(|e| e.to_string())?;
+        let body_str = serde_json::to_string(&body).map_err(|e| e.to_string())?;
         self.send_json::<serde_json::Value>("PATCH", &url, &body_str)
             .await
             .map(|_| ())
@@ -477,8 +440,7 @@ impl TicketBackend for HttpTicketBackend {
         &self,
         body: &crate::types::BatchRequest,
     ) -> Result<crate::types::BatchResponse, String> {
-        let body_str =
-            serde_json::to_string(body).map_err(|e| e.to_string())?;
+        let body_str = serde_json::to_string(body).map_err(|e| e.to_string())?;
         self.send_json("POST", "/api/batch", &body_str).await
     }
 }

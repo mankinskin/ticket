@@ -31,13 +31,10 @@ fn ticket_5a3d152c_misspelled_core_kind_rejected_through_store_write_part() {
         .unwrap_err();
 
     match err {
-        StorageError::Validation(SchemaValidationError::InvalidCoreKind {
-            kind,
-            valid_kinds,
-        }) => {
+        StorageError::Validation(SchemaValidationError::InvalidCoreKind { kind, valid_kinds }) => {
             assert_eq!(kind, "objectve");
             assert!(valid_kinds.contains(&"objective".to_string()));
-        },
+        }
         other => panic!("expected InvalidCoreKind, got {other:?}"),
     }
 
@@ -77,5 +74,10 @@ fn ticket_5a3d152c_valid_core_kind_still_writes_through_store_write_part() {
         .write_part(&id, part_id, "review", "looks good", None)
         .unwrap();
 
-    assert!(manifest.parts().iter().any(|p| p.id == part_id && p.kind == "review"));
+    assert!(
+        manifest
+            .parts()
+            .iter()
+            .any(|p| p.id == part_id && p.kind == "review")
+    );
 }

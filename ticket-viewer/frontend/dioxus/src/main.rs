@@ -12,12 +12,7 @@ mod store;
 mod types;
 
 use dioxus::prelude::*;
-use viewer_api_dioxus::{
-    Prefetcher,
-    ThemeProvider,
-    ViewerShell,
-    WgpuOverlay,
-};
+use viewer_api_dioxus::{Prefetcher, ThemeProvider, ViewerShell, WgpuOverlay};
 
 use crate::layout::GraphLayout;
 use routes::Route;
@@ -54,8 +49,7 @@ fn App() -> Element {
     // entire app.  Graph3D consults it before falling back to the network,
     // eliminating the "Loading graph…" flash when revisiting a ticket.
     #[cfg_attr(not(target_arch = "wasm32"), allow(unused_variables))]
-    let cache =
-        use_context_provider::<GraphCache>(|| Prefetcher::with_capacity(20));
+    let cache = use_context_provider::<GraphCache>(|| Prefetcher::with_capacity(20));
 
     // Provide the centralised fetch service.  All subgraph HTTP requests go
     // through this service; Graph3D only reads the cache, never fetches.

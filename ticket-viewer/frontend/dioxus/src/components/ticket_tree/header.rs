@@ -1,15 +1,9 @@
 use dioxus::prelude::*;
 use viewer_api_dioxus::FilterToggleButton;
 
-use crate::types::{
-    TicketRef,
-    TicketSummary,
-};
+use crate::types::{TicketRef, TicketSummary};
 
-use super::{
-    TicketTreeProps,
-    STATE_CHIPS,
-};
+use super::{TicketTreeProps, STATE_CHIPS};
 
 pub(super) fn render_filter_controls(
     props: TicketTreeProps,
@@ -98,13 +92,9 @@ pub(super) fn active_ticket_id(
 ) -> Option<String> {
     let focused = focused_ticket_id.read().clone();
     focused
-        .filter(|id| {
-            displayed_ticket_ids.iter().any(|candidate| candidate == id)
-        })
+        .filter(|id| displayed_ticket_ids.iter().any(|candidate| candidate == id))
         .or_else(|| {
-            selected_id.filter(|id| {
-                displayed_ticket_ids.iter().any(|candidate| candidate == id)
-            })
+            selected_id.filter(|id| displayed_ticket_ids.iter().any(|candidate| candidate == id))
         })
         .or_else(|| displayed_ticket_ids.first().cloned())
 }
@@ -120,8 +110,7 @@ pub(super) fn move_ticket_focus(
         return;
     }
 
-    let current_id =
-        active_ticket_id(displayed_ticket_ids, focused_ticket_id, selected_id);
+    let current_id = active_ticket_id(displayed_ticket_ids, focused_ticket_id, selected_id);
     let current_index = current_id
         .as_ref()
         .and_then(|id| {

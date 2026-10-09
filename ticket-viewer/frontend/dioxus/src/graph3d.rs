@@ -16,31 +16,18 @@
 //! http://localhost:3002/workspace/default?log=ticket_viewer=debug
 //! ```
 
-use std::collections::{
-    HashMap,
-    HashSet,
-};
+use std::collections::{HashMap, HashSet};
 
 use dioxus::prelude::*;
 
 use viewer_api_dioxus::{
-    can_use_webgpu_graph3d,
-    Camera,
-    CameraCommand,
-    EdgeRef3D,
-    Layout3D,
-    Node3D,
-    NodeCardProfile,
+    can_use_webgpu_graph3d, Camera, CameraCommand, EdgeRef3D, Layout3D, Node3D, NodeCardProfile,
     Projection,
 };
 
 use crate::{
     components::ticket_card,
-    layout::{
-        GraphLayout,
-        KanbanOverlay,
-        LayoutMode,
-    },
+    layout::{GraphLayout, KanbanOverlay, LayoutMode},
     types::TicketRef,
 };
 
@@ -55,10 +42,7 @@ pub fn can_use_webgpu() -> bool {
 }
 
 /// Build a shared [`Layout3D`] from the 2-D force-directed layout.
-pub fn lift_2d(
-    gl: GraphLayout,
-    mode: LayoutMode,
-) -> Layout3D {
+pub fn lift_2d(gl: GraphLayout, mode: LayoutMode) -> Layout3D {
     let nodes: Vec<Node3D> = gl
         .nodes
         .iter()
@@ -69,8 +53,7 @@ pub fn lift_2d(
             x: gn.x as f32 * LAYOUT_SCALE,
             y: -(gn.y as f32 * LAYOUT_SCALE),
             z: match mode {
-                LayoutMode::Hierarchical3D | LayoutMode::KanbanTable =>
-                    gn.z as f32 * LAYOUT_SCALE,
+                LayoutMode::Hierarchical3D | LayoutMode::KanbanTable => gn.z as f32 * LAYOUT_SCALE,
                 LayoutMode::Flat2D | LayoutMode::Fixed2D => 0.0,
             },
         })
@@ -96,14 +79,10 @@ pub fn lift_2d(
         })
         .collect();
 
-    Layout3D::new(nodes, edges)
-        .with_node_card_profile(NodeCardProfile::TicketWide)
+    Layout3D::new(nodes, edges).with_node_card_profile(NodeCardProfile::TicketWide)
 }
 
-fn focus_context_ids(
-    layout: &Layout3D,
-    focus_id: Option<&str>,
-) -> Option<HashSet<String>> {
+fn focus_context_ids(layout: &Layout3D, focus_id: Option<&str>) -> Option<HashSet<String>> {
     let focus_id = focus_id?;
     let focus_idx = layout.nodes.iter().position(|node| node.id == focus_id)?;
     let mut ids = HashSet::from([focus_id.to_string()]);
@@ -122,10 +101,7 @@ fn focus_context_ids(
     Some(ids)
 }
 
-fn focus_camera_command(
-    layout: &Layout3D,
-    focus_id: Option<&str>,
-) -> Option<CameraCommand> {
+fn focus_camera_command(layout: &Layout3D, focus_id: Option<&str>) -> Option<CameraCommand> {
     let focus_id = focus_id?;
     let focus_node = layout.nodes.iter().find(|node| node.id == focus_id)?;
     let focus_radius = layout
@@ -141,9 +117,7 @@ fn focus_camera_command(
         .max(1.0);
     Some(CameraCommand::FocusOn {
         target: [focus_node.x, focus_node.y, focus_node.z],
-        distance: viewer_api_dioxus::graph3d::camera::frame_distance(
-            focus_radius,
-        ),
+        distance: viewer_api_dioxus::graph3d::camera::frame_distance(focus_radius),
     })
 }
 
@@ -154,8 +128,7 @@ fn initial_camera_for_layout(
 ) -> Camera {
     let mut camera = Camera::default();
     let framed_bounds = match (layout_mode, kanban_overlay) {
-        (LayoutMode::KanbanTable, Some(overlay)) =>
-            kanban_camera_bounds(layout, overlay),
+        (LayoutMode::KanbanTable, Some(overlay)) => kanban_camera_bounds(layout, overlay),
         (LayoutMode::KanbanTable, None)
         | (LayoutMode::Hierarchical3D, _)
         | (LayoutMode::Flat2D, _)
@@ -178,10 +151,7 @@ fn initial_camera_for_layout(
     camera
 }
 
-fn kanban_camera_bounds(
-    layout: &Layout3D,
-    overlay: &KanbanOverlay,
-) -> ([f32; 3], f32) {
+fn kanban_camera_bounds(layout: &Layout3D, overlay: &KanbanOverlay) -> ([f32; 3], f32) {
     let mut points = layout
         .nodes
         .iter()
@@ -262,7 +232,7 @@ fn state_label(state: &str) -> String {
                     label.push(first.to_ascii_uppercase());
                     label.push_str(chars.as_str());
                     label
-                },
+                }
                 None => String::new(),
             }
         })
@@ -400,9 +370,7 @@ pub fn Graph3D(props: Graph3DProps) -> Element {
     let _ver = svc.version();
     let fetch_state = svc.state_for(&workspace, &root_id);
     #[cfg(target_arch = "wasm32")]
-    web_sys::console::log_1(
-        &format!("[graph3d] render rid={root_id} ver={_ver}").into(),
-    );
+    web_sys::console::log_1(&format!("[graph3d] render rid={root_id} ver={_ver}").into());
     tracing::debug!(target: T, rid = %root_id, ver = _ver, state = ?fetch_state, "render");
 
     // Try to get the layout from the cache.  If absent, show the spinner.
@@ -418,12 +386,9 @@ pub fn Graph3D(props: Graph3DProps) -> Element {
                 .map(|node| (node.id.clone(), node.ticket_ref.clone()))
                 .collect::<HashMap<_, _>>();
             (graph_layout, ticket_refs_by_id)
-        },
+        }
         None => match fetch_state {
-            crate::graph_fetch::GraphFetchState::Error {
-                message,
-                attempts,
-            } => {
+            crate::graph_fetch::GraphFetchState::Error { message, attempts } => {
                 tracing::warn!(target: T, rid = %root_id, attempts, error = %message, "graph_fetch_failed");
                 let svc_retry = svc.clone();
                 let ws_retry = workspace.clone();
@@ -443,7 +408,7 @@ pub fn Graph3D(props: Graph3DProps) -> Element {
                         }
                     }
                 };
-            },
+            }
             _ => {
                 tracing::debug!(target: T, rid = %root_id, state = ?fetch_state, "waiting_for_cache");
                 return rsx! {
@@ -452,7 +417,7 @@ pub fn Graph3D(props: Graph3DProps) -> Element {
                         "Loading graph\u{2026}"
                     }
                 };
-            },
+            }
         },
     };
 
@@ -461,11 +426,7 @@ pub fn Graph3D(props: Graph3DProps) -> Element {
     let nodes = layout.nodes.clone();
     let node_count = nodes.len();
     let focus_context = focus_context_ids(&layout, selected_node_id.as_deref());
-    let initial_camera = initial_camera_for_layout(
-        &layout,
-        kanban_overlay.as_ref(),
-        layout_mode,
-    );
+    let initial_camera = initial_camera_for_layout(&layout, kanban_overlay.as_ref(), layout_mode);
 
     rsx! {
         viewer_api_dioxus::Graph3D {

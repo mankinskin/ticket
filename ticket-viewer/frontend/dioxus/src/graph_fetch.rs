@@ -19,11 +19,7 @@
 
 use std::{
     cell::RefCell,
-    collections::{
-        HashMap,
-        HashSet,
-        VecDeque,
-    },
+    collections::{HashMap, HashSet, VecDeque},
     rc::Rc,
 };
 
@@ -32,10 +28,7 @@ use futures_util::pin_mut;
 use gloo_timers::future::TimeoutFuture;
 
 use crate::{
-    api::{
-        HttpTicketBackend,
-        TicketBackend,
-    },
+    api::{HttpTicketBackend, TicketBackend},
     layout::GraphLayout,
     GraphCache,
 };
@@ -120,11 +113,7 @@ impl GraphFetchService {
         *self.version.read()
     }
 
-    pub fn state_for(
-        &self,
-        workspace: &str,
-        _root_id: &str,
-    ) -> GraphFetchState {
+    pub fn state_for(&self, workspace: &str, _root_id: &str) -> GraphFetchState {
         let cache_key = workspace_cache_key(workspace);
         if self.cache.get(&cache_key).is_some() {
             return GraphFetchState::Ready;
@@ -142,11 +131,7 @@ impl GraphFetchService {
         GraphFetchState::Idle
     }
 
-    pub fn retry(
-        &self,
-        workspace: &str,
-        _root_id: &str,
-    ) {
+    pub fn retry(&self, workspace: &str, _root_id: &str) {
         let cache_key = workspace_cache_key(workspace);
         self.inner.borrow_mut().errors.remove(&cache_key);
         self.ensure_fetched(workspace, "");
@@ -157,10 +142,7 @@ impl GraphFetchService {
     /// Removes the layout from the cache, clears any stored error, and removes
     /// the key from the in-flight set.  The next call to `ensure_fetched` will
     /// trigger a new fetch.
-    pub fn invalidate_workspace(
-        &self,
-        workspace: &str,
-    ) {
+    pub fn invalidate_workspace(&self, workspace: &str) {
         let cache_key = workspace_cache_key(workspace);
         self.cache.remove(&cache_key);
         let mut inner = self.inner.borrow_mut();
@@ -215,11 +197,7 @@ impl GraphFetchService {
     /// * Cold       → spawns a fetch task that writes to the cache on success.
     ///
     /// Safe to call from any component render or effect body.
-    pub fn ensure_fetched(
-        &self,
-        workspace: &str,
-        _root_id: &str,
-    ) {
+    pub fn ensure_fetched(&self, workspace: &str, _root_id: &str) {
         let cache_key = workspace_cache_key(workspace);
 
         // Fast paths — no spawn needed.
@@ -248,9 +226,7 @@ impl GraphFetchService {
         }
 
         #[cfg(target_arch = "wasm32")]
-        web_sys::console::log_1(
-            &format!("[graph_fetch] enqueue key={cache_key}").into(),
-        );
+        web_sys::console::log_1(&format!("[graph_fetch] enqueue key={cache_key}").into());
 
         tracing::debug!(target: T, key = %cache_key, "ensure_fetched: queued fetch");
         self.pump_queue();
@@ -263,9 +239,7 @@ impl GraphFetchService {
             };
 
             #[cfg(target_arch = "wasm32")]
-            web_sys::console::log_1(
-                &format!("[graph_fetch] spawn key={}", job.cache_key).into(),
-            );
+            web_sys::console::log_1(&format!("[graph_fetch] spawn key={}", job.cache_key).into());
             tracing::debug!(target: T, key = %job.cache_key, "spawn_fetch");
 
             let mut svc = self.clone();
@@ -278,27 +252,22 @@ impl GraphFetchService {
                         {
                             let mut inner = svc.inner.borrow_mut();
                             inner.in_flight.remove(&key);
-                            inner.active_fetches =
-                                inner.active_fetches.saturating_sub(1);
+                            inner.active_fetches = inner.active_fetches.saturating_sub(1);
                             inner.errors.remove(&key);
                         }
                         #[cfg(target_arch = "wasm32")]
                         web_sys::console::log_1(
-                            &format!(
-                                "[graph_fetch] fetch_ok key={key} nodes={n}"
-                            )
-                            .into(),
+                            &format!("[graph_fetch] fetch_ok key={key} nodes={n}").into(),
                         );
                         tracing::debug!(target: T, key = %key, nodes = n, "fetch_ok");
                         // Bump version — wakes every Graph3D that subscribed.
                         svc.version += 1;
-                    },
+                    }
                     Err((message, attempts)) => {
                         {
                             let mut inner = svc.inner.borrow_mut();
                             inner.in_flight.remove(&key);
-                            inner.active_fetches =
-                                inner.active_fetches.saturating_sub(1);
+                            inner.active_fetches = inner.active_fetches.saturating_sub(1);
                             inner.errors.insert(
                                 key.clone(),
                                 FetchFailure {
@@ -323,7 +292,7 @@ impl GraphFetchService {
                         );
                         // Bump version so UI can transition from spinner to an error message.
                         svc.version += 1;
-                    },
+                    }
                 }
 
                 // Continue draining queued requests after each completion.
@@ -342,10 +311,7 @@ impl GraphFetchService {
         Some(job)
     }
 
-    async fn fetch_with_retry(
-        &self,
-        workspace: &str,
-    ) -> Result<GraphLayout, (String, u8)> {
+    async fn fetch_with_retry(&self, workspace: &str) -> Result<GraphLayout, (String, u8)> {
         let mut last_error = String::from("unknown error");
 
         for attempt in 0..=MAX_RETRIES {
@@ -361,43 +327,39 @@ impl GraphFetchService {
                             "retrying fetch after failure"
                         );
                     }
-                },
+                }
             }
         }
 
         Err((last_error, MAX_RETRIES + 1))
     }
 
-    async fn fetch_once_with_timeout(
-        workspace: &str
-    ) -> Result<GraphLayout, String> {
+    async fn fetch_once_with_timeout(workspace: &str) -> Result<GraphLayout, String> {
         let backend = HttpTicketBackend::new(None);
-        let fetch_fut =
-            async move { backend.get_workspace_graph(workspace).await };
+        let fetch_fut = async move { backend.get_workspace_graph(workspace).await };
         let timeout_fut = TimeoutFuture::new(REQUEST_TIMEOUT_MS);
         pin_mut!(fetch_fut);
         pin_mut!(timeout_fut);
 
         match futures_util::future::select(fetch_fut, timeout_fut).await {
-            futures_util::future::Either::Left((fetch_result, _)) =>
-                match fetch_result {
-                    Ok(resp) => {
-                        let active_workspace =
-                            if resp.active_workspace.is_empty() {
-                                workspace.to_string()
-                            } else {
-                                resp.active_workspace.clone()
-                            };
-                        Ok(GraphLayout::build(
-                            &active_workspace,
-                            resp.nodes,
-                            resp.edges,
-                        ))
-                    },
-                    Err(e) => Err(format!("request failed: {e}")),
-                },
-            futures_util::future::Either::Right((_elapsed, _)) =>
-                Err(format!("request timed out after {}ms", REQUEST_TIMEOUT_MS)),
+            futures_util::future::Either::Left((fetch_result, _)) => match fetch_result {
+                Ok(resp) => {
+                    let active_workspace = if resp.active_workspace.is_empty() {
+                        workspace.to_string()
+                    } else {
+                        resp.active_workspace.clone()
+                    };
+                    Ok(GraphLayout::build(
+                        &active_workspace,
+                        resp.nodes,
+                        resp.edges,
+                    ))
+                }
+                Err(e) => Err(format!("request failed: {e}")),
+            },
+            futures_util::future::Either::Right((_elapsed, _)) => {
+                Err(format!("request timed out after {}ms", REQUEST_TIMEOUT_MS))
+            }
         }
     }
 }

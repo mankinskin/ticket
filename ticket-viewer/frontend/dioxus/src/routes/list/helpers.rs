@@ -2,10 +2,7 @@ use dioxus::prelude::*;
 
 use viewer_api_dioxus::is_mobile_sidebar_viewport;
 
-use crate::types::{
-    TicketRef,
-    TicketSummary,
-};
+use crate::types::{TicketRef, TicketSummary};
 
 pub(super) fn initial_window_width() -> u32 {
     #[cfg(target_arch = "wasm32")]
@@ -83,10 +80,7 @@ pub(super) fn handle_file_selection(
     }
 }
 
-pub(super) fn toggle_ticket_selection(
-    ticket_id: String,
-    mut selected_ids: Signal<Vec<String>>,
-) {
+pub(super) fn toggle_ticket_selection(ticket_id: String, mut selected_ids: Signal<Vec<String>>) {
     let mut ids = selected_ids.write();
     if let Some(position) = ids.iter().position(|value| value == &ticket_id) {
         ids.remove(position);

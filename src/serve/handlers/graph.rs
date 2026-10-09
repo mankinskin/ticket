@@ -1,24 +1,14 @@
 use axum::{
-    extract::{
-        Extension,
-        Query,
-        State,
-    },
+    extract::{Extension, Query, State},
     response::Response,
 };
-use serde::{
-    Deserialize,
-    Serialize,
-};
+use serde::{Deserialize, Serialize};
 use std::collections::BTreeMap;
 use uuid::Uuid;
 
 use viewer_api::error::RequestIdExt;
 
-use crate::serve::{
-    AppState,
-    handlers::tickets::TicketRef,
-};
+use crate::serve::{AppState, handlers::tickets::TicketRef};
 
 mod quality;
 mod traversal;

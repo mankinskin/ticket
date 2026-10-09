@@ -1,20 +1,10 @@
-use serde_json::{
-    Value,
-    json,
-};
+use serde_json::{Value, json};
 
 use ticket_api::storage::TicketStore;
 
-use crate::cli::{
-    CliRunError,
-    TextArgs,
-    commands::ticket_workspace_metadata_for_id,
-};
+use crate::cli::{CliRunError, TextArgs, commands::ticket_workspace_metadata_for_id};
 
-pub(crate) fn cmd_search(
-    args: TextArgs,
-    store: &TicketStore,
-) -> Result<Value, CliRunError> {
+pub(crate) fn cmd_search(args: TextArgs, store: &TicketStore) -> Result<Value, CliRunError> {
     let results = store.search_tickets(&args.expression, args.limit)?;
     let mut items: Vec<Value> = Vec::with_capacity(results.len());
     for result in results {

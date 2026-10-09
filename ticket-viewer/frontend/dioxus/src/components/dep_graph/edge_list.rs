@@ -1,10 +1,7 @@
 use dioxus::prelude::*;
 
 use crate::{
-    api::{
-        HttpTicketBackend,
-        TicketBackend,
-    },
+    api::{HttpTicketBackend, TicketBackend},
     layout::GraphLayout,
     types::EdgeMutationBody,
 };

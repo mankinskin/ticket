@@ -23,17 +23,10 @@
 use std::{
     io::Write,
     path::Path,
-    process::{
-        Command,
-        Stdio,
-    },
+    process::{Command, Stdio},
 };
 
-use memory_kernel::testing::{
-    Sandbox,
-    SandboxPaths,
-    SandboxSetup,
-};
+use memory_kernel::testing::{Sandbox, SandboxPaths, SandboxSetup};
 
 // ---------------------------------------------------------------------------
 // Binary path — resolved at compile time by Cargo.
@@ -134,10 +127,7 @@ pub trait TicketCommands {
     }
 
     /// Run `ticket --json <args>` and return the inner `payload` object.
-    fn ticket_json(
-        &self,
-        args: &[&str],
-    ) -> serde_json::Value {
+    fn ticket_json(&self, args: &[&str]) -> serde_json::Value {
         let out = self
             .base()
             .arg("--json")
@@ -155,23 +145,19 @@ pub trait TicketCommands {
             );
         }
 
-        let envelope: serde_json::Value = serde_json::from_slice(&out.stdout)
-            .unwrap_or_else(|e| {
-                panic!(
-                    "stdout is not valid JSON: {e}\nraw: {}",
-                    String::from_utf8_lossy(&out.stdout)
-                )
-            });
+        let envelope: serde_json::Value = serde_json::from_slice(&out.stdout).unwrap_or_else(|e| {
+            panic!(
+                "stdout is not valid JSON: {e}\nraw: {}",
+                String::from_utf8_lossy(&out.stdout)
+            )
+        });
         envelope["payload"].clone()
     }
 
     /// Run `ticket --json <args>` and expect a non-zero exit.
     ///
     /// Returns `(exit_code, stderr)`.
-    fn ticket_fail(
-        &self,
-        args: &[&str],
-    ) -> (i32, String) {
+    fn ticket_fail(&self, args: &[&str]) -> (i32, String) {
         let out = self
             .base()
             .arg("--json")
@@ -195,11 +181,7 @@ pub trait TicketCommands {
     /// Run `ticket --json <args>` with `stdin_payload` on stdin.
     ///
     /// Panics if the command exits non-zero. Returns envelope `payload`.
-    fn ticket_json_stdin(
-        &self,
-        args: &[&str],
-        stdin_payload: &str,
-    ) -> serde_json::Value {
+    fn ticket_json_stdin(&self, args: &[&str], stdin_payload: &str) -> serde_json::Value {
         let mut child = self
             .base()
             .arg("--json")
@@ -232,13 +214,12 @@ pub trait TicketCommands {
             );
         }
 
-        let envelope: serde_json::Value = serde_json::from_slice(&out.stdout)
-            .unwrap_or_else(|e| {
-                panic!(
-                    "stdout is not valid JSON: {e}\nraw: {}",
-                    String::from_utf8_lossy(&out.stdout)
-                )
-            });
+        let envelope: serde_json::Value = serde_json::from_slice(&out.stdout).unwrap_or_else(|e| {
+            panic!(
+                "stdout is not valid JSON: {e}\nraw: {}",
+                String::from_utf8_lossy(&out.stdout)
+            )
+        });
         envelope["payload"].clone()
     }
 }
@@ -255,20 +236,11 @@ impl<S: SandboxSetup> TicketCommands for Sandbox<S> {
 
 /// Create a `tracker-improvement` ticket with the given title.
 /// Returns the UUID string of the created ticket.
-pub fn create_ticket<S: SandboxSetup>(
-    s: &Sandbox<S>,
-    title: &str,
-) -> String
+pub fn create_ticket<S: SandboxSetup>(s: &Sandbox<S>, title: &str) -> String
 where
     Sandbox<S>: TicketCommands,
 {
-    let r = s.ticket_json(&[
-        "create",
-        "--title",
-        title,
-        "--type",
-        "tracker-improvement",
-    ]);
+    let r = s.ticket_json(&["create", "--title", title, "--type", "tracker-improvement"]);
     assert_eq!(
         r["status"], "ok",
         "create should succeed for title '{title}'"

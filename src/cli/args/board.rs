@@ -1,7 +1,4 @@
-use clap::{
-    Args,
-    Subcommand,
-};
+use clap::{Args, Subcommand};
 
 #[derive(Debug, Args)]
 pub struct BoardArgs {

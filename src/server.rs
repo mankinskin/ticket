@@ -1,23 +1,13 @@
 use std::{
-    path::{
-        Path,
-        PathBuf,
-    },
+    path::{Path, PathBuf},
     sync::Arc,
 };
 
 use rmcp::{
-    ErrorData as McpError,
-    ServerHandler,
-    ServiceExt,
-    handler::server::{
-        tool::ToolRouter,
-        wrapper::Parameters,
-    },
+    ErrorData as McpError, ServerHandler, ServiceExt,
+    handler::server::{tool::ToolRouter, wrapper::Parameters},
     model::*,
-    tool,
-    tool_handler,
-    tool_router,
+    tool, tool_handler, tool_router,
     transport::stdio,
 };
 use serde::Serialize;
@@ -67,16 +57,12 @@ impl TicketServer {
         }
     }
 
-    fn json_result<T: Serialize>(
-        value: &T
-    ) -> Result<CallToolResult, McpError> {
-        let mut value = serde_json::to_value(value).map_err(|error| {
-            McpError::internal_error(format!("serialization: {error}"), None)
-        })?;
+    fn json_result<T: Serialize>(value: &T) -> Result<CallToolResult, McpError> {
+        let mut value = serde_json::to_value(value)
+            .map_err(|error| McpError::internal_error(format!("serialization: {error}"), None))?;
         ticket_api::output::strip_default_metadata(&mut value);
-        let text = serde_json::to_string(&value).map_err(|error| {
-            McpError::internal_error(format!("serialization: {error}"), None)
-        })?;
+        let text = serde_json::to_string(&value)
+            .map_err(|error| McpError::internal_error(format!("serialization: {error}"), None))?;
         Ok(CallToolResult::success(vec![Content::text(text)]))
     }
 
@@ -86,8 +72,7 @@ impl TicketServer {
 
     fn board_err(error: ticket_api::BoardError) -> McpError {
         match error {
-            ticket_api::BoardError::Storage(storage_error) =>
-                Self::store_err(storage_error.into()),
+            ticket_api::BoardError::Storage(storage_error) => Self::store_err(storage_error.into()),
             other => McpError::invalid_params(other.to_string(), None),
         }
     }
@@ -98,22 +83,20 @@ impl TicketServer {
             || path.join("search_index").is_dir()
     }
 
-    fn resolve_workspace_root(
-        &self,
-        workspace: &str,
-    ) -> Result<PathBuf, McpError> {
+    fn resolve_workspace_root(&self, workspace: &str) -> Result<PathBuf, McpError> {
         let workspace = workspace.trim();
         if workspace.is_empty() || workspace == "default" {
-            return Ok(ticket_api::workspace::resolve_workspace_root_from_store_root(
-                &self.index_root,
-                ticket_api::workspace::TICKET_INDEX_DIR,
-            ));
+            return Ok(
+                ticket_api::workspace::resolve_workspace_root_from_store_root(
+                    &self.index_root,
+                    ticket_api::workspace::TICKET_INDEX_DIR,
+                ),
+            );
         }
 
-        let normalized = ticket_api::workspace::normalize_explicit_workspace_selector(
-            Some(workspace),
-        )
-        .map_err(|error| McpError::invalid_params(error.to_string(), None))?;
+        let normalized =
+            ticket_api::workspace::normalize_explicit_workspace_selector(Some(workspace))
+                .map_err(|error| McpError::invalid_params(error.to_string(), None))?;
         let workspace = normalized.to_string_lossy();
         let requested_path = Path::new(workspace.as_ref());
         let resolution = TicketStore::resolve_workspace_store(
@@ -127,24 +110,17 @@ impl TicketServer {
 
         Err(McpError::invalid_params(
             format!(
-                    "invalid workspace '{workspace}': expected 'default', a repo root containing .ticket, the .ticket store itself, a path inside that store, or an existing ticket store root"
+                "invalid workspace '{workspace}': expected 'default', a repo root containing .ticket, the .ticket store itself, a path inside that store, or an existing ticket store root"
             ),
             None,
         ))
     }
 
-    fn resolve_uuid_with(
-        store: &TicketStore,
-        value: &str,
-    ) -> Result<Uuid, McpError> {
-        ticket_api::query_helpers::resolve_uuid_with_prefix(store, value)
-            .map_err(Self::store_err)
+    fn resolve_uuid_with(store: &TicketStore, value: &str) -> Result<Uuid, McpError> {
+        ticket_api::query_helpers::resolve_uuid_with_prefix(store, value).map_err(Self::store_err)
     }
 
-    fn resolve_uuid_for_read(
-        store: &TicketStore,
-        value: &str,
-    ) -> Result<Uuid, McpError> {
+    fn resolve_uuid_for_read(store: &TicketStore, value: &str) -> Result<Uuid, McpError> {
         match ticket_api::query_helpers::resolve_uuid_with_prefix(store, value) {
             Ok(id) => Ok(id),
             Err(ticket_api::error::StorageError::Other(message))
@@ -177,8 +153,7 @@ impl TicketServer {
     ) -> Result<T, McpError> {
         let index_root = self.resolve_workspace_root(workspace)?;
         let _guard = self.store_lock.lock().await;
-        let store = TicketStore::open_or_init_in_workspace(&index_root)
-            .map_err(Self::store_err)?;
+        let store = TicketStore::open_or_init_in_workspace(&index_root).map_err(Self::store_err)?;
         store.scan(false).map_err(Self::store_err)?;
         let result = f(&store).map_err(Self::store_err);
         drop(store);
@@ -190,15 +165,13 @@ impl TicketServer {
         workspace: &str,
         f: impl FnOnce(&TicketStore) -> Result<T, McpError>,
     ) -> Result<T, McpError> {
-        let workspace = ticket_api::workspace::normalize_explicit_workspace_selector(
-            Some(workspace),
-        )
-        .map_err(|error| McpError::invalid_params(error.to_string(), None))?;
+        let workspace =
+            ticket_api::workspace::normalize_explicit_workspace_selector(Some(workspace))
+                .map_err(|error| McpError::invalid_params(error.to_string(), None))?;
         let workspace = workspace.to_string_lossy();
         let index_root = self.resolve_workspace_root(&workspace)?;
         let _guard = self.store_lock.lock().await;
-        let store = TicketStore::open_or_init_in_workspace(&index_root)
-            .map_err(Self::store_err)?;
+        let store = TicketStore::open_or_init_in_workspace(&index_root).map_err(Self::store_err)?;
         store.scan(false).map_err(Self::store_err)?;
         let result = f(&store);
         drop(store);
@@ -228,12 +201,8 @@ impl TicketServer {
         name = "ticket_capabilities",
         description = "List the canonical ticket/spec/rule workflows, their required parameters, and nested-root targeting semantics (self-describing capability catalog)."
     )]
-    pub async fn ticket_capabilities(
-        &self
-    ) -> Result<CallToolResult, McpError> {
-        Self::json_result(
-            &ticket_api::contracts::capability_catalog::capability_catalog(),
-        )
+    pub async fn ticket_capabilities(&self) -> Result<CallToolResult, McpError> {
+        Self::json_result(&ticket_api::contracts::capability_catalog::capability_catalog())
     }
     #[tool(
         name = "list_tickets",
@@ -732,7 +701,7 @@ mod tests {
 }
 
 pub async fn run_mcp_server(
-    index_root: PathBuf
+    index_root: PathBuf,
 ) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
     let server = TicketServer::new(index_root);
 

@@ -3,33 +3,15 @@ use gloo_events::EventListener;
 use wasm_bindgen::JsCast as _;
 
 use crate::{
-    api::{
-        HttpTicketBackend,
-        TicketBackend,
-    },
-    search_syntax::{
-        SEARCH_INPUT_PLACEHOLDER,
-        SEARCH_SYNTAX_HINT,
-    },
-    types::{
-        TicketRef,
-        TicketSummary,
-    },
+    api::{HttpTicketBackend, TicketBackend},
+    search_syntax::{SEARCH_INPUT_PLACEHOLDER, SEARCH_SYNTAX_HINT},
+    types::{TicketRef, TicketSummary},
 };
 
 use super::{
-    facets::{
-        render_facet_chips,
-        ticket_state,
-        ticket_type,
-        unique_values,
-    },
+    facets::{render_facet_chips, ticket_state, ticket_type, unique_values},
     recent::load_recent,
-    results::{
-        activate_search_result,
-        render_empty_state,
-        render_search_results,
-    },
+    results::{activate_search_result, render_empty_state, render_search_results},
 };
 
 const MAX_RESULTS: usize = 20;
@@ -94,8 +76,7 @@ pub fn SearchBar(props: SearchBarProps) -> Element {
             }
         } else {
             let current_result = *hovered_result.read();
-            let next_result =
-                normalize_hover_index(current_result, filtered_len);
+            let next_result = normalize_hover_index(current_result, filtered_len);
             if current_result != next_result {
                 hovered_result.set(next_result);
             }
@@ -335,35 +316,31 @@ fn use_open_shortcut_listener(
         };
 
         let workspace = workspace.clone();
-        let listener =
-            gloo_events::EventListener::new(&window, "keydown", move |event| {
-                let Some(keyboard_event) =
-                    event.dyn_ref::<web_sys::KeyboardEvent>()
-                else {
-                    return;
-                };
+        let listener = gloo_events::EventListener::new(&window, "keydown", move |event| {
+            let Some(keyboard_event) = event.dyn_ref::<web_sys::KeyboardEvent>() else {
+                return;
+            };
 
-                if slash_inside_input(keyboard_event) {
-                    return;
-                }
+            if slash_inside_input(keyboard_event) {
+                return;
+            }
 
-                let ctrl_or_cmd =
-                    keyboard_event.ctrl_key() || keyboard_event.meta_key();
-                let key = keyboard_event.key();
-                let should_open = (ctrl_or_cmd && key == "k") || key == "/";
+            let ctrl_or_cmd = keyboard_event.ctrl_key() || keyboard_event.meta_key();
+            let key = keyboard_event.key();
+            let should_open = (ctrl_or_cmd && key == "k") || key == "/";
 
-                if should_open && !open() {
-                    keyboard_event.prevent_default();
-                    recents.set(load_recent(&workspace));
-                    state_filter.set(None);
-                    type_filter.set(None);
-                    results.set(vec![]);
-                    query.set(String::new());
-                    open.set(true);
-                } else if key == "Escape" && open() {
-                    open.set(false);
-                }
-            });
+            if should_open && !open() {
+                keyboard_event.prevent_default();
+                recents.set(load_recent(&workspace));
+                state_filter.set(None);
+                type_filter.set(None);
+                results.set(vec![]);
+                query.set(String::new());
+                open.set(true);
+            } else if key == "Escape" && open() {
+                open.set(false);
+            }
+        });
 
         keydown_listener.set(Some(listener));
     });
@@ -402,11 +379,11 @@ fn use_search_results(
                 Ok(response) => {
                     results.set(response.items);
                     loading.set(false);
-                },
+                }
                 Err(error) => {
                     search_err.set(Some(error));
                     loading.set(false);
-                },
+                }
             }
         });
     });
@@ -430,17 +407,11 @@ fn filtered_results(
         .collect()
 }
 
-fn matches_filter(
-    value: &str,
-    active: Option<&str>,
-) -> bool {
+fn matches_filter(value: &str, active: Option<&str>) -> bool {
     active.is_none_or(|active| value == active)
 }
 
-fn normalize_hover_index(
-    current: Option<usize>,
-    len: usize,
-) -> Option<usize> {
+fn normalize_hover_index(current: Option<usize>, len: usize) -> Option<usize> {
     if len == 0 {
         None
     } else {
@@ -448,11 +419,7 @@ fn normalize_hover_index(
     }
 }
 
-fn move_hover_index(
-    current: Option<usize>,
-    len: usize,
-    delta: i32,
-) -> Option<usize> {
+fn move_hover_index(current: Option<usize>, len: usize, delta: i32) -> Option<usize> {
     if len == 0 {
         return None;
     }
@@ -475,8 +442,7 @@ fn slash_inside_input(keyboard_event: &web_sys::KeyboardEvent) -> bool {
     };
 
     let tag = target.tag_name().to_lowercase();
-    matches!(tag.as_str(), "input" | "textarea" | "select")
-        && keyboard_event.key() == "/"
+    matches!(tag.as_str(), "input" | "textarea" | "select") && keyboard_event.key() == "/"
 }
 
 fn render_recent_searches(

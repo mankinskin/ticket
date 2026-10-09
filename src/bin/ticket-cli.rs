@@ -3,12 +3,8 @@ use memory_kernel::runtime::init_transport_tracing;
 use std::io::{self, Write};
 
 use ticket::cli::{
-    CliOutput,
-    error_output,
-    parse_cli_from,
-    render_machine_output,
-    requested_machine_output_format_from_args,
-    run,
+    CliOutput, error_output, parse_cli_from, render_machine_output,
+    requested_machine_output_format_from_args, run,
 };
 
 fn main() {
@@ -31,7 +27,7 @@ fn main() {
             );
             eprintln!("{rendered}");
             std::process::exit(2);
-        },
+        }
     };
 
     match run(cli) {
@@ -40,13 +36,13 @@ fn main() {
             match render_machine_output(&value, format) {
                 Ok(rendered) => {
                     finish_stdout(&rendered, exit_code);
-                },
+                }
                 Err(err) => {
                     eprintln!("{}", error_output(&err, Some(format)));
                     std::process::exit(1);
-                },
+                }
             }
-        },
+        }
         Ok(CliOutput::Text(text)) => finish_stdout(&text, 0),
         Err(err) => {
             eprintln!(
@@ -57,7 +53,7 @@ fn main() {
                 )
             );
             std::process::exit(1);
-        },
+        }
     }
 }
 
@@ -77,19 +73,14 @@ fn finish_stdout(rendered: &str, exit_code: i32) -> ! {
         Err(err) => {
             eprintln!("failed to write stdout: {err}");
             std::process::exit(1);
-        },
+        }
     }
 }
 
-fn write_stdout<W: Write>(
-    writer: &mut W,
-    rendered: &str,
-) -> io::Result<StdoutWrite> {
+fn write_stdout<W: Write>(writer: &mut W, rendered: &str) -> io::Result<StdoutWrite> {
     match writeln!(writer, "{rendered}") {
         Ok(()) => Ok(StdoutWrite::Written),
-        Err(err) if err.kind() == io::ErrorKind::BrokenPipe => {
-            Ok(StdoutWrite::BrokenPipe)
-        },
+        Err(err) if err.kind() == io::ErrorKind::BrokenPipe => Ok(StdoutWrite::BrokenPipe),
         Err(err) => Err(err),
     }
 }
@@ -117,10 +108,7 @@ mod tests {
     struct BrokenPipeWriter;
 
     impl Write for BrokenPipeWriter {
-        fn write(
-            &mut self,
-            _: &[u8],
-        ) -> io::Result<usize> {
+        fn write(&mut self, _: &[u8]) -> io::Result<usize> {
             Err(io::Error::from(io::ErrorKind::BrokenPipe))
         }
 

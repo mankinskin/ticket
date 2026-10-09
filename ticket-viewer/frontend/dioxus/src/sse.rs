@@ -139,12 +139,9 @@ pub fn use_sse(
         let es = match web_sys::EventSource::new(&url) {
             Ok(es) => es,
             Err(e) => {
-                tracing::error!(
-                    "EventSource::new failed for {workspace}: {:?}",
-                    e
-                );
+                tracing::error!("EventSource::new failed for {workspace}: {:?}", e);
                 return;
-            },
+            }
         };
 
         // ── ticket.upsert ──────────────────────────────────────────────────
@@ -156,8 +153,7 @@ pub fn use_sse(
         // so gate its acquisition and use consistently with the rest of the
         // crate. On native builds the SSE path still updates the list counters.
         #[cfg(target_arch = "wasm32")]
-        let service_upsert =
-            use_context::<crate::graph_fetch::GraphFetchService>();
+        let service_upsert = use_context::<crate::graph_fetch::GraphFetchService>();
         #[cfg(target_arch = "wasm32")]
         let workspace_upsert = workspace.clone();
         let l_upsert = EventListener::new(&es, "ticket.upsert", move |event| {
@@ -173,7 +169,7 @@ pub fn use_sse(
                     );
                     silent_upsert.set(true);
                     refresh_upsert.with_mut(|value| *value += 1);
-                },
+                }
                 Err(e) => tracing::warn!("ticket.upsert parse error: {e}"),
             }
         });
@@ -187,7 +183,7 @@ pub fn use_sse(
                 Ok(_payload) => {
                     silent_delete.set(true);
                     refresh_delete.with_mut(|value| *value += 1);
-                },
+                }
                 Err(e) => tracing::warn!("ticket.delete parse error: {e}"),
             }
         });
@@ -248,8 +244,7 @@ pub fn use_sse(
             *h = Some(SseHandle {
                 es,
                 _listeners: vec![
-                    l_upsert, l_delete, l_snapshot, l_edge_up, l_edge_del,
-                    l_open, l_error,
+                    l_upsert, l_delete, l_snapshot, l_edge_up, l_edge_del, l_open, l_error,
                 ],
             });
         });

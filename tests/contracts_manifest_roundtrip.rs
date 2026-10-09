@@ -12,8 +12,7 @@ fn manifest_roundtrip_preserves_extra_fields() {
     manifest.extra.insert("priority".to_string(), json!(1));
 
     let encoded = toml::to_string(&manifest).expect("manifest encodes to toml");
-    let decoded: TicketManifest =
-        toml::from_str(&encoded).expect("manifest decodes from toml");
+    let decoded: TicketManifest = toml::from_str(&encoded).expect("manifest decodes from toml");
 
     assert_eq!(decoded.id, manifest.id);
     assert_eq!(decoded.created_at, manifest.created_at);

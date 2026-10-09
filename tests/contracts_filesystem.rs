@@ -2,13 +2,8 @@ use chrono::Utc;
 use std::path::PathBuf;
 use ticket_api::model::{
     filesystem::{
-        TICKET_ASSETS_DIR,
-        TICKET_INTERVIEW_ANSWERS_FILE,
-        TICKET_INTERVIEW_QUESTIONS_FILE,
-        TICKET_LOCK_FILE,
-        TICKET_MANIFEST_FILE,
-        TicketFolderContract,
-        has_minimum_ticket_contract,
+        TICKET_ASSETS_DIR, TICKET_INTERVIEW_ANSWERS_FILE, TICKET_INTERVIEW_QUESTIONS_FILE,
+        TICKET_LOCK_FILE, TICKET_MANIFEST_FILE, TicketFolderContract, has_minimum_ticket_contract,
         parse_ticket_manifest_toml,
     },
     ticket::TicketManifest,
@@ -50,9 +45,8 @@ fn valid_manifest_is_parsed_for_discovered_folder() {
     let manifest = TicketManifest::new(Uuid::new_v4(), Utc::now());
     let content = toml::to_string(&manifest).expect("manifest encodes");
 
-    let parsed =
-        parse_ticket_manifest_toml(PathBuf::from("/tmp/ticket.toml"), &content)
-            .expect("valid manifest parses");
+    let parsed = parse_ticket_manifest_toml(PathBuf::from("/tmp/ticket.toml"), &content)
+        .expect("valid manifest parses");
 
     assert_eq!(parsed.id, manifest.id);
     assert_eq!(parsed.created_at, manifest.created_at);
@@ -63,8 +57,8 @@ fn broken_manifest_returns_path_and_reason() {
     let path = PathBuf::from("/tmp/ticket.toml");
     let bad = "id = \"broken\"\ncreated_at = \"nope\"\n";
 
-    let diag = parse_ticket_manifest_toml(path.clone(), bad)
-        .expect_err("broken manifest must fail");
+    let diag =
+        parse_ticket_manifest_toml(path.clone(), bad).expect_err("broken manifest must fail");
 
     assert_eq!(diag.path, path);
     assert!(!diag.reason.is_empty());

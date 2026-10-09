@@ -1,56 +1,27 @@
 use std::collections::BTreeMap;
 
 use axum::{
-    extract::{
-        Extension,
-        Path,
-        Query,
-        State,
-    },
-    http::{
-        HeaderMap,
-        StatusCode,
-    },
-    response::{
-        IntoResponse,
-        Json,
-        Response,
-    },
+    extract::{Extension, Path, Query, State},
+    http::{HeaderMap, StatusCode},
+    response::{IntoResponse, Json, Response},
 };
 use serde_json::Value;
 use uuid::Uuid;
 
 use viewer_api::{
     auth::extract_bearer_token,
-    error::{
-        ApiError,
-        RequestIdExt,
-    },
+    error::{ApiError, RequestIdExt},
 };
 
 use crate::serve::{
     AppState,
-    error::{
-        storage_err,
-        task_join_err,
-    },
+    error::{storage_err, task_join_err},
 };
 
 use super::types::{
-    CancelTicketBody,
-    CloseTicketBody,
-    CreateTicketBody,
-    DeleteResponse,
-    MoveTicketBody,
-    MoveTicketResponse,
-    MutationResponse,
-    MutationWorkspaceParam,
-    ReleaseLeaseBody,
-    ReleaseLeaseResponse,
-    RevertTicketBody,
-    TicketDetail,
-    UpdateTicketBody,
-    ticket_ref_for_id,
+    CancelTicketBody, CloseTicketBody, CreateTicketBody, DeleteResponse, MoveTicketBody,
+    MoveTicketResponse, MutationResponse, MutationWorkspaceParam, ReleaseLeaseBody,
+    ReleaseLeaseResponse, RevertTicketBody, TicketDetail, UpdateTicketBody, ticket_ref_for_id,
 };
 
 /// `POST /api/tickets?workspace=<name>`
@@ -62,8 +33,7 @@ pub async fn create_ticket(
     Query(params): Query<MutationWorkspaceParam>,
     Json(body): Json<CreateTicketBody>,
 ) -> Response {
-    let (workspace, store) = match state
-        .resolve_public_workspace_request(&params.workspace, &rid.0)
+    let (workspace, store) = match state.resolve_public_workspace_request(&params.workspace, &rid.0)
     {
         Ok(resolved) => resolved,
         Err(response) => return response,
@@ -134,8 +104,7 @@ pub async fn update_ticket(
     headers: HeaderMap,
     Json(body): Json<UpdateTicketBody>,
 ) -> Response {
-    let (workspace, store) = match state
-        .resolve_public_workspace_request(&params.workspace, &rid.0)
+    let (workspace, store) = match state.resolve_public_workspace_request(&params.workspace, &rid.0)
     {
         Ok(resolved) => resolved,
         Err(response) => return response,
@@ -203,8 +172,7 @@ pub async fn close_ticket(
     headers: HeaderMap,
     Json(body): Json<CloseTicketBody>,
 ) -> Response {
-    let (workspace, store) = match state
-        .resolve_public_workspace_request(&params.workspace, &rid.0)
+    let (workspace, store) = match state.resolve_public_workspace_request(&params.workspace, &rid.0)
     {
         Ok(resolved) => resolved,
         Err(response) => return response,
@@ -217,11 +185,10 @@ pub async fn close_ticket(
 
     tokio::task::spawn_blocking(move || {
         let request_id = task_request_id.clone();
-        let (manifest, _path) =
-            match store.close(&id, &target, author.as_deref()) {
-                Ok(result) => result,
-                Err(e) => return storage_err(e, &request_id),
-            };
+        let (manifest, _path) = match store.close(&id, &target, author.as_deref()) {
+            Ok(result) => result,
+            Err(e) => return storage_err(e, &request_id),
+        };
 
         Json(MutationResponse {
             request_id: request_id.clone(),
@@ -253,8 +220,7 @@ pub async fn release_ticket_lease(
     Query(params): Query<MutationWorkspaceParam>,
     Json(body): Json<ReleaseLeaseBody>,
 ) -> Response {
-    let (workspace, store) = match state
-        .resolve_public_workspace_request(&params.workspace, &rid.0)
+    let (workspace, store) = match state.resolve_public_workspace_request(&params.workspace, &rid.0)
     {
         Ok(resolved) => resolved,
         Err(response) => return response,
@@ -288,9 +254,7 @@ pub async fn release_ticket_lease(
         .into_response()
     })
     .await
-    .unwrap_or_else(|_| {
-        task_join_err(&request_id, "ticket release-lease request")
-    })
+    .unwrap_or_else(|_| task_join_err(&request_id, "ticket release-lease request"))
 }
 
 /// `POST /api/tickets/{id}/cancel?workspace=<name>`
@@ -305,8 +269,7 @@ pub async fn cancel_ticket(
     headers: HeaderMap,
     Json(body): Json<CancelTicketBody>,
 ) -> Response {
-    let (workspace, store) = match state
-        .resolve_public_workspace_request(&params.workspace, &rid.0)
+    let (workspace, store) = match state.resolve_public_workspace_request(&params.workspace, &rid.0)
     {
         Ok(resolved) => resolved,
         Err(response) => return response,
@@ -373,8 +336,7 @@ pub async fn move_ticket(
         requested_workspace = %params.workspace,
         dry_run = body.dry_run,
     );
-    let (workspace, store) = match state
-        .resolve_public_workspace_request(&params.workspace, &rid.0)
+    let (workspace, store) = match state.resolve_public_workspace_request(&params.workspace, &rid.0)
     {
         Ok(resolved) => resolved,
         Err(response) => return response,
@@ -382,20 +344,19 @@ pub async fn move_ticket(
 
     let request_id = rid.0.clone();
     let task_request_id = request_id.clone();
-    let target_selector =
-        match ticket_api::workspace::normalize_explicit_workspace_selector(
-            Some(&body.to_workspace_root),
-        ) {
-            Ok(path) => path,
-            Err(error) => {
-                return ApiError::new(
-                    "ticket.invalid_workspace_selector",
-                    &error.to_string(),
-                    &rid.0,
-                )
-                .into_response_with_status(StatusCode::BAD_REQUEST);
-            }
-        };
+    let target_selector = match ticket_api::workspace::normalize_explicit_workspace_selector(Some(
+        &body.to_workspace_root,
+    )) {
+        Ok(path) => path,
+        Err(error) => {
+            return ApiError::new(
+                "ticket.invalid_workspace_selector",
+                &error.to_string(),
+                &rid.0,
+            )
+            .into_response_with_status(StatusCode::BAD_REQUEST);
+        }
+    };
     let target_workspace = normalize_workspace_root(&target_selector);
     let dry_run = body.dry_run;
 
@@ -509,8 +470,7 @@ pub async fn revert_ticket(
     headers: HeaderMap,
     Json(body): Json<RevertTicketBody>,
 ) -> Response {
-    let (workspace, store) = match state
-        .resolve_public_workspace_request(&params.workspace, &rid.0)
+    let (workspace, store) = match state.resolve_public_workspace_request(&params.workspace, &rid.0)
     {
         Ok(resolved) => resolved,
         Err(response) => return response,
@@ -536,19 +496,15 @@ pub async fn revert_ticket(
             None => {
                 return ApiError::bad_request(
                     "revision_not_found",
-                    &format!(
-                        "revision {} does not exist for this ticket",
-                        revision
-                    ),
+                    &format!("revision {} does not exist for this ticket", revision),
                     &request_id,
                 )
                 .into_response_with_status(StatusCode::BAD_REQUEST);
-            },
+            }
         };
 
         match store.apply_revert(&id, target_rev.fields, author.as_deref()) {
-            Ok(_new_rev) =>
-                current_ticket_response(&store, &request_id, &workspace, &id),
+            Ok(_new_rev) => current_ticket_response(&store, &request_id, &workspace, &id),
             Err(e) => storage_err(e, &request_id),
         }
     })
@@ -567,8 +523,7 @@ pub async fn undo_ticket(
     Query(params): Query<MutationWorkspaceParam>,
     headers: HeaderMap,
 ) -> Response {
-    let (workspace, store) = match state
-        .resolve_public_workspace_request(&params.workspace, &rid.0)
+    let (workspace, store) = match state.resolve_public_workspace_request(&params.workspace, &rid.0)
     {
         Ok(resolved) => resolved,
         Err(response) => return response,
@@ -597,8 +552,7 @@ pub async fn undo_ticket(
         let prev_fields = revisions[revisions.len() - 2].fields.clone();
 
         match store.apply_revert(&id, prev_fields, author.as_deref()) {
-            Ok(_new_rev) =>
-                current_ticket_response(&store, &request_id, &workspace, &id),
+            Ok(_new_rev) => current_ticket_response(&store, &request_id, &workspace, &id),
             Err(e) => storage_err(e, &request_id),
         }
     })
@@ -615,8 +569,7 @@ pub async fn delete_ticket(
     Path(id): Path<Uuid>,
     Query(params): Query<MutationWorkspaceParam>,
 ) -> Response {
-    let (workspace, store) = match state
-        .resolve_public_workspace_request(&params.workspace, &rid.0)
+    let (workspace, store) = match state.resolve_public_workspace_request(&params.workspace, &rid.0)
     {
         Ok(resolved) => resolved,
         Err(response) => return response,
@@ -690,9 +643,7 @@ fn current_ticket_response(
     .into_response()
 }
 
-fn move_plan_json(
-    report: &ticket_api::storage::move_planner::MovePreflightReport
-) -> Value {
+fn move_plan_json(report: &ticket_api::storage::move_planner::MovePreflightReport) -> Value {
     serde_json::json!({
         "supported": report.supported(),
         "source_workspace_root": normalize_display_path(&report.source_workspace_root),
@@ -711,9 +662,7 @@ fn move_plan_json(
     })
 }
 
-fn move_outcome_json(
-    outcome: &ticket_api::storage::move_execution::MoveExecutionOutcome
-) -> Value {
+fn move_outcome_json(outcome: &ticket_api::storage::move_execution::MoveExecutionOutcome) -> Value {
     serde_json::json!({
         "resumed": outcome.resumed,
         "rolled_back": outcome.rolled_back,
