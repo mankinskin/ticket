@@ -4,7 +4,10 @@ use uuid::Uuid;
 use super::TicketStore;
 use crate::{
     error::StorageError,
-    model::ticket::{TicketManifest, TicketManifestExt},
+    model::{
+        parts::{ensure_nonblank_content, is_planning_part_kind},
+        ticket::{TicketManifest, TicketManifestExt},
+    },
     storage::ticket_fs::TicketFs,
 };
 
@@ -22,9 +25,9 @@ impl TicketStore {
     ///
     /// Rejects with [`StorageError::FrozenPartWrite`] when `part_id`
     /// addresses an existing part currently `frozen` (i.e. a planning part
-    /// on a ticket that has entered `ready`). No-ops (returns `Ok(())`)
-    /// for a `part_id` with no existing manifest entry (a fresh part being
-    /// created) or an existing, unfrozen part.
+    /// on a ticket that has entered `ready`). New planning parts and the
+    /// implicit legacy objective are also rejected while the ticket is
+    /// `ready`.
     ///
     /// Called by [`Self::write_part`], [`Self::undo_part`], and
     /// [`Self::enforce_description_write_gate`] (the legacy
@@ -35,15 +38,47 @@ impl TicketStore {
     /// alternate path that can touch frozen content without going through
     /// it.
     pub fn enforce_part_write_gate(&self, id: &Uuid, part_id: Uuid) -> Result<(), StorageError> {
+        self.enforce_part_write_gate_for_kind(id, part_id, None)
+    }
+
+    fn enforce_part_write_gate_for_kind(
+        &self,
+        id: &Uuid,
+        part_id: Uuid,
+        new_kind: Option<&str>,
+    ) -> Result<(), StorageError> {
         let indexed = self.get_indexed(id)?.ok_or(StorageError::NotFound(*id))?;
         let manifest = TicketFs::read(&indexed.path)?;
-        if let Some(part) = manifest.parts().into_iter().find(|p| p.id == part_id) {
+        let parts = manifest.parts();
+        if let Some(part) = parts.iter().find(|p| p.id == part_id) {
             if part.frozen {
                 return Err(StorageError::FrozenPartWrite {
                     ticket: *id,
                     part_id,
-                    kind: part.kind,
+                    kind: part.kind.clone(),
                     freezing_state: "ready".to_string(),
+                });
+            }
+            if indexed.state.as_deref() == Some("ready") && is_planning_part_kind(&part.kind) {
+                return Err(StorageError::ReadyPlanningPartWrite {
+                    ticket: *id,
+                    part_id,
+                    kind: part.kind.clone(),
+                });
+            }
+        } else if indexed.state.as_deref() == Some("ready") {
+            let implicit_objective = parts.is_empty()
+                && part_id == crate::storage::ticket_fs::implicit_objective_part_id(manifest.id);
+            let kind = if implicit_objective {
+                Some("objective")
+            } else {
+                new_kind
+            };
+            if let Some(kind) = kind.filter(|kind| is_planning_part_kind(kind)) {
+                return Err(StorageError::ReadyPlanningPartWrite {
+                    ticket: *id,
+                    part_id,
+                    kind: kind.to_string(),
                 });
             }
         }
@@ -55,9 +90,9 @@ impl TicketStore {
     /// like a part-addressed write when frozen (spec 24b3d22b, ticket
     /// f9e70385, AC7). `description.md` backs the implicit `objective` part
     /// for legacy tickets with no `[[parts]]` table, or an explicit
-    /// `objective` entry once one has been materialized (e.g. by plan
-    /// freezing); either way, the same gate call is reused rather than a
-    /// second parallel frozen check that could drift from it.
+    /// `objective` entry when one is present; either way, the same gate call
+    /// is reused rather than a second parallel frozen check that could drift
+    /// from it.
     pub(crate) fn enforce_description_write_gate(&self, id: &Uuid) -> Result<(), StorageError> {
         let indexed = self.get_indexed(id)?.ok_or(StorageError::NotFound(*id))?;
         let manifest = TicketFs::read(&indexed.path)?;
@@ -92,7 +127,8 @@ impl TicketStore {
         content: &str,
         author: Option<&str>,
     ) -> Result<TicketManifest, StorageError> {
-        self.enforce_part_write_gate(id, part_id)?;
+        ensure_nonblank_content(content, format!("ticket {id} part {part_id}"))?;
+        self.enforce_part_write_gate_for_kind(id, part_id, Some(kind))?;
         let indexed = self.get_indexed(id)?.ok_or(StorageError::NotFound(*id))?;
         let (manifest, prior_content) =
             TicketFs::write_part(&indexed.path, part_id, kind, content, None)?;
@@ -134,7 +170,8 @@ impl TicketStore {
         supersedes_part_id: Uuid,
         author: Option<&str>,
     ) -> Result<TicketManifest, StorageError> {
-        self.enforce_part_write_gate(id, part_id)?;
+        ensure_nonblank_content(content, format!("ticket {id} amendment part {part_id}"))?;
+        self.enforce_part_write_gate_for_kind(id, part_id, Some("amendment"))?;
         let indexed = self.get_indexed(id)?.ok_or(StorageError::NotFound(*id))?;
         let (manifest, prior_content) = TicketFs::write_part(
             &indexed.path,
@@ -205,6 +242,7 @@ impl TicketStore {
                 )));
             }
         };
+        ensure_nonblank_content(&prior, format!("ticket {id} part {part_id} undo"))?;
 
         let (manifest, _) = TicketFs::write_part(&indexed.path, part_id, "", &prior, None)?;
 

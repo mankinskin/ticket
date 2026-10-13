@@ -147,6 +147,18 @@ pub enum StorageError {
         kind: String,
         freezing_state: String,
     },
+    #[error(
+        "cannot write planning part '{kind}' (id {part_id}) on ticket {ticket} while it is in 'ready'"
+    )]
+    ReadyPlanningPartWrite {
+        ticket: Uuid,
+        part_id: Uuid,
+        kind: String,
+    },
+    #[error("content for {target} must not be empty or whitespace-only")]
+    EmptyPartContent { target: String },
+    #[error("part path collision on ticket {ticket}: {path}")]
+    PartPathConflict { ticket: Uuid, path: String },
     #[error("{0}")]
     Other(String),
 }

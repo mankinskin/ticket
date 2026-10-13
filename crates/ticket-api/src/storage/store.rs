@@ -16,6 +16,7 @@ use crate::{
     error::StorageError,
     model::{
         filesystem::TICKET_MANIFEST_FILE,
+        parts::ensure_nonblank_content,
         schema::TicketTypeSchemaExt,
         schema_registry::SchemaRegistry,
         ticket::{TicketId, TicketManifest},
@@ -253,6 +254,9 @@ impl TicketStore {
         target_root: Option<&Path>,
         body: Option<&str>,
     ) -> Result<TicketId, StorageError> {
+        if let Some(body) = body {
+            ensure_nonblank_content(body, "ticket description")?;
+        }
         let id = id.unwrap_or_else(Uuid::new_v4);
         let now = Utc::now();
 
@@ -486,6 +490,9 @@ impl TicketStore {
         author: Option<&str>,
         single_hop: bool,
     ) -> Result<TicketManifest, StorageError> {
+        if let Some(description) = description {
+            ensure_nonblank_content(description, format!("ticket {id} description"))?;
+        }
         let mut patch = patch;
 
         // `state` must never be applied as a plain field patch: doing so
@@ -656,10 +663,8 @@ impl TicketStore {
             self.enforce_description_write_gate(id)?;
         }
 
-        // AC1/AC2 (ticket bc74e91f): write the new description before any
-        // transition path is walked so that `apply_plan_freeze` materializes
-        // the `objective` part from the freshly written text rather than from
-        // the pre-call (often empty) description.
+        // Apply description changes before transitions, but do not create
+        // manifest parts as a side effect of freezing an incomplete plan.
         let mut previous_description = None;
         if let Some(desc) = description {
             // AC1/AC2: an omitted description_mode is a hard error, not a
@@ -698,10 +703,10 @@ impl TicketStore {
         } else {
             // Plan freezing (spec 24b3d22b, ticket f9e70385, AC1/AC5): every
             // state visited along the transition path is evaluated. Entering
-            // `ready` freezes the five planning parts (materializing any
-            // missing) and cuts a plan revision; landing on any state ranked
-            // below `ready` clears every frozen flag. States ranked at or
-            // above `ready` otherwise leave frozen flags untouched.
+            // `ready` freezes existing planning parts, leaves missing kinds
+            // absent, and cuts a plan revision; landing below `ready` clears
+            // every frozen flag. States ranked at or above `ready` otherwise
+            // leave frozen flags untouched.
             let planned_rank = self.state_rank_for_type(type_id, Some("ready"));
             let mut manifest = None;
             for (index, state) in transition_path.iter().enumerate() {

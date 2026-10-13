@@ -18,7 +18,7 @@ use crate::{
             TICKET_ASSETS_DIR, TICKET_HISTORY_FILE, TICKET_LOCK_FILE, TICKET_MANIFEST_FILE,
             TICKET_PARTS_DIR, parse_ticket_manifest_toml,
         },
-        parts::classify_part_kind,
+        parts::{classify_part_kind, ensure_nonblank_content, part_kind_slug},
         ticket::{TicketManifest, TicketManifestExt},
     },
 };
@@ -67,6 +67,9 @@ impl TicketFs {
         target_root: &Path,
         body: Option<&str>,
     ) -> Result<PathBuf, StorageError> {
+        if let Some(body) = body {
+            ensure_nonblank_content(body, format!("ticket {} description", manifest.id))?;
+        }
         let uuid_str = manifest.id.to_string();
         let final_dir = target_root.join(&uuid_str);
         let temp_dir = target_root.join(format!("{}.tmp", uuid_str));
@@ -149,6 +152,53 @@ impl TicketFs {
 
         release_lock(&lock_file, &lock_path);
         result
+    }
+
+    fn part_path_for_kind(
+        ticket_path: &Path,
+        manifest: &TicketManifest,
+        kind: &str,
+    ) -> Result<String, StorageError> {
+        let parts = manifest.parts();
+        let base = part_kind_slug(kind);
+        let ordinal = parts
+            .iter()
+            .filter(|part| part_kind_slug(&part.kind) == base)
+            .count()
+            + 1;
+        let filename = if ordinal == 1 {
+            format!("{base}.md")
+        } else {
+            format!("{base}-{ordinal}.md")
+        };
+        let rel_path = format!("{TICKET_PARTS_DIR}/{filename}");
+
+        let parts_dir = ticket_path.join(TICKET_PARTS_DIR);
+        match fs::symlink_metadata(&parts_dir) {
+            Ok(metadata) if !metadata.file_type().is_dir() || metadata.file_type().is_symlink() => {
+                return Err(StorageError::PartPathConflict {
+                    ticket: manifest.id,
+                    path: TICKET_PARTS_DIR.to_string(),
+                });
+            }
+            Ok(_) => {}
+            Err(error) if error.kind() == std::io::ErrorKind::NotFound => {}
+            Err(error) => return Err(StorageError::Io(error)),
+        }
+        let file_path = ticket_path.join(&rel_path);
+        let occupied = match fs::symlink_metadata(&file_path) {
+            Ok(_) => true,
+            Err(error) if error.kind() == std::io::ErrorKind::NotFound => false,
+            Err(error) => return Err(StorageError::Io(error)),
+        };
+        if parts.iter().any(|part| part.path == rel_path) || occupied {
+            return Err(StorageError::PartPathConflict {
+                ticket: manifest.id,
+                path: rel_path,
+            });
+        }
+
+        Ok(rel_path)
     }
 
     /// Walk `scan_root` and locate all valid ticket folders.
@@ -299,9 +349,22 @@ impl TicketFs {
     /// reached — this is a crate-private low-level primitive with no
     /// external entry point (spec 24b3d22b, ticket f9e70385, AC7).
     pub(crate) fn write_description(ticket_path: &Path, text: &str) -> Result<(), StorageError> {
+        ensure_nonblank_content(text, "ticket description")?;
         let lock_path = ticket_path.join(TICKET_LOCK_FILE);
         let lock_file = acquire_lock(&lock_path)?;
         let result = fs::write(ticket_path.join("description.md"), text).map_err(StorageError::Io);
+        release_lock(&lock_file, &lock_path);
+        result
+    }
+
+    pub(crate) fn remove_description(ticket_path: &Path) -> Result<(), StorageError> {
+        let lock_path = ticket_path.join(TICKET_LOCK_FILE);
+        let lock_file = acquire_lock(&lock_path)?;
+        let result = match fs::remove_file(ticket_path.join("description.md")) {
+            Ok(()) => Ok(()),
+            Err(error) if error.kind() == std::io::ErrorKind::NotFound => Ok(()),
+            Err(error) => Err(StorageError::Io(error)),
+        };
         release_lock(&lock_file, &lock_path);
         result
     }
@@ -399,6 +462,7 @@ impl TicketFs {
         content: &str,
         supersedes: Option<Uuid>,
     ) -> Result<(TicketManifest, Option<String>), StorageError> {
+        ensure_nonblank_content(content, format!("ticket part {part_id}"))?;
         let lock_path = ticket_path.join(TICKET_LOCK_FILE);
         let lock_file = acquire_lock(&lock_path)?;
 
@@ -425,9 +489,9 @@ impl TicketFs {
             // is actually persisted (an existing part's `kind` is fixed at
             // creation and ignored above) — spec 24b3d22b AC2.
             classify_part_kind(kind)?;
+            let rel_path = Self::part_path_for_kind(ticket_path, &manifest, kind)?;
             let parts_dir = ticket_path.join(TICKET_PARTS_DIR);
             fs::create_dir_all(&parts_dir)?;
-            let rel_path = format!("{TICKET_PARTS_DIR}/{part_id}.md");
             fs::write(ticket_path.join(&rel_path), content)?;
             parts.push(crate::model::ticket::TicketPart {
                 id: part_id,
@@ -546,14 +610,10 @@ impl TicketFs {
     /// `TicketStore::enforce_part_write_gate`; there is no other privileged
     /// bypass.
     ///
-    /// `freeze = true`: every [`crate::model::parts::PLANNING_PART_KINDS`]
-    /// entry is set `frozen = true`; any of the five missing from the
-    /// manifest is materialized first (`objective` inherits legacy
-    /// `description.md` content so a ticket with no `[[parts]]` table
-    /// freezes the same content its reads already expose as `objective`;
-    /// the other four are created empty). `plan_revision` is incremented,
-    /// which appends a plan revision to history via the caller's normal
-    /// history snapshot.
+    /// `freeze = true`: existing entries whose kinds are in
+    /// [`crate::model::parts::PLANNING_PART_KINDS`] are set `frozen = true`.
+    /// Missing kinds remain absent. `plan_revision` is incremented, which
+    /// appends a plan revision to history via the caller's normal snapshot.
     ///
     /// `freeze = false`: every part's `frozen` flag is cleared, regardless
     /// of kind.
@@ -569,28 +629,10 @@ impl TicketFs {
             let mut parts = manifest.parts();
 
             if freeze {
-                for &kind in crate::model::parts::PLANNING_PART_KINDS {
-                    if let Some(part) = parts.iter_mut().find(|p| p.kind == kind) {
+                for part in &mut parts {
+                    if crate::model::parts::is_planning_part_kind(&part.kind) {
                         part.frozen = true;
-                        continue;
                     }
-                    let content = if kind == "objective" {
-                        Self::read_description(ticket_path).unwrap_or_default()
-                    } else {
-                        String::new()
-                    };
-                    let id = Uuid::new_v4();
-                    let rel_path = format!("{TICKET_PARTS_DIR}/{id}.md");
-                    fs::create_dir_all(ticket_path.join(TICKET_PARTS_DIR))?;
-                    fs::write(ticket_path.join(&rel_path), &content)?;
-                    parts.push(crate::model::ticket::TicketPart {
-                        id,
-                        kind: kind.to_string(),
-                        path: rel_path,
-                        frozen: true,
-                        created_at: Utc::now(),
-                        supersedes: None,
-                    });
                 }
                 let revision = manifest
                     .extra

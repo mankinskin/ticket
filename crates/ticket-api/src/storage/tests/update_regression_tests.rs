@@ -1,4 +1,5 @@
 use super::*;
+use crate::error::StorageError;
 
 #[test]
 fn create_defaults_to_planning_state() {
@@ -19,6 +20,207 @@ fn create_defaults_to_planning_state() {
 
     let indexed = store.get_indexed(&id).unwrap().unwrap();
     assert_eq!(indexed.state.as_deref(), Some("planning"));
+}
+
+#[test]
+fn blank_ticket_content_is_rejected_without_mutation() {
+    let dir = tempdir().unwrap();
+    let store = TicketStore::init(dir.path()).unwrap();
+    let rejected_id = Uuid::new_v4();
+
+    assert!(matches!(
+        store.create(
+            Some(rejected_id),
+            "tracker-improvement",
+            Some("Blank description"),
+            Some("planning"),
+            Default::default(),
+            None,
+            Some(" \n\t "),
+        ),
+        Err(StorageError::EmptyPartContent { .. })
+    ));
+    assert!(store.get_indexed(&rejected_id).unwrap().is_none());
+
+    let id = store
+        .create(
+            None,
+            "tracker-improvement",
+            Some("Content validation"),
+            Some("planning"),
+            Default::default(),
+            None,
+            Some("existing description"),
+        )
+        .unwrap();
+    let indexed = store.get_indexed(&id).unwrap().unwrap();
+    let history_before = store.get_history(&id).unwrap().len();
+    let original_manifest = store.get(&id).unwrap();
+
+    assert!(matches!(
+        store.write_part(&id, Uuid::new_v4(), "review", " \n ", None),
+        Err(StorageError::EmptyPartContent { .. })
+    ));
+    assert!(matches!(
+        store.write_amendment_part(&id, Uuid::new_v4(), "\t", Uuid::new_v4(), None),
+        Err(StorageError::EmptyPartContent { .. })
+    ));
+    assert!(matches!(
+        store.update_with_options(
+            &id,
+            BTreeMap::new(),
+            None,
+            None,
+            Some(" \t\n"),
+            Some(DescriptionUpdateMode::Replace),
+            None,
+            false,
+        ),
+        Err(StorageError::EmptyPartContent { .. })
+    ));
+
+    let manifest_after = store.get(&id).unwrap();
+    assert_eq!(manifest_after.parts(), original_manifest.parts());
+    assert_eq!(
+        fs::read_to_string(indexed.path.join("description.md")).unwrap(),
+        "existing description"
+    );
+    assert_eq!(store.get_history(&id).unwrap().len(), history_before);
+}
+
+#[test]
+fn migration_prevalidates_all_segments_before_writing_any_ticket() {
+    use crate::storage::store::{MigrationDryRunReport, MigrationSegment, TicketMigrationPlan};
+
+    let dir = tempdir().unwrap();
+    let store = TicketStore::init(dir.path()).unwrap();
+    let first_id = store
+        .create(
+            None,
+            "tracker-improvement",
+            Some("Valid migration"),
+            Some("in-implementation"),
+            Default::default(),
+            None,
+            Some("legacy description"),
+        )
+        .unwrap();
+    let second_id = store
+        .create(
+            None,
+            "tracker-improvement",
+            Some("Invalid migration"),
+            Some("in-implementation"),
+            Default::default(),
+            None,
+            Some("legacy description"),
+        )
+        .unwrap();
+
+    let migration_plan = |id, content: &str| TicketMigrationPlan {
+        id,
+        title: None,
+        segments: vec![MigrationSegment {
+            kind: "review".to_string(),
+            heading: Some("## Review".to_string()),
+            content: content.to_string(),
+        }],
+        matched_counts: BTreeMap::from([("review".to_string(), 1)]),
+        objective_lines: 0,
+        lossless: true,
+    };
+    let dry_run = MigrationDryRunReport {
+        migratable: vec![
+            migration_plan(first_id, "## Review\nvalid"),
+            migration_plan(second_id, " \n\t"),
+        ],
+        ..MigrationDryRunReport::default()
+    };
+
+    assert!(matches!(
+        store.migration_apply(&dry_run, None),
+        Err(StorageError::EmptyPartContent { .. })
+    ));
+    assert!(store.get(&first_id).unwrap().parts().is_empty());
+    assert!(store.get(&second_id).unwrap().parts().is_empty());
+}
+
+#[test]
+fn part_files_use_normalized_kind_slugs_and_manifest_order_ordinals() {
+    let dir = tempdir().unwrap();
+    let store = TicketStore::init(dir.path()).unwrap();
+    let id = store
+        .create(
+            None,
+            "tracker-improvement",
+            Some("Slug filenames"),
+            Some("planning"),
+            Default::default(),
+            None,
+            None,
+        )
+        .unwrap();
+
+    let first_id = Uuid::new_v4();
+    store
+        .write_part(&id, first_id, "review", "first review", None)
+        .unwrap();
+    let second_id = Uuid::new_v4();
+    store
+        .write_part(&id, second_id, "REVIEW", "second review", None)
+        .unwrap();
+    let unicode_id = Uuid::new_v4();
+    store
+        .write_part(&id, unicode_id, "Straße", "unicode attachment", None)
+        .unwrap();
+
+    let manifest = store.get(&id).unwrap();
+    let paths: Vec<_> = manifest
+        .parts()
+        .into_iter()
+        .map(|part| (part.id, part.path))
+        .collect();
+    assert_eq!(
+        paths,
+        vec![
+            (first_id, "parts/review.md".to_string()),
+            (second_id, "parts/review-2.md".to_string()),
+            (unicode_id, "parts/strasse.md".to_string()),
+        ]
+    );
+}
+
+#[test]
+fn occupied_slug_part_path_is_rejected_without_manifest_mutation() {
+    let dir = tempdir().unwrap();
+    let store = TicketStore::init(dir.path()).unwrap();
+    let id = store
+        .create(
+            None,
+            "tracker-improvement",
+            Some("Path collision"),
+            Some("planning"),
+            Default::default(),
+            None,
+            None,
+        )
+        .unwrap();
+    let indexed = store.get_indexed(&id).unwrap().unwrap();
+    let parts_dir = indexed.path.join("parts");
+    fs::create_dir_all(&parts_dir).unwrap();
+    fs::write(parts_dir.join("review.md"), "pre-existing").unwrap();
+    let before = store.get(&id).unwrap();
+
+    assert!(matches!(
+        store.write_part(&id, Uuid::new_v4(), "review", "new review", None),
+        Err(StorageError::PartPathConflict { .. })
+    ));
+
+    assert_eq!(store.get(&id).unwrap().parts(), before.parts());
+    assert_eq!(
+        fs::read_to_string(parts_dir.join("review.md")).unwrap(),
+        "pre-existing"
+    );
 }
 
 #[test]
@@ -756,6 +958,49 @@ fn undo_restores_previous_description() {
 }
 
 #[test]
+fn reverting_to_absent_description_removes_file_instead_of_creating_empty_file() {
+    let dir = tempdir().unwrap();
+    let store = TicketStore::init(dir.path()).unwrap();
+    let id = store
+        .create(
+            None,
+            "tracker-improvement",
+            Some("Absent description restore"),
+            Some("planning"),
+            Default::default(),
+            None,
+            None,
+        )
+        .unwrap();
+    store
+        .update_with_options(
+            &id,
+            BTreeMap::new(),
+            None,
+            None,
+            Some("temporary description"),
+            Some(DescriptionUpdateMode::Replace),
+            None,
+            false,
+        )
+        .unwrap();
+
+    let indexed = store.get_indexed(&id).unwrap().unwrap();
+    let revisions = store.get_history(&id).unwrap();
+    let mut revert_fields = revisions[revisions.len() - 2].fields.clone();
+    revert_fields.insert(
+        crate::storage::store::DESCRIPTION_HISTORY_KEY.to_string(),
+        Value::Null,
+    );
+    store.apply_revert(&id, revert_fields, None).unwrap();
+
+    assert!(
+        !indexed.path.join("description.md").exists(),
+        "restoring a missing prior description must remove the file"
+    );
+}
+
+#[test]
 fn ticket_3d952036_omitted_description_mode_is_rejected() {
     let dir = tempdir().unwrap();
     let store = TicketStore::init(dir.path()).unwrap();
@@ -1038,7 +1283,7 @@ const PLANNING_KINDS: &[&str] = &[
 ];
 
 #[test]
-fn f9e70385_ready_freezes_exactly_the_five_planning_parts() {
+fn f9e70385_ready_freezes_only_existing_planning_parts() {
     let dir = tempdir().unwrap();
     let store = TicketStore::init(dir.path()).unwrap();
 
@@ -1054,8 +1299,14 @@ fn f9e70385_ready_freezes_exactly_the_five_planning_parts() {
         )
         .unwrap();
 
-    // Seed a non-planning, non-frozen kind before freezing, to prove it is
-    // left alone.
+    let objective_id = Uuid::new_v4();
+    store
+        .write_part(&id, objective_id, "objective", "objective", None)
+        .unwrap();
+    let design_id = Uuid::new_v4();
+    store
+        .write_part(&id, design_id, "design", "design", None)
+        .unwrap();
     let notes_id = Uuid::new_v4();
     store
         .write_part(&id, notes_id, "notes", "working notes", None)
@@ -1068,21 +1319,74 @@ fn f9e70385_ready_freezes_exactly_the_five_planning_parts() {
     let manifest = store.get(&id).unwrap();
     let parts = manifest.parts();
 
-    // AC1: exactly the five planning parts are frozen, and no others.
+    // Only planning parts that already exist are frozen. Missing kinds stay
+    // absent, and non-planning parts remain writable.
     for &kind in PLANNING_KINDS {
-        let part = parts
-            .iter()
-            .find(|p| p.kind == kind)
-            .unwrap_or_else(|| panic!("planning part '{kind}' materialized"));
-        assert!(part.frozen, "planning part '{kind}' must be frozen");
+        if let Some(part) = parts.iter().find(|p| p.kind == kind) {
+            assert!(part.frozen, "planning part '{kind}' must be frozen");
+        }
     }
+    assert!(parts.iter().any(|p| p.id == objective_id));
+    assert!(parts.iter().any(|p| p.id == design_id));
     let notes = parts.iter().find(|p| p.id == notes_id).unwrap();
     assert!(!notes.frozen, "notes part must never be frozen");
     let frozen_count = parts.iter().filter(|p| p.frozen).count();
-    assert_eq!(
-        frozen_count, 5,
-        "exactly the five planning parts should be frozen, got: {parts:?}"
+    assert_eq!(frozen_count, 2, "only existing planning parts are frozen");
+}
+
+#[test]
+fn ready_rejects_new_planning_parts_but_allows_notes_and_amendments() {
+    let dir = tempdir().unwrap();
+    let store = TicketStore::init(dir.path()).unwrap();
+    let id = store
+        .create(
+            None,
+            "tracker-improvement",
+            Some("Ready part policy"),
+            Some("planning"),
+            Default::default(),
+            None,
+            None,
+        )
+        .unwrap();
+    let objective_id = Uuid::new_v4();
+    store
+        .write_part(&id, objective_id, "objective", "objective", None)
+        .unwrap();
+    store
+        .update(&id, BTreeMap::new(), None, Some("ready"), None, None)
+        .unwrap();
+
+    let requirements_id = Uuid::new_v4();
+    assert!(matches!(
+        store.write_part(
+            &id,
+            requirements_id,
+            "requirements",
+            "late requirements",
+            None
+        ),
+        Err(StorageError::ReadyPlanningPartWrite { .. })
+    ));
+    let manifest = store.get(&id).unwrap();
+    assert!(
+        !manifest
+            .parts()
+            .iter()
+            .any(|part| part.id == requirements_id)
     );
+
+    let notes_id = Uuid::new_v4();
+    store
+        .write_part(&id, notes_id, "notes", "progress note", None)
+        .unwrap();
+    let amendment_id = Uuid::new_v4();
+    store
+        .write_amendment_part(&id, amendment_id, "corrected objective", objective_id, None)
+        .unwrap();
+    let manifest = store.get(&id).unwrap();
+    assert!(manifest.parts().iter().any(|part| part.id == notes_id));
+    assert!(manifest.parts().iter().any(|part| part.id == amendment_id));
 }
 
 #[test]
@@ -1102,6 +1406,10 @@ fn f9e70385_write_to_frozen_part_is_rejected_and_file_byte_identical() {
         )
         .unwrap();
 
+    let objective_id = Uuid::new_v4();
+    store
+        .write_part(&id, objective_id, "objective", "Stable objective", None)
+        .unwrap();
     store
         .update(&id, BTreeMap::new(), None, Some("ready"), None, None)
         .unwrap();
@@ -1169,6 +1477,10 @@ fn f9e70385_review_write_on_ready_ticket_succeeds() {
         )
         .unwrap();
 
+    let objective_id = Uuid::new_v4();
+    store
+        .write_part(&id, objective_id, "objective", "Objective v1", None)
+        .unwrap();
     store
         .update(&id, BTreeMap::new(), None, Some("ready"), None, None)
         .unwrap();
@@ -1210,6 +1522,10 @@ fn f9e70385_unfreeze_refreeze_cycle_appends_plan_revision() {
         )
         .unwrap();
 
+    let objective_id = Uuid::new_v4();
+    store
+        .write_part(&id, objective_id, "objective", "Objective v1", None)
+        .unwrap();
     store
         .update(&id, BTreeMap::new(), None, Some("ready"), None, None)
         .unwrap();
@@ -1298,6 +1614,16 @@ fn f9e70385_amendment_records_supersedes_and_is_retrievable_alongside_frozen_par
         )
         .unwrap();
 
+    let objective_id = Uuid::new_v4();
+    store
+        .write_part(
+            &id,
+            objective_id,
+            "objective",
+            "Frozen objective content",
+            None,
+        )
+        .unwrap();
     store
         .update(&id, BTreeMap::new(), None, Some("ready"), None, None)
         .unwrap();
@@ -1413,6 +1739,16 @@ fn f9e70385_legacy_description_write_rejected_when_objective_frozen() {
         )
         .unwrap();
 
+    let objective_id = Uuid::new_v4();
+    store
+        .write_part(
+            &id,
+            objective_id,
+            "objective",
+            "Frozen objective content",
+            None,
+        )
+        .unwrap();
     store
         .update(&id, BTreeMap::new(), None, Some("ready"), None, None)
         .unwrap();
@@ -1462,7 +1798,7 @@ fn f9e70385_legacy_description_write_rejected_when_objective_frozen() {
 }
 
 #[test]
-fn bc74e91f_combined_freeze_and_description_write_materializes_matching_objective() {
+fn bc74e91f_combined_freeze_and_description_write_keeps_missing_objective_absent() {
     let dir = tempdir().unwrap();
     let store = TicketStore::init(dir.path()).unwrap();
 
@@ -1480,9 +1816,8 @@ fn bc74e91f_combined_freeze_and_description_write_materializes_matching_objectiv
 
     let written = "combined write content";
 
-    // AC1/AC2: a single call that both transitions to `ready` and writes
-    // the description must materialize the `objective` part from the new
-    // description text, not from the pre-call (empty) description.
+    // A transition to `ready` freezes existing planning parts only. Writing
+    // the description in the same update must not materialize an objective.
     store
         .update_with_options(
             &id,
@@ -1498,30 +1833,15 @@ fn bc74e91f_combined_freeze_and_description_write_materializes_matching_objectiv
 
     let path = store.get_indexed(&id).unwrap().unwrap().path;
     let manifest = store.get(&id).unwrap();
-    let objective = manifest
-        .parts()
-        .into_iter()
-        .find(|p| p.kind == "objective")
-        .expect("objective part should be materialized by plan freeze");
-    assert!(
-        objective.frozen,
-        "objective should be frozen after entering ready"
-    );
-
-    let objective_content = fs::read_to_string(path.join(&objective.path)).unwrap();
     let description_content = fs::read_to_string(path.join("description.md")).unwrap();
 
-    assert_eq!(
-        objective_content, written,
-        "objective part must contain the newly written description"
-    );
     assert_eq!(
         description_content, written,
         "description.md must contain the newly written description"
     );
-    assert_eq!(
-        objective_content, description_content,
-        "objective part and description.md must be byte-identical"
+    assert!(
+        manifest.parts().is_empty(),
+        "missing planning parts must remain absent"
     );
 
     let indexed = store.get_indexed(&id).unwrap().unwrap();

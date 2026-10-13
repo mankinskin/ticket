@@ -6,6 +6,8 @@
 //! interpreted.
 
 use crate::error::{SchemaValidationError, StorageError};
+use unicode_casefold::{Locale, UnicodeCaseFold, Variant};
+use unicode_normalization::UnicodeNormalization;
 
 /// The schema-validated core part kinds understood by projections.
 pub const CORE_PART_KINDS: &[&str] = &[
@@ -35,6 +37,46 @@ pub const PLANNING_PART_KINDS: &[&str] = &[
 /// Returns `true` when `kind` is one of [`PLANNING_PART_KINDS`].
 pub fn is_planning_part_kind(kind: &str) -> bool {
     PLANNING_PART_KINDS.contains(&kind)
+}
+
+pub(crate) fn ensure_nonblank_content(
+    content: &str,
+    target: impl Into<String>,
+) -> Result<(), StorageError> {
+    if content.trim().is_empty() {
+        return Err(StorageError::EmptyPartContent {
+            target: target.into(),
+        });
+    }
+    Ok(())
+}
+
+pub(crate) fn part_kind_slug(kind: &str) -> String {
+    let normalized: String = kind
+        .nfkc()
+        .case_fold_with(Variant::Full, Locale::NonTurkic)
+        .nfkc()
+        .collect();
+    let mut slug = String::new();
+    let mut pending_separator = false;
+
+    for ch in normalized.chars() {
+        if ch.is_ascii_lowercase() || ch.is_ascii_digit() {
+            if pending_separator && !slug.is_empty() {
+                slug.push('-');
+            }
+            slug.push(ch);
+            pending_separator = false;
+        } else if !slug.is_empty() {
+            pending_separator = true;
+        }
+    }
+
+    if slug.is_empty() {
+        "part".to_string()
+    } else {
+        slug
+    }
 }
 
 /// The named read-projection view profiles (spec 24b3d22b, ticket
@@ -301,5 +343,16 @@ mod tests {
             classify_part_kind("my-custom-attachment").unwrap(),
             PartKindClass::Attachment("my-custom-attachment".to_string())
         );
+    }
+
+    #[test]
+    fn kind_slugs_apply_nfkc_full_case_folding_and_ascii_separator_rules() {
+        assert_eq!(
+            part_kind_slug("Ａcceptance__Criteria"),
+            "acceptance-criteria"
+        );
+        assert_eq!(part_kind_slug("Straße"), "strasse");
+        assert_eq!(part_kind_slug("résumé"), "r-sum");
+        assert_eq!(part_kind_slug("東京"), "part");
     }
 }

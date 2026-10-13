@@ -15,7 +15,14 @@ use std::collections::BTreeMap;
 use uuid::Uuid;
 
 use super::TicketStore;
-use crate::{error::StorageError, model::ticket::TicketManifestExt, storage::ticket_fs::TicketFs};
+use crate::{
+    error::StorageError,
+    model::{
+        parts::{ensure_nonblank_content, is_planning_part_kind},
+        ticket::TicketManifestExt,
+    },
+    storage::ticket_fs::TicketFs,
+};
 
 /// History field key marking a revision as produced by the description
 /// migration, with the list of part ids it created (used by
@@ -262,6 +269,7 @@ impl TicketStore {
         author: Option<&str>,
     ) -> Result<MigrationApplyReport, StorageError> {
         let mut report = MigrationApplyReport::default();
+        let mut eligible = Vec::new();
 
         for plan in &dry_run.migratable {
             let id = plan.id;
@@ -278,7 +286,12 @@ impl TicketStore {
             }
 
             let was_planning = indexed.state.as_deref() == Some("planning");
-            if was_planning {
+            let blocked_by_ready = indexed.state.as_deref() == Some("ready")
+                && plan
+                    .segments
+                    .iter()
+                    .any(|segment| is_planning_part_kind(&segment.kind));
+            if was_planning || blocked_by_ready {
                 // Deferred rather than stepped back and forth (see
                 // `MigrationApplyReport::skipped_planning`): re-entering
                 // `planning` can be rejected by an unrelated dependency
@@ -288,6 +301,18 @@ impl TicketStore {
                 continue;
             }
 
+            for (index, segment) in plan.segments.iter().enumerate() {
+                ensure_nonblank_content(
+                    &segment.content,
+                    format!("ticket {id} migration segment {}", index + 1),
+                )?;
+            }
+            eligible.push((plan, indexed.path));
+        }
+
+        // Apply only after every eligible ticket has passed segment validation.
+        for (plan, ticket_path) in eligible {
+            let id = plan.id;
             // Every segment — including `objective` ones — gets a fresh
             // random part id, never the deterministic implicit-objective
             // id: `TicketFs::write_part` special-cases that id when the
@@ -316,7 +341,7 @@ impl TicketStore {
                 ),
             );
             if let Err(error) =
-                TicketFs::append_history(&indexed.path, history_fields, author.map(str::to_string))
+                TicketFs::append_history(&ticket_path, history_fields, author.map(str::to_string))
             {
                 tracing::error!(
                     ticket_id = %id,

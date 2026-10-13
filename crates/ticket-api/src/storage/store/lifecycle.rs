@@ -10,6 +10,7 @@ use uuid::Uuid;
 
 use crate::{
     error::StorageError,
+    model::parts::ensure_nonblank_content,
     model::ticket::TicketManifest,
     storage::ticket_fs::{HistoryRevision, TicketFs},
 };
@@ -94,22 +95,38 @@ impl TicketStore {
             .and_then(Value::as_str)
             .map(str::to_string);
         let previous_description = fields.get(super::DESCRIPTION_HISTORY_KEY).cloned();
+        let has_previous_description = previous_description.is_some();
         let mut patch = fields.clone();
         patch.remove("state");
         patch.remove(super::DESCRIPTION_HISTORY_KEY);
 
-        TicketFs::update(&indexed.path, &patch, target_state.as_deref())?;
-
-        if let Some(desc_val) = previous_description {
-            let restored = match desc_val {
-                Value::String(s) => s,
-                _ => String::new(),
-            };
+        let restored_description = previous_description
+            .map(|value| match value {
+                Value::String(text) => {
+                    ensure_nonblank_content(&text, format!("ticket {id} restored description"))?;
+                    Ok(Some(text))
+                }
+                Value::Null => Ok(None),
+                other => Err(StorageError::Other(format!(
+                    "cannot restore ticket {id} description from history value {other}"
+                ))),
+            })
+            .transpose()?;
+        if has_previous_description {
             // AC7: undo/revert is a write, not a privileged bypass of plan
             // freezing — route it through the same gate the structured
             // write paths use.
             self.enforce_description_write_gate(id)?;
-            TicketFs::write_description(&indexed.path, &restored)?;
+        }
+
+        TicketFs::update(&indexed.path, &patch, target_state.as_deref())?;
+
+        if let Some(restored) = restored_description {
+            if let Some(restored) = restored {
+                TicketFs::write_description(&indexed.path, &restored)?;
+            } else {
+                TicketFs::remove_description(&indexed.path)?;
+            }
         }
 
         let previous_state = indexed.state.clone();
