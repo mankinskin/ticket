@@ -130,8 +130,7 @@ impl WorkflowModel {
         all_edges: Vec<EdgeRecord>,
     ) -> Result<Self, StorageError> {
         let state_index = build_state_index(store);
-        let priorities = read_priorities(&tickets);
-        let efforts = read_efforts(&tickets);
+        let (priorities, efforts) = read_priority_and_effort(&tickets)?;
         let workflow_facts = store
             .get_workflow_facts_many(&tickets.iter().map(|ticket| ticket.id).collect::<Vec<_>>())?;
         Ok(Self::build_from_parts(

@@ -417,7 +417,7 @@ pub(crate) fn cmd_describe(args: IdArgs, store: &TicketStore) -> Result<Value, C
     let indexed = store
         .get_indexed(&id)?
         .ok_or_else(|| CliRunError::BadRequest(format!("ticket not found: {}", id)))?;
-    let description = TicketFs::read_description(&indexed.path);
+    let description = TicketFs::read_description(&indexed.path)?;
     Ok(json!({
         "command": "describe",
         "status": "ok",

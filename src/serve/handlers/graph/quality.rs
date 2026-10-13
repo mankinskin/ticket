@@ -46,7 +46,10 @@ pub(super) async fn handle_health_check(
                 .into_response_with_status(StatusCode::BAD_REQUEST);
         }
     };
-    let tickets = apply_field_filters(tickets, &field_filters);
+    let tickets = match apply_field_filters(tickets, &field_filters) {
+        Ok(tickets) => tickets,
+        Err(error) => return storage_err(error, &request_id),
+    };
 
     let workflow = match WorkflowModel::build(
         &store,

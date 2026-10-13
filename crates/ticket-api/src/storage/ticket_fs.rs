@@ -25,6 +25,9 @@ use crate::{
 
 #[cfg(test)]
 mod tests;
+mod transaction;
+
+use transaction::Operation as TransactionOperation;
 
 /// A single immutable revision snapshot stored in `history.ndjson`.
 ///
@@ -40,6 +43,25 @@ pub struct HistoryRevision {
     /// Identity of the user or agent who made this change (optional).
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub author: Option<String>,
+}
+
+fn write_manifest_transactional(dir: &Path, manifest: &TicketManifest) -> Result<(), StorageError> {
+    let toml_str = crate::model::manifest_format::format_manifest_toml(manifest);
+    transaction::publish(
+        dir,
+        TransactionOperation::ManifestOnly,
+        Vec::new(),
+        Vec::new(),
+        Some(toml_str.as_bytes()),
+    )
+}
+
+fn read_optional_text(path: &Path) -> Result<Option<String>, StorageError> {
+    match fs::read_to_string(path) {
+        Ok(contents) => Ok(Some(contents)),
+        Err(error) if error.kind() == std::io::ErrorKind::NotFound => Ok(None),
+        Err(error) => Err(StorageError::Io(error)),
+    }
 }
 
 /// Low-level filesystem operations for ticket folders.
@@ -100,6 +122,13 @@ impl TicketFs {
 
     /// Read and parse the manifest from an existing ticket folder.
     pub fn read(ticket_path: &Path) -> Result<TicketManifest, StorageError> {
+        let lock_path = ticket_path.join(TICKET_LOCK_FILE);
+        let lock_file = acquire_lock(&lock_path)?;
+        let result = Self::read_unlocked(ticket_path);
+        release_lock(&lock_file, result)
+    }
+
+    fn read_unlocked(ticket_path: &Path) -> Result<TicketManifest, StorageError> {
         let manifest_path = ticket_path.join(TICKET_MANIFEST_FILE);
         let content = fs::read_to_string(&manifest_path)?;
         parse_ticket_manifest_toml(manifest_path.clone(), &content).map_err(|d| {
@@ -128,7 +157,7 @@ impl TicketFs {
         let lock_file = acquire_lock(&lock_path)?;
 
         let result = (|| -> Result<TicketManifest, StorageError> {
-            let mut manifest = Self::read(ticket_path)?;
+            let mut manifest = Self::read_unlocked(ticket_path)?;
             // Apply extra-field patches. A `Value::Null` in the patch means
             // "delete this key" rather than "set it to null" — the manifest
             // TOML format has no null literal, so storing it verbatim used
@@ -146,12 +175,11 @@ impl TicketFs {
                     .extra
                     .insert("state".to_string(), Value::String(state.to_string()));
             }
-            write_manifest(ticket_path, &manifest)?;
+            write_manifest_transactional(ticket_path, &manifest)?;
             Ok(manifest)
         })();
 
-        release_lock(&lock_file, &lock_path);
-        result
+        release_lock(&lock_file, result)
     }
 
     fn part_path_for_kind(
@@ -261,11 +289,21 @@ impl TicketFs {
     ///
     /// Returns an empty vec if no `history.ndjson` exists yet.
     pub fn read_history(ticket_path: &Path) -> Result<Vec<HistoryRevision>, StorageError> {
+        let lock_path = ticket_path.join(TICKET_LOCK_FILE);
+        let lock_file = acquire_lock(&lock_path)?;
+        let result = Self::read_history_unlocked(ticket_path);
+        release_lock(&lock_file, result)
+    }
+
+    fn read_history_unlocked(ticket_path: &Path) -> Result<Vec<HistoryRevision>, StorageError> {
         let path = ticket_path.join(TICKET_HISTORY_FILE);
-        if !path.exists() {
-            return Ok(Vec::new());
-        }
-        let file = File::open(&path)?;
+        let file = match File::open(&path) {
+            Ok(file) => file,
+            Err(error) if error.kind() == std::io::ErrorKind::NotFound => {
+                return Ok(Vec::new());
+            }
+            Err(error) => return Err(StorageError::Io(error)),
+        };
         let reader = BufReader::new(file);
         let mut revisions = Vec::new();
         for (line_no, line) in reader.lines().enumerate() {
@@ -300,9 +338,22 @@ impl TicketFs {
         fields: BTreeMap<String, Value>,
         author: Option<String>,
     ) -> Result<u64, StorageError> {
+        let lock_path = ticket_path.join(TICKET_LOCK_FILE);
+        let lock_file = acquire_lock(&lock_path)?;
+        let result = (|| -> Result<u64, StorageError> {
+            Self::append_history_unlocked(ticket_path, fields, author)
+        })();
+        release_lock(&lock_file, result)
+    }
+
+    fn append_history_unlocked(
+        ticket_path: &Path,
+        fields: BTreeMap<String, Value>,
+        author: Option<String>,
+    ) -> Result<u64, StorageError> {
         let path = ticket_path.join(TICKET_HISTORY_FILE);
         // Count existing revisions to assign the next rev number.
-        let existing_count = Self::read_history(ticket_path)?.len() as u64;
+        let existing_count = Self::read_history_unlocked(ticket_path)?.len() as u64;
         let rev = existing_count + 1;
         let entry = HistoryRevision {
             rev,
@@ -319,11 +370,15 @@ impl TicketFs {
 
     /// Ensure the `assets/` subdirectory exists inside `ticket_path`.
     pub fn ensure_assets_dir(ticket_path: &Path) -> Result<(), StorageError> {
+        let lock_path = ticket_path.join(TICKET_LOCK_FILE);
+        let lock_file = acquire_lock(&lock_path)?;
         let assets = ticket_path.join(TICKET_ASSETS_DIR);
-        if !assets.exists() {
-            fs::create_dir_all(&assets)?;
-        }
-        Ok(())
+        let result = if assets.exists() {
+            Ok(())
+        } else {
+            fs::create_dir_all(&assets).map_err(StorageError::Io)
+        };
+        release_lock(&lock_file, result)
     }
 
     /// Reformat an existing ticket's `ticket.toml` to canonical field ordering.
@@ -334,12 +389,11 @@ impl TicketFs {
         let lock_path = ticket_path.join(TICKET_LOCK_FILE);
         let lock_file = acquire_lock(&lock_path)?;
         let result = (|| -> Result<(), StorageError> {
-            let manifest = Self::read(ticket_path)?;
-            write_manifest(ticket_path, &manifest)?;
+            let manifest = Self::read_unlocked(ticket_path)?;
+            write_manifest_transactional(ticket_path, &manifest)?;
             Ok(())
         })();
-        release_lock(&lock_file, &lock_path);
-        result
+        release_lock(&lock_file, result)
     }
 
     /// Write or overwrite the `description.md` file for a ticket.
@@ -352,28 +406,43 @@ impl TicketFs {
         ensure_nonblank_content(text, "ticket description")?;
         let lock_path = ticket_path.join(TICKET_LOCK_FILE);
         let lock_file = acquire_lock(&lock_path)?;
-        let result = fs::write(ticket_path.join("description.md"), text).map_err(StorageError::Io);
-        release_lock(&lock_file, &lock_path);
-        result
+        let result = transaction::publish(
+            ticket_path,
+            TransactionOperation::Overwrite,
+            vec![("description.md".to_string(), text.as_bytes().to_vec())],
+            Vec::new(),
+            None,
+        );
+        release_lock(&lock_file, result)
     }
 
     pub(crate) fn remove_description(ticket_path: &Path) -> Result<(), StorageError> {
         let lock_path = ticket_path.join(TICKET_LOCK_FILE);
         let lock_file = acquire_lock(&lock_path)?;
-        let result = match fs::remove_file(ticket_path.join("description.md")) {
-            Ok(()) => Ok(()),
-            Err(error) if error.kind() == std::io::ErrorKind::NotFound => Ok(()),
-            Err(error) => Err(StorageError::Io(error)),
-        };
-        release_lock(&lock_file, &lock_path);
-        result
+        let result = transaction::publish(
+            ticket_path,
+            TransactionOperation::Overwrite,
+            Vec::new(),
+            vec!["description.md".to_string()],
+            None,
+        );
+        release_lock(&lock_file, result)
     }
 
-    /// Read text content of a file inside the assets directory for search indexing.
-    /// Returns `None` if no `description.md` exists.
-    pub fn read_description(ticket_path: &Path) -> Option<String> {
-        let desc = ticket_path.join("description.md");
-        fs::read_to_string(&desc).ok()
+    /// Read the legacy description, returning `None` when no description exists.
+    pub fn read_description(ticket_path: &Path) -> Result<Option<String>, StorageError> {
+        let lock_path = ticket_path.join(TICKET_LOCK_FILE);
+        let lock_file = acquire_lock(&lock_path)?;
+        let result = Self::read_description_unlocked(ticket_path);
+        release_lock(&lock_file, result)
+    }
+
+    fn read_description_unlocked(ticket_path: &Path) -> Result<Option<String>, StorageError> {
+        match fs::read_to_string(ticket_path.join("description.md")) {
+            Ok(description) => Ok(Some(description)),
+            Err(error) if error.kind() == std::io::ErrorKind::NotFound => Ok(None),
+            Err(error) => Err(StorageError::Io(error)),
+        }
     }
 
     /// Load a ticket's content parts: the `[[parts]]` manifest entries
@@ -388,44 +457,55 @@ impl TicketFs {
         ticket_path: &Path,
         manifest: &TicketManifest,
     ) -> Result<PartsLoadReport, StorageError> {
-        let entries = manifest.parts();
+        let lock_path = ticket_path.join(TICKET_LOCK_FILE);
+        let lock_file = acquire_lock(&lock_path)?;
+        let result = (|| -> Result<PartsLoadReport, StorageError> {
+            let current_manifest = Self::read_unlocked(ticket_path)?;
+            if manifest.id != current_manifest.id {
+                return Err(StorageError::Other(format!(
+                    "ticket manifest id changed while loading parts at {}",
+                    ticket_path.display()
+                )));
+            }
+            let entries = current_manifest.parts();
+            if entries.is_empty() {
+                let content = Self::read_description_unlocked(ticket_path)?.unwrap_or_default();
+                return Ok(PartsLoadReport {
+                    parts: vec![LoadedPart {
+                        id: implicit_objective_part_id(current_manifest.id),
+                        kind: "objective".to_string(),
+                        path: "description.md".to_string(),
+                        frozen: false,
+                        created_at: current_manifest.created_at,
+                        supersedes: None,
+                        content,
+                        implicit: true,
+                    }],
+                    orphans: Vec::new(),
+                });
+            }
 
-        if entries.is_empty() {
-            let content = Self::read_description(ticket_path).unwrap_or_default();
-            return Ok(PartsLoadReport {
-                parts: vec![LoadedPart {
-                    id: implicit_objective_part_id(manifest.id),
-                    kind: "objective".to_string(),
-                    path: "description.md".to_string(),
-                    frozen: false,
-                    created_at: manifest.created_at,
-                    supersedes: None,
+            let mut parts = Vec::with_capacity(entries.len());
+            let mut referenced_paths: BTreeSet<String> = BTreeSet::new();
+            for entry in entries {
+                let content = fs::read_to_string(ticket_path.join(&entry.path))?;
+                referenced_paths.insert(entry.path.clone());
+                parts.push(LoadedPart {
+                    id: entry.id,
+                    kind: entry.kind,
+                    path: entry.path,
+                    frozen: entry.frozen,
+                    created_at: entry.created_at,
+                    supersedes: entry.supersedes,
                     content,
-                    implicit: true,
-                }],
-                orphans: Vec::new(),
-            });
-        }
+                    implicit: false,
+                });
+            }
 
-        let mut parts = Vec::with_capacity(entries.len());
-        let mut referenced_paths: BTreeSet<String> = BTreeSet::new();
-        for entry in entries {
-            let content = fs::read_to_string(ticket_path.join(&entry.path)).unwrap_or_default();
-            referenced_paths.insert(entry.path.clone());
-            parts.push(LoadedPart {
-                id: entry.id,
-                kind: entry.kind,
-                path: entry.path,
-                frozen: entry.frozen,
-                created_at: entry.created_at,
-                supersedes: entry.supersedes,
-                content,
-                implicit: false,
-            });
-        }
-
-        let orphans = find_orphan_part_files(ticket_path, &referenced_paths)?;
-        Ok(PartsLoadReport { parts, orphans })
+            let orphans = find_orphan_part_files(ticket_path, &referenced_paths)?;
+            Ok(PartsLoadReport { parts, orphans })
+        })();
+        release_lock(&lock_file, result)
     }
 
     /// Write content to a single content part addressed by its stable
@@ -467,19 +547,32 @@ impl TicketFs {
         let lock_file = acquire_lock(&lock_path)?;
 
         let result = (|| -> Result<(TicketManifest, Option<String>), StorageError> {
-            let mut manifest = Self::read(ticket_path)?;
+            let mut manifest = Self::read_unlocked(ticket_path)?;
             let mut parts = manifest.parts();
 
             if let Some(entry) = parts.iter().find(|p| p.id == part_id) {
                 let rel_path = entry.path.clone();
-                let prior = fs::read_to_string(ticket_path.join(&rel_path)).ok();
-                fs::write(ticket_path.join(&rel_path), content)?;
+                let prior = read_optional_text(&ticket_path.join(&rel_path))?;
+                let manifest_bytes = crate::model::manifest_format::format_manifest_toml(&manifest);
+                transaction::publish(
+                    ticket_path,
+                    TransactionOperation::Overwrite,
+                    vec![(rel_path, content.as_bytes().to_vec())],
+                    Vec::new(),
+                    Some(manifest_bytes.as_bytes()),
+                )?;
                 return Ok((manifest, prior));
             }
 
             if parts.is_empty() && part_id == implicit_objective_part_id(manifest.id) {
-                let prior = Self::read_description(ticket_path);
-                fs::write(ticket_path.join("description.md"), content)?;
+                let prior = Self::read_description_unlocked(ticket_path)?;
+                transaction::publish(
+                    ticket_path,
+                    TransactionOperation::Overwrite,
+                    vec![("description.md".to_string(), content.as_bytes().to_vec())],
+                    Vec::new(),
+                    None,
+                )?;
                 return Ok((manifest, prior));
             }
 
@@ -490,24 +583,27 @@ impl TicketFs {
             // creation and ignored above) — spec 24b3d22b AC2.
             classify_part_kind(kind)?;
             let rel_path = Self::part_path_for_kind(ticket_path, &manifest, kind)?;
-            let parts_dir = ticket_path.join(TICKET_PARTS_DIR);
-            fs::create_dir_all(&parts_dir)?;
-            fs::write(ticket_path.join(&rel_path), content)?;
             parts.push(crate::model::ticket::TicketPart {
                 id: part_id,
                 kind: kind.to_string(),
-                path: rel_path,
+                path: rel_path.clone(),
                 frozen: false,
                 created_at: Utc::now(),
                 supersedes,
             });
             manifest.set_parts(parts);
-            write_manifest(ticket_path, &manifest)?;
+            let manifest_bytes = crate::model::manifest_format::format_manifest_toml(&manifest);
+            transaction::publish(
+                ticket_path,
+                TransactionOperation::Create,
+                vec![(rel_path, content.as_bytes().to_vec())],
+                Vec::new(),
+                Some(manifest_bytes.as_bytes()),
+            )?;
             Ok((manifest, None))
         })();
 
-        release_lock(&lock_file, &lock_path);
-        result
+        release_lock(&lock_file, result)
     }
 
     /// Append a new typed `[[refs]]` entry through the gated manifest write
@@ -526,7 +622,7 @@ impl TicketFs {
         let lock_file = acquire_lock(&lock_path)?;
 
         let result = (|| -> Result<TicketManifest, StorageError> {
-            let mut manifest = Self::read(ticket_path)?;
+            let mut manifest = Self::read_unlocked(ticket_path)?;
             let mut refs = manifest.refs();
             refs.push(crate::model::ticket::TicketRefEntry {
                 kind: kind.to_string(),
@@ -534,12 +630,11 @@ impl TicketFs {
                 note,
             });
             manifest.set_refs(refs);
-            write_manifest(ticket_path, &manifest)?;
+            write_manifest_transactional(ticket_path, &manifest)?;
             Ok(manifest)
         })();
 
-        release_lock(&lock_file, &lock_path);
-        result
+        release_lock(&lock_file, result)
     }
 
     /// Remove a typed `[[refs]]` entry matching `kind` and `urn` exactly,
@@ -554,16 +649,15 @@ impl TicketFs {
         let lock_file = acquire_lock(&lock_path)?;
 
         let result = (|| -> Result<TicketManifest, StorageError> {
-            let mut manifest = Self::read(ticket_path)?;
+            let mut manifest = Self::read_unlocked(ticket_path)?;
             let mut refs = manifest.refs();
             refs.retain(|entry| !(entry.kind == kind && entry.urn == urn));
             manifest.set_refs(refs);
-            write_manifest(ticket_path, &manifest)?;
+            write_manifest_transactional(ticket_path, &manifest)?;
             Ok(manifest)
         })();
 
-        release_lock(&lock_file, &lock_path);
-        result
+        release_lock(&lock_file, result)
     }
 
     /// Remove `[[parts]]` entries matching any of `part_ids` and delete
@@ -580,7 +674,7 @@ impl TicketFs {
         let lock_file = acquire_lock(&lock_path)?;
 
         let result = (|| -> Result<TicketManifest, StorageError> {
-            let mut manifest = Self::read(ticket_path)?;
+            let mut manifest = Self::read_unlocked(ticket_path)?;
             let mut parts = manifest.parts();
             let mut removed_paths = Vec::new();
             parts.retain(|p| {
@@ -592,15 +686,18 @@ impl TicketFs {
                 }
             });
             manifest.set_parts(parts);
-            write_manifest(ticket_path, &manifest)?;
-            for rel_path in removed_paths {
-                let _ = fs::remove_file(ticket_path.join(&rel_path));
-            }
+            let manifest_bytes = crate::model::manifest_format::format_manifest_toml(&manifest);
+            transaction::publish(
+                ticket_path,
+                TransactionOperation::RemoveParts,
+                Vec::new(),
+                removed_paths,
+                Some(manifest_bytes.as_bytes()),
+            )?;
             Ok(manifest)
         })();
 
-        release_lock(&lock_file, &lock_path);
-        result
+        release_lock(&lock_file, result)
     }
 
     /// f9e70385, AC1/AC5), invoked exclusively from the state-transition
@@ -625,7 +722,7 @@ impl TicketFs {
         let lock_file = acquire_lock(&lock_path)?;
 
         let result = (|| -> Result<TicketManifest, StorageError> {
-            let mut manifest = Self::read(ticket_path)?;
+            let mut manifest = Self::read_unlocked(ticket_path)?;
             let mut parts = manifest.parts();
 
             if freeze {
@@ -650,12 +747,11 @@ impl TicketFs {
             }
 
             manifest.set_parts(parts);
-            write_manifest(ticket_path, &manifest)?;
+            write_manifest_transactional(ticket_path, &manifest)?;
             Ok(manifest)
         })();
 
-        release_lock(&lock_file, &lock_path);
-        result
+        release_lock(&lock_file, result)
     }
 
     pub fn update_edge_field(
@@ -668,7 +764,7 @@ impl TicketFs {
         let lock_file = acquire_lock(&lock_path)?;
 
         let result = (|| -> Result<(TicketManifest, bool), StorageError> {
-            let mut manifest = Self::read(ticket_path)?;
+            let mut manifest = Self::read_unlocked(ticket_path)?;
             let mut targets = parse_edge_targets(manifest.extra.get(edge_kind), edge_kind)?;
 
             let changed = if present {
@@ -686,14 +782,13 @@ impl TicketFs {
                         Value::Array(targets.into_iter().map(Value::String).collect()),
                     );
                 }
-                write_manifest(ticket_path, &manifest)?;
+                write_manifest_transactional(ticket_path, &manifest)?;
             }
 
             Ok((manifest, changed))
         })();
 
-        release_lock(&lock_file, &lock_path);
-        result
+        release_lock(&lock_file, result)
     }
 }
 
@@ -894,12 +989,27 @@ fn parse_edge_targets(
 }
 
 fn acquire_lock(lock_path: &Path) -> Result<File, StorageError> {
-    let file = File::create(lock_path)?;
-    file.lock_exclusive().map_err(|e| StorageError::Io(e))?;
+    // Keep the path stable; unlinking after unlock lets concurrent writers lock different inodes.
+    let file = OpenOptions::new()
+        .create(true)
+        .truncate(false)
+        .read(true)
+        .write(true)
+        .open(lock_path)?;
+    file.lock_exclusive().map_err(StorageError::Io)?;
+    if let Some(ticket_path) = lock_path.parent() {
+        transaction::recover(ticket_path)?;
+    }
     Ok(file)
 }
 
-fn release_lock(file: &File, lock_path: &Path) {
-    let _ = file.unlock();
-    let _ = fs::remove_file(lock_path);
+fn release_lock<T>(file: &File, result: Result<T, StorageError>) -> Result<T, StorageError> {
+    let unlock = file.unlock().map_err(StorageError::Io);
+    match (result, unlock) {
+        (Ok(value), Ok(())) => Ok(value),
+        (Err(error), Ok(())) | (Ok(_), Err(error)) => Err(error),
+        (Err(operation_error), Err(unlock_error)) => Err(StorageError::Other(format!(
+            "{operation_error}; lock release failed: {unlock_error}"
+        ))),
+    }
 }

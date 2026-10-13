@@ -253,7 +253,7 @@ fn append_graph_participation_findings(
 
 fn append_description_findings(ticket: &IndexedTicket, report: &mut HealthReport) {
     match TicketFs::read_description(&ticket.path) {
-        None => report.record(
+        Ok(None) => report.record(
             "missing_description",
             base_finding(
                 ticket,
@@ -266,7 +266,7 @@ fn append_description_findings(ticket: &IndexedTicket, report: &mut HealthReport
                 ],
             ),
         ),
-        Some(body) => {
+        Ok(Some(body)) => {
             let trimmed_len = body.trim().len();
             if trimmed_len < 50 {
                 report.record(
@@ -285,6 +285,16 @@ fn append_description_findings(ticket: &IndexedTicket, report: &mut HealthReport
                 );
             }
         }
+        Err(error) => report.record(
+            "description_read_error",
+            base_finding(
+                ticket,
+                "description_read_error",
+                "error",
+                format!("Unable to read ticket description: {error}"),
+                vec!["Resolve the ticket filesystem or transaction-recovery error, then rerun health.".to_string()],
+            ),
+        ),
     }
 }
 

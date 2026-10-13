@@ -316,13 +316,17 @@ pub async fn get_ticket_description(
                 Err(response) => return response,
             };
 
+        let description = match TicketFs::read_description(&resolved.path) {
+            Ok(description) => description,
+            Err(error) => return storage_err(error, &request_id),
+        };
         Json(TicketDescriptionResponse {
             request_id: request_id.clone(),
             active_workspace: workspace.clone(),
             workspace: workspace.clone(),
             id: id.to_string(),
             ticket_ref: resolved.ticket_ref,
-            description: TicketFs::read_description(&resolved.path),
+            description,
         })
         .into_response()
     })

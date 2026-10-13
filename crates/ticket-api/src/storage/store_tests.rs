@@ -54,7 +54,9 @@ fn recovers_ticket_paths_from_relative_index_entries() {
     let indexed = store.get_indexed(&ticket_id).unwrap().unwrap();
     assert_eq!(indexed.path, absolute_ticket_path);
     assert_eq!(
-        TicketFs::read_description(&indexed.path).as_deref(),
+        TicketFs::read_description(&indexed.path)
+            .unwrap()
+            .as_deref(),
         Some("Detailed context for recovery test.")
     );
     assert!(store.get(&ticket_id).is_ok());

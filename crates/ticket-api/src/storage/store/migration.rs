@@ -212,7 +212,7 @@ impl TicketStore {
                 report.skipped_already_migrated += 1;
                 continue;
             }
-            let Some(description) = TicketFs::read_description(&ticket.path) else {
+            let Some(description) = TicketFs::read_description(&ticket.path)? else {
                 report.skipped_no_description += 1;
                 continue;
             };

@@ -52,7 +52,7 @@ impl TicketStore {
             refreshed.title = Some(title.to_string());
         }
         self.index.insert_ticket(&refreshed)?;
-        let body = TicketFs::read_description(&refreshed.path);
+        let body = TicketFs::read_description(&refreshed.path)?;
         let created_at_str = refreshed.created_at.to_rfc3339();
         let effort_str = saved_extra.get("effort").and_then(|v| match v {
             serde_json::Value::String(s) => Some(s.clone()),
@@ -136,7 +136,7 @@ impl TicketStore {
             refreshed.title = Some(title.to_string());
         }
         self.index.insert_ticket(&refreshed)?;
-        let body = TicketFs::read_description(&refreshed.path);
+        let body = TicketFs::read_description(&refreshed.path)?;
         let created_at_str = refreshed.created_at.to_rfc3339();
         let effort_str = patch.get("effort").and_then(|v| match v {
             serde_json::Value::String(s) => Some(s.clone()),

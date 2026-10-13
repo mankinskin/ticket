@@ -26,7 +26,7 @@ impl TicketStore {
             .filter(|ticket| is_ticket_visible(ticket, &visible_roots))
             .filter(|ticket| matches_filters(ticket, state_filter, type_filter))
             .collect();
-        sort_tickets_by_effort(&mut filtered);
+        sort_tickets_by_effort(&mut filtered)?;
         filtered.truncate(limit.unwrap_or(usize::MAX));
         Ok(filtered)
     }
@@ -40,14 +40,16 @@ impl TicketStore {
     ) -> Result<Vec<IndexedTicket>, StorageError> {
         let needs_manifest_check = !field_filters.is_empty();
         let visible_roots = visible_scan_roots(self)?;
-        let mut filtered: Vec<IndexedTicket> = self
-            .normalize_indexed_tickets(self.index.list_tickets()?)
-            .into_iter()
-            .filter(|ticket| is_ticket_visible(ticket, &visible_roots))
-            .filter(|ticket| matches_filters(ticket, state_filter, type_filter))
-            .filter(|ticket| matches_field_filters(ticket, field_filters, needs_manifest_check))
-            .collect();
-        sort_tickets_by_effort(&mut filtered);
+        let mut filtered = Vec::new();
+        for ticket in self.normalize_indexed_tickets(self.index.list_tickets()?) {
+            if is_ticket_visible(&ticket, &visible_roots)
+                && matches_filters(&ticket, state_filter, type_filter)
+                && matches_field_filters(&ticket, field_filters, needs_manifest_check)?
+            {
+                filtered.push(ticket);
+            }
+        }
+        sort_tickets_by_effort(&mut filtered)?;
         filtered.truncate(limit.unwrap_or(usize::MAX));
         Ok(filtered)
     }
@@ -225,11 +227,23 @@ fn is_ticket_visible(ticket: &IndexedTicket, visible_roots: &[std::path::PathBuf
         .any(|root| ticket.path.starts_with(root))
 }
 
-fn sort_tickets_by_effort(tickets: &mut [IndexedTicket]) {
+fn sort_tickets_by_effort(tickets: &mut [IndexedTicket]) -> Result<(), StorageError> {
+    let efforts = tickets
+        .iter()
+        .map(|ticket| {
+            let manifest = TicketFs::read(&ticket.path)?;
+            let effort = manifest
+                .extra
+                .get("effort")
+                .and_then(|value| value.as_str())
+                .and_then(crate::workflow::parse_effort)
+                .unwrap_or(u64::MAX);
+            Ok((ticket.id, effort))
+        })
+        .collect::<Result<std::collections::HashMap<_, _>, StorageError>>()?;
     tickets.sort_by(|left, right| {
-        ticket_effort(left)
-            .unwrap_or(u64::MAX)
-            .cmp(&ticket_effort(right).unwrap_or(u64::MAX))
+        efforts[&left.id]
+            .cmp(&efforts[&right.id])
             .then_with(|| right.updated_at.cmp(&left.updated_at))
             .then_with(|| {
                 left.title
@@ -239,20 +253,7 @@ fn sort_tickets_by_effort(tickets: &mut [IndexedTicket]) {
             })
             .then_with(|| left.id.cmp(&right.id))
     });
-}
-
-fn ticket_effort(ticket: &IndexedTicket) -> Option<u64> {
-    TicketFs::read(&ticket.path)
-        .ok()
-        .and_then(|manifest| {
-            manifest
-                .extra
-                .get("effort")
-                .and_then(|value| value.as_str())
-                .map(str::to_owned)
-        })
-        .as_deref()
-        .and_then(crate::workflow::parse_effort)
+    Ok(())
 }
 
 fn matches_filters(
@@ -277,21 +278,18 @@ fn matches_field_filters(
     ticket: &IndexedTicket,
     field_filters: &[(String, String)],
     needs_manifest_check: bool,
-) -> bool {
+) -> Result<bool, StorageError> {
     if !needs_manifest_check {
-        return true;
+        return Ok(true);
     }
 
-    let manifest = match crate::storage::ticket_fs::TicketFs::read(&ticket.path) {
-        Ok(manifest) => manifest,
-        Err(_) => return false,
-    };
-    field_filters.iter().all(|(key, value)| {
+    let manifest = TicketFs::read(&ticket.path)?;
+    Ok(field_filters.iter().all(|(key, value)| {
         manifest
             .extra
             .get(key)
             .and_then(|field| field.as_str())
             .unwrap_or("")
             == value
-    })
+    }))
 }

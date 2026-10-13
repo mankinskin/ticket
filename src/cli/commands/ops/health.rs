@@ -19,7 +19,7 @@ pub(super) fn run(args: HealthArgs, store: &TicketStore) -> Result<Value, CliRun
     let all_edges = store.list_all_edges()?;
     let field_filters = parse_field_filters(&args)?;
     let tickets = scoped_tickets(&args, store, &all_edges)?;
-    let tickets = apply_field_filters(tickets, &field_filters);
+    let tickets = apply_field_filters(tickets, &field_filters)?;
     let workflow = WorkflowModel::build(store, store.list(None, None, None)?, all_edges.to_vec())?;
     let report = collect_findings(store, &tickets, &all_edges, &workflow);
     let tickets_checked = tickets

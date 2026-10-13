@@ -55,7 +55,7 @@ fn append_description_findings(
     let description = TicketFs::read_description(&ticket.path);
 
     match description {
-        None => record_finding(
+        Ok(None) => record_finding(
             report,
             "missing_description",
             serde_json::json!({
@@ -67,7 +67,7 @@ fn append_description_findings(
                 "message": "No description.md file — ticket lacks detailed context.",
             }),
         ),
-        Some(body) if body.trim().len() < 50 => record_finding(
+        Ok(Some(body)) if body.trim().len() < 50 => record_finding(
             report,
             "short_description",
             serde_json::json!({
@@ -82,7 +82,20 @@ fn append_description_findings(
                 ),
             }),
         ),
-        Some(_) => {},
+        Ok(Some(_)) => {}
+        Err(error) => record_finding(
+            summary,
+            findings,
+            "description_read_error",
+            json!({
+                "ticket_id": ticket.id,
+                "short_id": short_id,
+                "title": title,
+                "check": "description_read_error",
+                "severity": "error",
+                "message": format!("Unable to read ticket description: {error}"),
+            }),
+        ),
     }
 }
 

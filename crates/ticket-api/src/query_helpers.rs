@@ -24,15 +24,18 @@ pub fn parse_where_filters(clauses: &[String]) -> Result<Vec<(String, String)>, 
 pub fn apply_field_filters(
     tickets: Vec<IndexedTicket>,
     filters: &[(String, String)],
-) -> Vec<IndexedTicket> {
+) -> Result<Vec<IndexedTicket>, StorageError> {
     if filters.is_empty() {
-        return tickets;
+        return Ok(tickets);
     }
 
-    tickets
-        .into_iter()
-        .filter(|ticket| ticket_matches_field_filters(ticket, filters))
-        .collect()
+    let mut filtered = Vec::new();
+    for ticket in tickets {
+        if ticket_matches_field_filters(&ticket, filters)? {
+            filtered.push(ticket);
+        }
+    }
+    Ok(filtered)
 }
 
 pub fn resolve_uuid_with_prefix(store: &TicketStore, input: &str) -> Result<Uuid, StorageError> {
@@ -67,21 +70,24 @@ pub fn resolve_uuid_with_prefix(store: &TicketStore, input: &str) -> Result<Uuid
     }
 }
 
-fn ticket_matches_field_filters(ticket: &IndexedTicket, filters: &[(String, String)]) -> bool {
+fn ticket_matches_field_filters(
+    ticket: &IndexedTicket,
+    filters: &[(String, String)],
+) -> Result<bool, StorageError> {
     let needs_manifest = filters.iter().any(|(key, _)| !is_indexed_ticket_field(key));
     let manifest = if needs_manifest {
-        TicketFs::read(&ticket.path).ok()
+        Some(TicketFs::read(&ticket.path)?)
     } else {
         None
     };
 
-    filters.iter().all(|(key, expected)| {
+    Ok(filters.iter().all(|(key, expected)| {
         indexed_ticket_field(ticket, key).or_else(|| {
             manifest
                 .as_ref()
                 .and_then(|entity| entity.extra.get(key).and_then(|value| value.as_str()))
         }) == Some(expected.as_str())
-    })
+    }))
 }
 
 fn is_indexed_ticket_field(key: &str) -> bool {

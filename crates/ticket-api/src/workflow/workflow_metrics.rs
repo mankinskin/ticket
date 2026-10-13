@@ -52,35 +52,30 @@ pub fn parse_effort(value: &str) -> Option<u64> {
     None
 }
 
-pub(super) fn read_priorities(tickets: &[IndexedTicket]) -> HashMap<Uuid, String> {
-    tickets
-        .iter()
-        .filter_map(|ticket| {
-            TicketFs::read(&ticket.path).ok().and_then(|manifest| {
-                manifest
-                    .extra
-                    .get("priority")
-                    .and_then(|value| value.as_str())
-                    .map(|priority| (ticket.id, priority.to_string()))
-            })
-        })
-        .collect()
-}
-
-pub(super) fn read_efforts(tickets: &[IndexedTicket]) -> HashMap<Uuid, u64> {
-    tickets
-        .iter()
-        .filter_map(|ticket| {
-            TicketFs::read(&ticket.path).ok().and_then(|manifest| {
-                manifest
-                    .extra
-                    .get("effort")
-                    .and_then(|value| value.as_str())
-                    .and_then(parse_effort)
-                    .map(|effort| (ticket.id, effort))
-            })
-        })
-        .collect()
+pub(super) fn read_priority_and_effort(
+    tickets: &[IndexedTicket],
+) -> Result<(HashMap<Uuid, String>, HashMap<Uuid, u64>), StorageError> {
+    let mut priorities = HashMap::new();
+    let mut efforts = HashMap::new();
+    for ticket in tickets {
+        let manifest = TicketFs::read(&ticket.path)?;
+        if let Some(priority) = manifest
+            .extra
+            .get("priority")
+            .and_then(|value| value.as_str())
+        {
+            priorities.insert(ticket.id, priority.to_string());
+        }
+        if let Some(effort) = manifest
+            .extra
+            .get("effort")
+            .and_then(|value| value.as_str())
+            .and_then(parse_effort)
+        {
+            efforts.insert(ticket.id, effort);
+        }
+    }
+    Ok((priorities, efforts))
 }
 
 pub(super) fn effort_sort_key(effort: Option<u64>) -> u64 {

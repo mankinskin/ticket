@@ -109,7 +109,8 @@ impl TicketServer {
             Self::json_result(&serde_json::json!({
                 "workspace": workspace,
                 "id": id.to_string(),
-                "description": TicketFs::read_description(&indexed.path),
+                "description": TicketFs::read_description(&indexed.path)
+                    .map_err(Self::store_err)?,
             }))
         })
         .await

@@ -162,7 +162,7 @@ pub(crate) fn cmd_store_index(
 
     for ticket in indexed {
         let manifest = TicketFs::read(&ticket.path)?;
-        let description = TicketFs::read_description(&ticket.path).unwrap_or_default();
+        let description = TicketFs::read_description(&ticket.path)?.unwrap_or_default();
         let source_path = memory_kernel::index_generator::to_relative_slash(
             &workspace_root,
             &ticket.path.join("ticket.toml"),

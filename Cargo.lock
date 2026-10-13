@@ -2455,6 +2455,7 @@ dependencies = [
  "schemars",
  "serde",
  "serde_json",
+ "sha2",
  "thiserror 2.0.20",
  "tokio",
  "tokio-util",
@@ -3242,6 +3243,7 @@ dependencies = [
  "unicode-normalization",
  "url",
  "uuid",
+ "windows-sys 0.59.0",
 ]
 
 [[package]]

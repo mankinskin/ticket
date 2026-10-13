@@ -778,7 +778,7 @@ fn update_without_description_preserves_existing_description() {
     store.update(&id, patch, None, None, None, None).unwrap();
 
     let path = store.get_indexed(&id).unwrap().unwrap().path;
-    let description = crate::storage::ticket_fs::TicketFs::read_description(&path);
+    let description = crate::storage::ticket_fs::TicketFs::read_description(&path).unwrap();
     assert_eq!(
         description.as_deref(),
         Some("Original description"),
@@ -817,7 +817,7 @@ fn update_with_replace_mode_overwrites_description() {
         .unwrap();
 
     let path = store.get_indexed(&id).unwrap().unwrap().path;
-    let description = crate::storage::ticket_fs::TicketFs::read_description(&path);
+    let description = crate::storage::ticket_fs::TicketFs::read_description(&path).unwrap();
     assert_eq!(description.as_deref(), Some("New description"));
 }
 
@@ -852,7 +852,7 @@ fn update_with_append_mode_concatenates_description() {
         .unwrap();
 
     let path = store.get_indexed(&id).unwrap().unwrap().path;
-    let description = crate::storage::ticket_fs::TicketFs::read_description(&path);
+    let description = crate::storage::ticket_fs::TicketFs::read_description(&path).unwrap();
     assert_eq!(
         description.as_deref(),
         Some("Original description\nExtra note"),
@@ -932,7 +932,9 @@ fn undo_restores_previous_description() {
 
     let path = store.get_indexed(&id).unwrap().unwrap().path;
     assert_eq!(
-        crate::storage::ticket_fs::TicketFs::read_description(&path).as_deref(),
+        crate::storage::ticket_fs::TicketFs::read_description(&path)
+            .unwrap()
+            .as_deref(),
         Some("New description")
     );
 
@@ -951,7 +953,9 @@ fn undo_restores_previous_description() {
     store.apply_revert(&id, revert_fields, None).unwrap();
 
     assert_eq!(
-        crate::storage::ticket_fs::TicketFs::read_description(&path).as_deref(),
+        crate::storage::ticket_fs::TicketFs::read_description(&path)
+            .unwrap()
+            .as_deref(),
         Some("Original description"),
         "undo must restore the pre-overwrite description, making it recoverable"
     );
@@ -1050,7 +1054,9 @@ fn ticket_3d952036_omitted_description_mode_is_rejected() {
     // The rejected write must not have touched the description.
     let path = store.get_indexed(&id).unwrap().unwrap().path;
     assert_eq!(
-        crate::storage::ticket_fs::TicketFs::read_description(&path).as_deref(),
+        crate::storage::ticket_fs::TicketFs::read_description(&path)
+            .unwrap()
+            .as_deref(),
         Some("Original description"),
         "a rejected write must leave the existing description untouched"
     );
@@ -1253,7 +1259,9 @@ fn ticket_3d952036_legacy_ticket_with_no_parts_table_still_updatable() {
         .unwrap();
     let path = store.get_indexed(&id).unwrap().unwrap().path;
     assert_eq!(
-        crate::storage::ticket_fs::TicketFs::read_description(&path).as_deref(),
+        crate::storage::ticket_fs::TicketFs::read_description(&path)
+            .unwrap()
+            .as_deref(),
         Some("Updated legacy objective")
     );
 
@@ -1266,7 +1274,9 @@ fn ticket_3d952036_legacy_ticket_with_no_parts_table_still_updatable() {
         .write_part(&id, implicit_id, "objective", "Via part write", None)
         .unwrap();
     assert_eq!(
-        crate::storage::ticket_fs::TicketFs::read_description(&path).as_deref(),
+        crate::storage::ticket_fs::TicketFs::read_description(&path)
+            .unwrap()
+            .as_deref(),
         Some("Via part write"),
         "writing the implicit objective part must go through description.md"
     );

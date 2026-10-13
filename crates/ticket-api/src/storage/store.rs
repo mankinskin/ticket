@@ -317,9 +317,10 @@ impl TicketStore {
 
         // Use the provided body directly (already written to disk); fall back to
         // reading the file for scan-integrated tickets that may have existing content.
-        let body_for_index = body
-            .map(str::to_string)
-            .or_else(|| TicketFs::read_description(&indexed.path));
+        let body_for_index = match body {
+            Some(body) => Some(body.to_string()),
+            None => TicketFs::read_description(&indexed.path)?,
+        };
         let created_at_str = indexed.created_at.to_rfc3339();
         let effort_str = manifest.extra.get("effort").and_then(|v| match v {
             serde_json::Value::String(s) => Some(s.clone()),
@@ -602,7 +603,7 @@ impl TicketStore {
             )?;
         }
 
-        Ok(TicketFs::read(&indexed.path).unwrap_or(updated_manifest))
+        TicketFs::read(&indexed.path)
     }
 
     fn resolve_update_target(
@@ -672,7 +673,7 @@ impl TicketStore {
             // cause of destructive description overwrites.
             let mode = description_mode
                 .ok_or_else(|| StorageError::Other(REQUIRED_DESCRIPTION_MODE_ERROR.to_string()))?;
-            let existing = TicketFs::read_description(ticket_path);
+            let existing = TicketFs::read_description(ticket_path)?;
             previous_description = existing.clone();
             let final_text = match mode {
                 DescriptionUpdateMode::Replace => desc.to_string(),
@@ -748,7 +749,7 @@ impl TicketStore {
         }
         self.index.insert_ticket(indexed)?;
 
-        let body = TicketFs::read_description(&indexed.path);
+        let body = TicketFs::read_description(&indexed.path)?;
         let created_at_str = indexed.created_at.to_rfc3339();
         let effort_str = updated_manifest.extra.get("effort").and_then(|v| match v {
             serde_json::Value::String(s) => Some(s.clone()),

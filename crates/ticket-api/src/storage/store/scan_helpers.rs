@@ -133,7 +133,7 @@ pub(super) fn integrate_entry(
     let edges = manifest_edges(&entry);
 
     let description_read_started = Instant::now();
-    let body = TicketFs::read_description(&entry.path);
+    let body = TicketFs::read_description(&entry.path)?;
     let description_read_ms = elapsed_ms(description_read_started);
 
     let created_at_str = indexed.created_at.to_rfc3339();
@@ -286,13 +286,12 @@ pub(super) fn resolve_known_ticket_entry(
     if let Some(existing) = existing {
         let manifest_path = existing.path.join(TICKET_MANIFEST_FILE);
         if manifest_path.is_file() {
-            if let Ok(manifest) = TicketFs::read(&existing.path) {
-                return Ok(Some(TicketScanEntry {
-                    id,
-                    path: existing.path.clone(),
-                    manifest,
-                }));
-            }
+            let manifest = TicketFs::read(&existing.path)?;
+            return Ok(Some(TicketScanEntry {
+                id,
+                path: existing.path.clone(),
+                manifest,
+            }));
         }
     }
 

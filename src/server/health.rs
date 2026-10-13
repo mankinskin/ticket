@@ -40,7 +40,7 @@ impl TicketServer {
             )?;
             let filters = parse_where_filters(&where_clauses)
                 .map_err(|message| McpError::invalid_params(message, None))?;
-            let tickets = apply_field_filters(tickets, &filters);
+            let tickets = apply_field_filters(tickets, &filters).map_err(Self::store_err)?;
             let workflow = WorkflowModel::build(
                 store,
                 store.list(None, None, None).map_err(Self::store_err)?,
