@@ -356,7 +356,7 @@ mod tests {
 
         let error = server
             .get_ticket_tool(TicketRefInput {
-                workspace: None,
+                workspace: Some(dir.path().to_string_lossy().into_owned()),
                 id: "deadbeef".to_string(),
                 view: None,
                 parts: None,
@@ -364,8 +364,15 @@ mod tests {
             .await
             .expect_err("missing prefix should fail");
 
-        assert!(error.to_string().contains("searched workspaces"));
-        assert!(error.to_string().contains(&expected_root));
+        let error = error.to_string();
+        assert!(
+            error.contains("searched workspaces"),
+            "missing searched-workspaces diagnostic: {error}"
+        );
+        assert!(
+            error.contains(&expected_root),
+            "missing searched workspace root: {error}"
+        );
     }
 
     #[tokio::test]
