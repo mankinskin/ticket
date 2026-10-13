@@ -363,13 +363,8 @@ async fn descendant_ticket_ref_from_list_is_followable() {
         )
         .expect("create child ticket");
 
-    parent_store
-        .add_scan_root(ScanRoot {
-            path: child_dir.join("tickets"),
-            label: "child".into(),
-        })
-        .expect("add child scan root");
-    parent_store.scan(false).expect("scan child workspace");
+    register_child_workspace(&parent_store, &child_store);
+    drop(child_store);
 
     let app = make_router_from_store(Arc::clone(&parent_store));
     let workspace = primary_workspace_name(dir.path());
@@ -388,8 +383,8 @@ async fn descendant_ticket_ref_from_list_is_followable() {
         .unwrap();
     let list_payload: serde_json::Value = serde_json::from_slice(&list_bytes).unwrap();
     assert_eq!(
-        list_payload["items"][0]["ticket_ref"]["workspace"],
-        child_workspace
+        list_payload["items"][0]["ticket_ref"]["workspace"], child_workspace,
+        "unexpected list payload: {list_payload}"
     );
     assert_eq!(
         list_payload["items"][0]["ticket_ref"]["id"],
