@@ -6,7 +6,7 @@ fn next_and_board_prefer_newer_tickets_before_older_ones() {
     let newer = create_ticket(&s, "Zulu newer candidate");
 
     for ticket_id in [&older, &newer] {
-        let ready = s.ticket_json(&["update", ticket_id, "--to-state", "planned"]);
+        let ready = s.ticket_json(&["update", ticket_id, "--to-state", "ready"]);
         assert_eq!(ready["status"], "ok");
 
         let priority = s.ticket_json(&["update", ticket_id, "--field", "priority=high"]);
@@ -34,7 +34,7 @@ fn next_and_board_prefer_more_dependees_before_newer_tickets() {
     let dependent_two = create_ticket(&s, "Dependent two");
 
     for ticket_id in [&older_more_dependees, &newer_fewer_dependees] {
-        let ready = s.ticket_json(&["update", ticket_id, "--to-state", "planned"]);
+        let ready = s.ticket_json(&["update", ticket_id, "--to-state", "ready"]);
         assert_eq!(ready["status"], "ok");
 
         let priority = s.ticket_json(&["update", ticket_id, "--field", "priority=high"]);
@@ -73,14 +73,14 @@ fn next_and_board_prefer_recently_actionable_candidates_and_surface_timing_metad
     let transient_blocker = create_ticket(&s, "Transient blocker");
 
     for ticket_id in [&recently_actionable, &steadier_newer] {
-        let ready = s.ticket_json(&["update", ticket_id, "--to-state", "planned"]);
+        let ready = s.ticket_json(&["update", ticket_id, "--to-state", "ready"]);
         assert_eq!(ready["status"], "ok");
 
         let priority = s.ticket_json(&["update", ticket_id, "--field", "priority=high"]);
         assert_eq!(priority["status"], "ok");
     }
 
-    for state in ["planned", "in-implementation", "in-review"] {
+    for state in ["ready", "in-implementation", "in-review"] {
         let updated = s.ticket_json(&["update", &transient_blocker, "--to-state", state]);
         assert_eq!(updated["status"], "ok");
     }
@@ -122,11 +122,10 @@ fn next_and_board_promote_convergence_before_unrelated_ready_work() {
     let unrelated_ready = create_ticket(&s, "Unrelated ready work");
     let advanced_dependent = create_ticket(&s, "Advanced dependent");
 
-    let unrelated_ready_state =
-        s.ticket_json(&["update", &unrelated_ready, "--to-state", "planned"]);
+    let unrelated_ready_state = s.ticket_json(&["update", &unrelated_ready, "--to-state", "ready"]);
     assert_eq!(unrelated_ready_state["status"], "ok");
 
-    for state in ["planned", "in-implementation", "in-review"] {
+    for state in ["ready", "in-implementation", "in-review"] {
         let dependent_state = s.ticket_json(&["update", &advanced_dependent, "--to-state", state]);
         assert_eq!(dependent_state["status"], "ok");
     }
@@ -168,7 +167,7 @@ fn board_show_excludes_history_and_board_history_lists_recent_completions() {
     let completed_ticket = create_ticket(&s, "Recently completed board work");
     let next_ticket = create_ticket(&s, "Ready board follow-up");
 
-    let ready = s.ticket_json(&["update", &next_ticket, "--to-state", "planned"]);
+    let ready = s.ticket_json(&["update", &next_ticket, "--to-state", "ready"]);
     assert_eq!(ready["status"], "ok");
 
     let active = s.ticket_json(&[
@@ -248,7 +247,7 @@ fn update_with_board_check_in() {
         "update",
         &ticket_id,
         "--to-state",
-        "planned",
+        "ready",
         "--board-check-in",
         "--board-agent",
         "agent-epsilon",
@@ -257,7 +256,7 @@ fn update_with_board_check_in() {
     ]);
 
     assert_eq!(result["status"], "ok");
-    assert_eq!(result["state"], "planned");
+    assert_eq!(result["state"], "ready");
     assert!(
         !result["board_entry"].is_null(),
         "board_entry should be present in update response"

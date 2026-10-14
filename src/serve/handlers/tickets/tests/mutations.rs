@@ -56,7 +56,7 @@ async fn create_ticket_returns_201_with_new_ticket() {
     assert_eq!(payload["active_workspace"], workspace.clone());
     assert_eq!(payload["request_id"], "rid-create");
     assert_eq!(payload["ticket"]["fields"]["title"], "My new ticket");
-    assert_eq!(payload["ticket"]["fields"]["state"], "open");
+    assert_eq!(payload["ticket"]["fields"]["state"], "planning");
     assert_eq!(payload["ticket"]["ticket_ref"]["workspace"], workspace);
 }
 
@@ -177,7 +177,7 @@ async fn update_ticket_transitions_state() {
         HeaderMap::new(),
         Json(UpdateTicketBody {
             fields: None,
-            state: Some("planned".to_string()),
+            state: Some("ready".to_string()),
             transition_states: vec![],
             description_update: ticket_api::storage::DescriptionUpdate::Unchanged,
             single_hop: false,
@@ -190,7 +190,7 @@ async fn update_ticket_transitions_state() {
         .await
         .expect("body");
     let payload: serde_json::Value = serde_json::from_slice(&bytes).expect("json");
-    assert_eq!(payload["ticket"]["fields"]["state"], "planned");
+    assert_eq!(payload["ticket"]["fields"]["state"], "ready");
 }
 
 #[tokio::test]
@@ -203,7 +203,7 @@ async fn release_ticket_lease_clears_stale_orphaned_lease() {
             None,
             "tracker-improvement",
             Some("Lease cleanup"),
-            Some("planned"),
+            Some("planning"),
             BTreeMap::new(),
             None,
             None,
@@ -259,7 +259,7 @@ async fn release_ticket_lease_returns_conflict_for_live_other_holder() {
             None,
             "tracker-improvement",
             Some("Lease conflict"),
-            Some("planned"),
+            Some("planning"),
             BTreeMap::new(),
             None,
             None,
@@ -302,7 +302,7 @@ async fn move_ticket_dry_run_returns_structured_plan() {
             None,
             "tracker-improvement",
             Some("Move dry-run"),
-            Some("planned"),
+            Some("planning"),
             BTreeMap::new(),
             None,
             None,
@@ -353,7 +353,7 @@ async fn move_ticket_apply_executes_and_returns_journal() {
             None,
             "tracker-improvement",
             Some("Move apply"),
-            Some("planned"),
+            Some("planning"),
             BTreeMap::new(),
             None,
             None,

@@ -63,7 +63,7 @@ fn workspace_policy_show_set_ignore_rescan_flow() {
         "--type",
         "tracker-improvement",
         "--state",
-        "planned",
+        "planning",
     ]);
 
     // First rescan (no ignore): fixture root is included and indexed.

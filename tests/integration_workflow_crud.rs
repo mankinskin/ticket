@@ -38,7 +38,7 @@ fn create_and_get_roundtrip() {
     assert_eq!(got["status"], "ok");
     assert_eq!(got["ticket"]["id"], id);
     assert_eq!(got["ticket"]["fields"]["title"], "Fix login bug");
-    assert_eq!(got["ticket"]["fields"]["state"], "open");
+    assert_eq!(got["ticket"]["fields"]["state"], "planning");
     assert_eq!(got["ticket"]["fields"]["type"], "tracker-improvement");
     // Interview metadata is schema-supported but optional, so it should not be
     // auto-initialized for tickets without an active interview.
@@ -75,17 +75,17 @@ fn create_multiple_and_list_all() {
 fn list_filters_by_state() {
     let s = Sandbox::new();
 
-    create_ticket(&s, "Stays new");
+    create_ticket(&s, "Stays planning");
     let id2 = create_ticket(&s, "Goes ready");
-    s.ticket_json(&["update", &id2, "--to-state", "planned"]);
+    s.ticket_json(&["update", &id2, "--to-state", "ready"]);
 
-    let new_tickets = s.ticket_json(&["list", "--state", "open"]);
+    let new_tickets = s.ticket_json(&["list", "--state", "planning"]);
     assert_eq!(new_tickets["count"].as_u64().unwrap(), 1);
-    assert_eq!(new_tickets["items"][0]["title"], "Stays new");
+    assert_eq!(new_tickets["items"][0]["title"], "Stays planning");
 
-    let in_ref = s.ticket_json(&["list", "--state", "planned"]);
-    assert_eq!(in_ref["count"].as_u64().unwrap(), 1);
-    assert_eq!(in_ref["items"][0]["id"], id2.as_str());
+    let ready = s.ticket_json(&["list", "--state", "ready"]);
+    assert_eq!(ready["count"].as_u64().unwrap(), 1);
+    assert_eq!(ready["items"][0]["id"], id2.as_str());
 }
 
 #[test]
@@ -129,13 +129,13 @@ fn update_fields_and_state_transition() {
         "--field",
         "title=Updated title",
         "--to-state",
-        "planned",
+        "ready",
     ]);
     assert_eq!(updated["status"], "ok");
 
     let got = s.ticket_json(&["get", &id]);
     assert_eq!(got["ticket"]["fields"]["title"], "Updated title");
-    assert_eq!(got["ticket"]["fields"]["state"], "planned");
+    assert_eq!(got["ticket"]["fields"]["state"], "ready");
 }
 
 #[test]

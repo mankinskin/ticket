@@ -68,7 +68,7 @@ async fn duplicate_basename_workspaces_keep_followups_distinct() {
             None,
             "tracker-improvement",
             Some("left shared ticket"),
-            Some("planned"),
+            Some("planning"),
             BTreeMap::new(),
             None,
             Some("left shared description"),
@@ -79,7 +79,7 @@ async fn duplicate_basename_workspaces_keep_followups_distinct() {
             None,
             "tracker-improvement",
             Some("right shared ticket"),
-            Some("planned"),
+            Some("planning"),
             BTreeMap::new(),
             None,
             Some("right shared description"),
@@ -280,7 +280,7 @@ async fn search_list_excludes_stale_search_hits_and_followups() {
             None,
             "tracker-improvement",
             Some("deleted-hit regression ticket"),
-            Some("planned"),
+            Some("planning"),
             BTreeMap::new(),
             None,
             Some("deleted-hit regression description"),
@@ -414,7 +414,7 @@ async fn search_list_combines_query_and_state_before_limit() {
             None,
             "tracker-improvement",
             Some("needle needle needle wrong-state"),
-            Some("open"),
+            Some("planning"),
             BTreeMap::new(),
             None,
             None,
@@ -426,7 +426,7 @@ async fn search_list_combines_query_and_state_before_limit() {
             None,
             "tracker-improvement",
             Some("needle right-state"),
-            Some("planned"),
+            Some("ready"),
             BTreeMap::new(),
             None,
             None,
@@ -441,7 +441,7 @@ async fn search_list_combines_query_and_state_before_limit() {
         Extension(RequestIdExt("rid-test".to_string())),
         Query(WorkspaceParam {
             workspace: workspace.clone(),
-            state: Some("planned".to_string()),
+            state: Some("ready".to_string()),
             query: Some("needle".to_string()),
             limit: Some(1),
             cursor: None,
@@ -458,7 +458,7 @@ async fn search_list_combines_query_and_state_before_limit() {
 
     assert_eq!(items.len(), 1);
     assert_eq!(items[0]["id"].as_str(), Some(ready_id.as_str()));
-    assert_eq!(items[0]["state"].as_str(), Some("planned"));
+    assert_eq!(items[0]["state"].as_str(), Some("ready"));
 }
 
 #[tokio::test]
@@ -470,7 +470,7 @@ async fn list_rejects_synthetic_or_unknown_public_workspace_identifiers() {
             None,
             "tracker-improvement",
             Some("workspace alias rejection regression"),
-            Some("planned"),
+            Some("planning"),
             BTreeMap::new(),
             None,
             None,

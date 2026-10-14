@@ -74,7 +74,7 @@ async fn revert_ticket_restores_historical_revision() {
         .expect("create");
 
     store
-        .update(&id, BTreeMap::new(), None, Some("planned"), None, None)
+        .update(&id, BTreeMap::new(), None, Some("ready"), None, None)
         .expect("update to ready");
 
     let state = make_state(Arc::clone(&store));
@@ -101,7 +101,7 @@ async fn revert_ticket_restores_historical_revision() {
     assert_eq!(payload["workspace"], workspace);
     assert_eq!(payload["active_workspace"], workspace.clone());
     assert_eq!(payload["ticket"]["ticket_ref"]["workspace"], workspace);
-    assert_eq!(payload["ticket"]["fields"]["state"], "open");
+    assert_eq!(payload["ticket"]["fields"]["state"], "planning");
     assert_eq!(payload["ticket"]["fields"]["title"], "Revert me");
 }
 

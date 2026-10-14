@@ -35,7 +35,7 @@ async fn list_tickets_uses_scan_root_label_for_ticket_ref_workspace() {
             None,
             "tracker-improvement",
             Some("child-owned ticket"),
-            Some("planned"),
+            Some("planning"),
             BTreeMap::new(),
             Some(child_root.as_path()),
             None,
@@ -100,7 +100,7 @@ async fn search_list_prefers_authoritative_mixed_workspace_hit() {
             None,
             "tracker-improvement",
             Some("mixed-workspace child authoritative ticket"),
-            Some("planned"),
+            Some("ready"),
             BTreeMap::new(),
             None,
             Some("mixed-workspace authoritative description"),
@@ -181,7 +181,7 @@ async fn search_list_prefers_authoritative_mixed_workspace_hit() {
         items[0]["title"],
         serde_json::Value::String("mixed-workspace child authoritative ticket".to_string())
     );
-    assert_eq!(items[0]["state"], "planned");
+    assert_eq!(items[0]["state"], "ready");
     assert_ne!(items[0]["created_at"], "1970-01-01T00:00:00Z");
 }
 
@@ -284,7 +284,7 @@ async fn mixed_workspace_search_followups_remain_reversible() {
             None,
             "tracker-improvement",
             Some("mixed-workspace child authoritative ticket"),
-            Some("planned"),
+            Some("ready"),
             BTreeMap::new(),
             None,
             Some("mixed-workspace child description"),
@@ -529,7 +529,7 @@ async fn legacy_workspace_label_collision_returns_typed_bad_request() {
             None,
             "tracker-improvement",
             Some("left shared ticket"),
-            Some("planned"),
+            Some("planning"),
             BTreeMap::new(),
             None,
             None,
@@ -540,7 +540,7 @@ async fn legacy_workspace_label_collision_returns_typed_bad_request() {
             None,
             "tracker-improvement",
             Some("right shared ticket"),
-            Some("planned"),
+            Some("planning"),
             BTreeMap::new(),
             None,
             None,
@@ -626,7 +626,7 @@ async fn unique_display_workspace_label_returns_typed_bad_request() {
             None,
             "tracker-improvement",
             Some("legacy workspace alias ticket"),
-            Some("planned"),
+            Some("planning"),
             BTreeMap::new(),
             None,
             None,

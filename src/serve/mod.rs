@@ -256,7 +256,7 @@ mod tests {
                 None,
                 "tracker-improvement",
                 Some("runtime wiring regression"),
-                Some("open"),
+                Some("planning"),
                 BTreeMap::new(),
                 None,
                 None,

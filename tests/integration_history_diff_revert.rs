@@ -30,7 +30,7 @@ fn history_initial_revision_on_create() {
     assert_eq!(hist["count"], 1, "one revision on create");
     assert_eq!(hist["entries"][0]["rev"], 1);
     assert_eq!(hist["entries"][0]["fields"]["title"], "Initial ticket");
-    assert_eq!(hist["entries"][0]["fields"]["state"], "open");
+    assert_eq!(hist["entries"][0]["fields"]["state"], "planning");
 }
 
 /// Each update appends a new revision; history is returned most-recent first.
@@ -47,7 +47,7 @@ fn history_accumulates_revisions_on_update() {
     ]);
     let id = created["id"].as_str().expect("id");
 
-    s.ticket_json(&["update", id, "--to-state", "planned"]);
+    s.ticket_json(&["update", id, "--to-state", "ready"]);
     s.ticket_json(&["update", id, "--field", "title=Feature A v2"]);
 
     let hist = s.ticket_json(&["history", id]);
@@ -73,7 +73,7 @@ fn history_limit_caps_entries() {
     ]);
     let id = created["id"].as_str().expect("id");
 
-    s.ticket_json(&["update", id, "--to-state", "planned"]);
+    s.ticket_json(&["update", id, "--to-state", "ready"]);
     s.ticket_json(&["update", id, "--field", "priority=high"]);
 
     let hist = s.ticket_json(&["history", id, "--limit", "2"]);
@@ -102,17 +102,17 @@ fn diff_detects_state_change() {
     ]);
     let id = created["id"].as_str().expect("id");
 
-    s.ticket_json(&["update", id, "--to-state", "planned"]);
+    s.ticket_json(&["update", id, "--to-state", "ready"]);
 
     let diff = s.ticket_json(&["diff", id, "--from", "1", "--to", "2"]);
     assert_eq!(diff["status"], "ok");
     assert_eq!(diff["from_rev"], 1);
     assert_eq!(diff["to_rev"], 2);
 
-    // state changed: new → ready
+    // state changed from planning to ready
     let changed = &diff["changed"];
-    assert_eq!(changed["state"]["from"], "open");
-    assert_eq!(changed["state"]["to"], "planned");
+    assert_eq!(changed["state"]["from"], "planning");
+    assert_eq!(changed["state"]["to"], "ready");
 }
 
 /// `--to latest` resolves to the most recent revision.
@@ -182,9 +182,9 @@ fn revert_creates_new_revision_with_old_state() {
     let id = created["id"].as_str().expect("id");
 
     // Advance state to ready (rev 2).
-    s.ticket_json(&["update", id, "--to-state", "planned"]);
+    s.ticket_json(&["update", id, "--to-state", "ready"]);
 
-    // Revert to rev 1 (state: new). Bypasses state machine — always succeeds.
+    // Revert to rev 1 (state: planning). Bypasses state machine — always succeeds.
     let rev_result = s.ticket_json(&["revert", id, "--to", "1"]);
     assert_eq!(rev_result["status"], "ok");
     let new_rev = rev_result["new_rev"].as_u64().unwrap_or(0);
@@ -194,8 +194,8 @@ fn revert_creates_new_revision_with_old_state() {
     // History now has 3 entries.
     let hist = s.ticket_json(&["history", id]);
     assert_eq!(hist["count"], 3);
-    // Most-recent entry (entries[0]) should show state=new (reverted).
-    assert_eq!(hist["entries"][0]["fields"]["state"], "open");
+    // Most-recent entry (entries[0]) should show state=planning (reverted).
+    assert_eq!(hist["entries"][0]["fields"]["state"], "planning");
 }
 
 /// Revert preserves forward-only invariant: history count never decreases.

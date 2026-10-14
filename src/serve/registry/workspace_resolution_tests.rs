@@ -263,7 +263,7 @@ fn resolve_indexed_many_prefers_deepest_existing_workspace() {
             None,
             "tracker-improvement",
             Some("child-owned ticket"),
-            Some("planned"),
+            Some("planning"),
             BTreeMap::new(),
             None,
             None,
