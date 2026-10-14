@@ -36,7 +36,7 @@ async fn update_ticket_accepts_sparse_payload_and_returns_minimal_response() {
             None,
             "tracker-improvement",
             Some("Sparse Ticket"),
-            Some("open"),
+            Some("planning"),
             BTreeMap::new(),
             None,
             None,
@@ -45,10 +45,10 @@ async fn update_ticket_accepts_sparse_payload_and_returns_minimal_response() {
 
     let result = server
         .update_ticket(Parameters(UpdateTicketInput {
-            workspace: "default".to_string(),
+            workspace: tmp.path().to_string_lossy().into_owned(),
             id: ticket_id.to_string(),
             transition_states: vec![],
-            to_state: Some("planned".to_string()),
+            to_state: Some("ready".to_string()),
             fields: None,
             field_map: None,
             undo: false,
@@ -62,7 +62,7 @@ async fn update_ticket_accepts_sparse_payload_and_returns_minimal_response() {
 
     assert_eq!(json["status"], "ok");
     assert_eq!(json["id"], ticket_id.to_string());
-    assert_eq!(json["state_transition"]["to"], "planned");
+    assert_eq!(json["state_transition"]["to"], "ready");
     assert!(json.get("ticket").is_none());
     assert!(json.get("changed_fields").is_none());
     assert!(json.get("workspace").is_none());
@@ -77,19 +77,19 @@ async fn update_ticket_blocked_transition_reports_recovery_fields() {
             None,
             "tracker-improvement",
             Some("Blocked Transition Ticket"),
-            Some("open"),
+            Some("planning"),
             BTreeMap::new(),
             None,
             None,
         )
         .expect("create ticket");
 
-    // `open -> in-implementation` skips the mandatory `planned` waypoint. Under
-    // the `single_hop` opt-out it must be rejected with the same recovery-field
-    // shape the CLI surfaces.
+    // `planning -> in-implementation` skips the mandatory `ready` waypoint.
+    // Under the `single_hop` opt-out it must be rejected with the same recovery
+    // field shape the CLI surfaces.
     let error = server
         .update_ticket(Parameters(UpdateTicketInput {
-            workspace: "default".to_string(),
+            workspace: tmp.path().to_string_lossy().into_owned(),
             id: ticket_id.to_string(),
             transition_states: vec![],
             to_state: Some("in-implementation".to_string()),
@@ -105,7 +105,7 @@ async fn update_ticket_blocked_transition_reports_recovery_fields() {
 
     let message = error.message.to_string();
     assert!(
-        message.contains("'open'"),
+        message.contains("'planning'"),
         "error should name the current state: {message}"
     );
     assert!(
@@ -113,7 +113,7 @@ async fn update_ticket_blocked_transition_reports_recovery_fields() {
         "error should list allowed next states: {message}"
     );
     assert!(
-        message.contains("planned"),
+        message.contains("ready"),
         "error should name the mandatory intermediate state: {message}"
     );
 
@@ -122,5 +122,5 @@ async fn update_ticket_blocked_transition_reports_recovery_fields() {
         .get_indexed(&ticket_id)
         .expect("indexed")
         .expect("some");
-    assert_eq!(indexed.state.as_deref(), Some("open"));
+    assert_eq!(indexed.state.as_deref(), Some("planning"));
 }
