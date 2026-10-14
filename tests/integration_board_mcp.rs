@@ -31,7 +31,7 @@ async fn board_full_lifecycle_mcp() {
     // 1. board_show — empty board.
     let result = server
         .board_show(Parameters(BoardShowInput {
-            workspace: ws(),
+            workspace: ws(tmp.path()),
             agent_id: None,
         }))
         .await
@@ -43,7 +43,7 @@ async fn board_full_lifecycle_mcp() {
     // 2. board_check_in.
     let result = server
         .board_check_in(Parameters(BoardCheckInInput {
-            workspace: ws(),
+            workspace: ws(tmp.path()),
             ticket_id: ticket_id.clone(),
             agent_id: "test-agent".to_string(),
             intent: Some("implementing MCP board tools".to_string()),
@@ -67,7 +67,7 @@ async fn board_full_lifecycle_mcp() {
     // 3. board_show — agent_id triggers heartbeat path.
     let result = server
         .board_show(Parameters(BoardShowInput {
-            workspace: ws(),
+            workspace: ws(tmp.path()),
             agent_id: Some("test-agent".to_string()),
         }))
         .await
@@ -81,7 +81,7 @@ async fn board_full_lifecycle_mcp() {
     // 4. board_heartbeat — refresh TTL.
     let result = server
         .board_heartbeat(Parameters(BoardHeartbeatInput {
-            workspace: ws(),
+            workspace: ws(tmp.path()),
             entry_id: entry_id.clone(),
         }))
         .await
@@ -94,7 +94,7 @@ async fn board_full_lifecycle_mcp() {
     // 5. board_check_out.
     let result = server
         .board_check_out(Parameters(BoardCheckOutInput {
-            workspace: ws(),
+            workspace: ws(tmp.path()),
             ticket_id: ticket_id.clone(),
             agent_id: Some("test-agent".to_string()),
             reason: Some("work done".to_string()),
@@ -108,7 +108,7 @@ async fn board_full_lifecycle_mcp() {
     // 6. board_show — board should show no active entries.
     let result = server
         .board_show(Parameters(BoardShowInput {
-            workspace: ws(),
+            workspace: ws(tmp.path()),
             agent_id: None,
         }))
         .await
@@ -123,7 +123,7 @@ async fn board_full_lifecycle_mcp() {
 
     let result = server
         .board_history(Parameters(BoardHistoryInput {
-            workspace: ws(),
+            workspace: ws(tmp.path()),
             agent_id: None,
         }))
         .await
@@ -142,7 +142,7 @@ async fn board_configure_round_trip_mcp() {
     // Read current (defaults).
     let result = server
         .board_configure(Parameters(BoardConfigureInput {
-            workspace: ws(),
+            workspace: ws(tmp.path()),
             max_wip: None,
             stale_after_secs: None,
             completed_audit_window_secs: None,
@@ -157,7 +157,7 @@ async fn board_configure_round_trip_mcp() {
     let new_wip = original_max_wip + 2;
     let result = server
         .board_configure(Parameters(BoardConfigureInput {
-            workspace: ws(),
+            workspace: ws(tmp.path()),
             max_wip: Some(new_wip as u32),
             stale_after_secs: None,
             completed_audit_window_secs: None,
@@ -171,7 +171,7 @@ async fn board_configure_round_trip_mcp() {
     // Reading back confirms persistence.
     let result = server
         .board_configure(Parameters(BoardConfigureInput {
-            workspace: ws(),
+            workspace: ws(tmp.path()),
             max_wip: None,
             stale_after_secs: None,
             completed_audit_window_secs: None,
@@ -193,7 +193,7 @@ async fn board_clean_preview_and_apply_mcp() {
     // Preview on an empty board — no candidates.
     let result = server
         .board_clean_preview(Parameters(BoardCleanPreviewInput {
-            workspace: ws(),
+            workspace: ws(tmp.path()),
             include_stale: Some(false),
         }))
         .await
@@ -209,7 +209,7 @@ async fn board_clean_preview_and_apply_mcp() {
     // Apply with the token — should succeed (no-op on empty board).
     let result = server
         .board_clean_apply(Parameters(BoardCleanApplyInput {
-            workspace: ws(),
+            workspace: ws(tmp.path()),
             token,
             include_stale: Some(false),
         }))
@@ -232,7 +232,7 @@ async fn board_update_and_rename_file_mcp() {
     // Check in with one file.
     server
         .board_check_in(Parameters(BoardCheckInInput {
-            workspace: ws(),
+            workspace: ws(tmp.path()),
             ticket_id: ticket_id.clone(),
             agent_id: "agent-files".to_string(),
             intent: None,
@@ -248,7 +248,7 @@ async fn board_update_and_rename_file_mcp() {
     // Add another file.
     let result = server
         .board_update_files(Parameters(BoardUpdateFilesInput {
-            workspace: ws(),
+            workspace: ws(tmp.path()),
             ticket_id: ticket_id.clone(),
             agent_id: "agent-files".to_string(),
             add: vec!["b.rs".to_string()],
@@ -270,7 +270,7 @@ async fn board_update_and_rename_file_mcp() {
     // Rename b.rs → c.rs.
     let result = server
         .board_rename_file(Parameters(BoardRenameFileInput {
-            workspace: ws(),
+            workspace: ws(tmp.path()),
             ticket_id: ticket_id.clone(),
             agent_id: "agent-files".to_string(),
             old_path: "b.rs".to_string(),
@@ -301,7 +301,7 @@ async fn board_check_out_resolves_agent_from_snapshot_mcp() {
 
     server
         .board_check_in(Parameters(BoardCheckInInput {
-            workspace: ws(),
+            workspace: ws(tmp.path()),
             ticket_id: ticket_id.clone(),
             agent_id: "auto-agent".to_string(),
             intent: None,
@@ -317,7 +317,7 @@ async fn board_check_out_resolves_agent_from_snapshot_mcp() {
     // Check out without specifying agent_id.
     let result = server
         .board_check_out(Parameters(BoardCheckOutInput {
-            workspace: ws(),
+            workspace: ws(tmp.path()),
             ticket_id: ticket_id.clone(),
             agent_id: None,
             reason: None,

@@ -29,7 +29,7 @@ async fn board_show_parity_store_and_mcp() {
 
     let result = server
         .board_show(Parameters(BoardShowInput {
-            workspace: ws(),
+            workspace: ws(tmp.path()),
             agent_id: None,
         }))
         .await
@@ -81,8 +81,8 @@ async fn next_tickets_excludes_board_active_and_surfaces_wip_warning() {
         for id_str in [&t_active, &t_free] {
             let uid: uuid::Uuid = id_str.parse().expect("uuid");
             store
-                .update(&uid, Default::default(), None, Some("planned"), None, None)
-                .expect("planned");
+                .update(&uid, Default::default(), None, Some("ready"), None, None)
+                .expect("ready");
         }
 
         store
@@ -110,7 +110,7 @@ async fn next_tickets_excludes_board_active_and_surfaces_wip_warning() {
 
     let result = server
         .next_tickets(Parameters(NextTicketsInput {
-            workspace: ws(),
+            workspace: ws(tmp.path()),
             limit: None,
             filter: None,
             root: None,
@@ -181,7 +181,7 @@ async fn next_tickets_prefers_newer_candidates_before_older_ones() {
                 None,
                 "tracker-improvement",
                 Some("Alpha older candidate"),
-                Some("planned"),
+                Some("ready"),
                 fields.clone(),
                 None,
                 None,
@@ -194,7 +194,7 @@ async fn next_tickets_prefers_newer_candidates_before_older_ones() {
                 None,
                 "tracker-improvement",
                 Some("Zulu newer candidate"),
-                Some("planned"),
+                Some("ready"),
                 fields,
                 None,
                 None,
@@ -205,7 +205,7 @@ async fn next_tickets_prefers_newer_candidates_before_older_ones() {
 
     let result = server
         .next_tickets(Parameters(NextTicketsInput {
-            workspace: ws(),
+            workspace: ws(tmp.path()),
             limit: None,
             filter: None,
             root: None,
@@ -241,7 +241,7 @@ async fn next_tickets_prefers_more_dependees_before_newer_candidates() {
                 None,
                 "tracker-improvement",
                 Some("Alpha older blocker"),
-                Some("planned"),
+                Some("ready"),
                 fields.clone(),
                 None,
                 None,
@@ -253,7 +253,7 @@ async fn next_tickets_prefers_more_dependees_before_newer_candidates() {
                 None,
                 "tracker-improvement",
                 Some("Zulu newer blocker"),
-                Some("planned"),
+                Some("ready"),
                 fields,
                 None,
                 None,
@@ -266,7 +266,7 @@ async fn next_tickets_prefers_more_dependees_before_newer_candidates() {
                     None,
                     "tracker-improvement",
                     Some(title),
-                    Some("open"),
+                    Some("planning"),
                     BTreeMap::new(),
                     None,
                     None,
@@ -286,7 +286,7 @@ async fn next_tickets_prefers_more_dependees_before_newer_candidates() {
 
     let result = server
         .next_tickets(Parameters(NextTicketsInput {
-            workspace: ws(),
+            workspace: ws(tmp.path()),
             limit: None,
             filter: None,
             root: None,
@@ -330,7 +330,7 @@ async fn next_tickets_prefer_recently_actionable_candidates_and_surface_timing_m
                 None,
                 "tracker-improvement",
                 Some("Alpha recently actionable"),
-                Some("planned"),
+                Some("ready"),
                 fields.clone(),
                 None,
                 None,
@@ -342,7 +342,7 @@ async fn next_tickets_prefer_recently_actionable_candidates_and_surface_timing_m
                 None,
                 "tracker-improvement",
                 Some("Zulu steady ready work"),
-                Some("planned"),
+                Some("ready"),
                 fields,
                 None,
                 None,
@@ -377,7 +377,7 @@ async fn next_tickets_prefer_recently_actionable_candidates_and_surface_timing_m
 
     let result = server
         .next_tickets(Parameters(NextTicketsInput {
-            workspace: ws(),
+            workspace: ws(tmp.path()),
             limit: None,
             filter: None,
             root: None,
@@ -423,7 +423,7 @@ async fn next_tickets_promote_convergence_before_unrelated_ready_candidates() {
                 None,
                 "tracker-improvement",
                 Some("Lagging prerequisite"),
-                Some("open"),
+                Some("planning"),
                 fields.clone(),
                 None,
                 None,
@@ -435,7 +435,7 @@ async fn next_tickets_promote_convergence_before_unrelated_ready_candidates() {
                 None,
                 "tracker-improvement",
                 Some("Unrelated ready work"),
-                Some("planned"),
+                Some("ready"),
                 fields,
                 None,
                 None,
@@ -466,7 +466,7 @@ async fn next_tickets_promote_convergence_before_unrelated_ready_candidates() {
 
     let result = server
         .next_tickets(Parameters(NextTicketsInput {
-            workspace: ws(),
+            workspace: ws(tmp.path()),
             limit: None,
             filter: None,
             root: None,

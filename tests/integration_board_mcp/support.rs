@@ -18,7 +18,7 @@ pub(super) fn seed_ticket(store_root: &Path, title: &str) -> String {
             None,
             "tracker-improvement",
             Some(title),
-            Some("open"),
+            Some("planning"),
             BTreeMap::new(),
             None,
             None,
@@ -27,8 +27,8 @@ pub(super) fn seed_ticket(store_root: &Path, title: &str) -> String {
     ticket_id.to_string()
 }
 
-pub(super) fn ws() -> String {
-    "default".to_string()
+pub(super) fn ws(store_root: &Path) -> String {
+    store_root.to_string_lossy().into_owned()
 }
 
 pub(super) fn extract_text(result: &rmcp::model::CallToolResult) -> String {
