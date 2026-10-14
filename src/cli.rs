@@ -208,6 +208,9 @@ pub enum TicketCommandCli {
     /// recent write. Rejected if the part is currently frozen.
     #[command(name = "undo-part")]
     UndoPart(UndoPartArgs),
+    /// Plan or execute the bounded slug-path and empty-planning-part migration.
+    #[command(name = "migrate-part-layout")]
+    MigratePartLayout(MigratePartLayoutArgs),
 }
 
 // ── error type ─────────────────────────────────────────────────────────────────

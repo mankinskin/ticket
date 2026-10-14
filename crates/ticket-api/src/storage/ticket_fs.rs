@@ -2,13 +2,14 @@ use std::{
     collections::{BTreeMap, BTreeSet},
     fs::{self, File, OpenOptions},
     io::{BufRead, BufReader, Write},
-    path::{Path, PathBuf},
+    path::{Component, Path, PathBuf},
 };
 
 use chrono::Utc;
 use fs4::fs_std::FileExt;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
+use sha2::{Digest, Sha256};
 use uuid::Uuid;
 
 use crate::{
@@ -18,14 +19,17 @@ use crate::{
             TICKET_ASSETS_DIR, TICKET_HISTORY_FILE, TICKET_LOCK_FILE, TICKET_MANIFEST_FILE,
             TICKET_PARTS_DIR, parse_ticket_manifest_toml,
         },
-        parts::{classify_part_kind, ensure_nonblank_content, part_kind_slug},
+        parts::{classify_part_kind, ensure_nonblank_content, part_kind_slug, part_slug_filename},
         ticket::{TicketManifest, TicketManifestExt},
     },
 };
 
+mod part_layout;
 #[cfg(test)]
 mod tests;
 mod transaction;
+
+pub(crate) use part_layout::{PartFileFingerprint, PartLayoutSnapshot, sha256_bytes};
 
 use transaction::Operation as TransactionOperation;
 
@@ -194,11 +198,7 @@ impl TicketFs {
             .filter(|part| part_kind_slug(&part.kind) == base)
             .count()
             + 1;
-        let filename = if ordinal == 1 {
-            format!("{base}.md")
-        } else {
-            format!("{base}-{ordinal}.md")
-        };
+        let filename = part_slug_filename(kind, ordinal);
         let rel_path = format!("{TICKET_PARTS_DIR}/{filename}");
 
         let parts_dir = ticket_path.join(TICKET_PARTS_DIR);
@@ -957,6 +957,51 @@ fn find_orphan_part_files(
     }
     orphans.sort();
     Ok(orphans)
+}
+
+fn validate_part_relative_path(path: &str) -> Result<(), StorageError> {
+    if path.contains('\\') || Path::new(path).is_absolute() {
+        return Err(StorageError::Other(format!(
+            "unsafe ticket part path: {path}"
+        )));
+    }
+    let components = Path::new(path).components().collect::<Vec<_>>();
+    let first_is_parts = matches!(
+        components.first(),
+        Some(Component::Normal(name)) if *name == std::ffi::OsStr::new(TICKET_PARTS_DIR)
+    );
+    if components.len() < 2
+        || !first_is_parts
+        || components
+            .iter()
+            .any(|component| !matches!(component, Component::Normal(_)))
+    {
+        return Err(StorageError::Other(format!(
+            "ticket part path must stay under {TICKET_PARTS_DIR}/: {path}"
+        )));
+    }
+    Ok(())
+}
+
+fn part_file_fingerprint(
+    ticket_path: &Path,
+    relative_path: &str,
+) -> Result<(Option<u64>, Option<String>), StorageError> {
+    validate_part_relative_path(relative_path)?;
+    let path = ticket_path.join(relative_path);
+    let metadata = match fs::symlink_metadata(&path) {
+        Ok(metadata) => metadata,
+        Err(error) if error.kind() == std::io::ErrorKind::NotFound => return Ok((None, None)),
+        Err(error) => return Err(StorageError::Io(error)),
+    };
+    if !metadata.file_type().is_file() {
+        return Err(StorageError::Other(format!(
+            "ticket part path is not a regular file: {}",
+            path.display()
+        )));
+    }
+    let contents = fs::read(&path)?;
+    Ok((Some(contents.len() as u64), Some(sha256_bytes(&contents))))
 }
 
 fn parse_edge_targets(

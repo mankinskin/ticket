@@ -31,6 +31,7 @@ use crate::{
 mod board;
 mod lifecycle;
 mod migration;
+mod part_layout_migration;
 mod parts;
 mod projection;
 mod query;
@@ -43,6 +44,12 @@ pub use self::{
     migration::{
         MIGRATION_CREATED_PART_IDS_KEY, MigrationApplyReport, MigrationDryRunReport,
         MigrationSegment, TicketMigrationPlan, split_description,
+    },
+    part_layout_migration::{
+        PartLayoutApplyReport, PartLayoutBaseCollision, PartLayoutCleanupCandidate,
+        PartLayoutDryRunReport, PartLayoutFileFingerprint, PartLayoutPart, PartLayoutPathChange,
+        PartLayoutSkip, PartLayoutTicketPlan, PartLayoutTicketStatus, PartLayoutUndoReport,
+        PartLayoutVerifyFailure, PartLayoutVerifyReport,
     },
     parts::{PART_HISTORY_CONTENT_KEY, PART_HISTORY_ID_KEY},
     projection::{ProjectedPart, ReadProjection, TicketProjection},

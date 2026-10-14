@@ -297,6 +297,7 @@ fn command_mutates_workspace(command: &TicketCommandCli) -> bool {
             | TicketCommandCli::Close(_)
             | TicketCommandCli::Cancel(_)
             | TicketCommandCli::Move(_)
+            | TicketCommandCli::MigratePartLayout(_)
             | TicketCommandCli::Attach(_)
     )
 }
@@ -314,6 +315,15 @@ fn require_explicit_workspace_for_create(
     {
         return Err(CliRunError::BadRequest(
             "entity creation requires explicit --workspace <path> or --index-root <path>"
+                .to_string(),
+        ));
+    }
+    if matches!(command, TicketCommandCli::MigratePartLayout(_))
+        && index_root_override.is_none()
+        && workspace_root_override.is_none()
+    {
+        return Err(CliRunError::BadRequest(
+            "migrate-part-layout requires explicit --workspace <path> or --index-root <path>"
                 .to_string(),
         ));
     }
@@ -572,6 +582,7 @@ fn dispatch_store_command(
         | TicketCommandCli::Close(_)
         | TicketCommandCli::Cancel(_)
         | TicketCommandCli::Move(_)
+        | TicketCommandCli::MigratePartLayout(_)
         | TicketCommandCli::Attach(_)
         | TicketCommandCli::Assets(_)
         | TicketCommandCli::Transitions(_)
@@ -728,6 +739,9 @@ fn dispatch_store_command_ops_runtime(
         TicketCommandCli::Close(args) => commands::cmd_close(args, &store),
         TicketCommandCli::Cancel(args) => commands::cmd_cancel(args, &store),
         TicketCommandCli::Move(args) => commands::cmd_move(args, &store, dry_run),
+        TicketCommandCli::MigratePartLayout(args) => {
+            commands::cmd_migrate_part_layout(args, &store, dry_run)
+        }
         TicketCommandCli::Attach(args) => commands::cmd_attach(args, &store),
         TicketCommandCli::Assets(args) => commands::cmd_assets(args, &store),
         TicketCommandCli::Transitions(args) => commands::cmd_transitions(args, &store),

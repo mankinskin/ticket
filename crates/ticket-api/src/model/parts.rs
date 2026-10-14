@@ -79,6 +79,15 @@ pub(crate) fn part_kind_slug(kind: &str) -> String {
     }
 }
 
+pub(crate) fn part_slug_filename(kind: &str, ordinal: usize) -> String {
+    let base = part_kind_slug(kind);
+    if ordinal <= 1 {
+        format!("{base}.md")
+    } else {
+        format!("{base}-{ordinal}.md")
+    }
+}
+
 /// The named read-projection view profiles (spec 24b3d22b, ticket
 /// 4c7b884e). The single source of truth for profile -> part-kind mapping;
 /// every transport (store API, CLI, MCP, HTTP) resolves reads through
@@ -354,5 +363,10 @@ mod tests {
         assert_eq!(part_kind_slug("Straße"), "strasse");
         assert_eq!(part_kind_slug("résumé"), "r-sum");
         assert_eq!(part_kind_slug("東京"), "part");
+        assert_eq!(
+            part_slug_filename("Ａcceptance__Criteria", 1),
+            "acceptance-criteria.md"
+        );
+        assert_eq!(part_slug_filename("Straße", 2), "strasse-2.md");
     }
 }

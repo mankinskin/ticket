@@ -19,6 +19,9 @@ pub use board::{
 pub use domain_store::{TicketCreateInput, TicketListQuery, TicketUpdatePatch};
 pub use store::{
     DESCRIPTION_HISTORY_KEY, DescriptionUpdate, DescriptionUpdateMode, PART_HISTORY_CONTENT_KEY,
-    PART_HISTORY_ID_KEY, ProjectedPart, REQUIRED_DESCRIPTION_MODE_ERROR, ReadProjection,
-    TicketProjection, TicketStore,
+    PART_HISTORY_ID_KEY, PartLayoutApplyReport, PartLayoutBaseCollision,
+    PartLayoutCleanupCandidate, PartLayoutDryRunReport, PartLayoutFileFingerprint, PartLayoutPart,
+    PartLayoutPathChange, PartLayoutSkip, PartLayoutTicketPlan, PartLayoutTicketStatus,
+    PartLayoutUndoReport, PartLayoutVerifyFailure, PartLayoutVerifyReport, ProjectedPart,
+    REQUIRED_DESCRIPTION_MODE_ERROR, ReadProjection, TicketProjection, TicketStore,
 };

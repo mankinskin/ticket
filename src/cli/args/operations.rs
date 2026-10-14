@@ -1,6 +1,6 @@
 use std::path::PathBuf;
 
-use clap::{Args, ValueEnum};
+use clap::{ArgGroup, Args, ValueEnum};
 use uuid::Uuid;
 
 #[derive(Debug, Args)]
@@ -225,6 +225,33 @@ pub struct FmtArgs {
     /// field order. Useful for CI gating.
     #[arg(long, default_value_t = false)]
     pub check: bool,
+}
+
+#[derive(Debug, Args)]
+#[command(group(
+    ArgGroup::new("part_layout_operation")
+        .args(["apply", "verify", "undo"])
+        .multiple(false)
+))]
+pub struct MigratePartLayoutArgs {
+    /// Apply a previously saved dry-run plan.
+    #[arg(long)]
+    pub apply: bool,
+    /// Verify the actual store state from a saved apply report.
+    #[arg(long)]
+    pub verify: bool,
+    /// Undo only migration-owned changes from a saved apply report.
+    #[arg(long)]
+    pub undo: bool,
+    /// Saved dry-run plan to apply.
+    #[arg(long)]
+    pub plan_file: Option<PathBuf>,
+    /// Saved apply report to verify or undo.
+    #[arg(long)]
+    pub apply_report: Option<PathBuf>,
+    /// Path for the machine-readable operation report.
+    #[arg(long, required = true)]
+    pub report_file: PathBuf,
 }
 
 #[derive(Debug, Args)]

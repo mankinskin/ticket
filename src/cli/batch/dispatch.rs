@@ -121,10 +121,41 @@ fn forbidden_batch_message_core(cmd: &TicketCommandCli) -> Option<&'static str> 
 fn forbidden_batch_message_admin(cmd: &TicketCommandCli) -> Option<&'static str> {
     match cmd {
         TicketCommandCli::Move(_) => Some("'move' cannot be used in a batch"),
+        TicketCommandCli::MigratePartLayout(_) => {
+            Some("'migrate-part-layout' cannot be used in a batch")
+        }
         TicketCommandCli::PruneDangling(_) => Some("'prune-dangling' cannot be used in a batch"),
         TicketCommandCli::Workspace(_) => {
             Some("'workspace' policy commands cannot be used in a batch")
         }
         _ => None,
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use std::path::PathBuf;
+
+    use super::*;
+    use crate::cli::MigratePartLayoutArgs;
+
+    #[test]
+    fn part_layout_migration_is_rejected_in_batches() {
+        let directory = tempfile::tempdir().unwrap();
+        let store = TicketStore::init(directory.path()).unwrap();
+        let command = TicketCommandCli::MigratePartLayout(MigratePartLayoutArgs {
+            apply: false,
+            verify: false,
+            undo: false,
+            plan_file: None,
+            apply_report: None,
+            report_file: PathBuf::from("report.json"),
+        });
+
+        let error = batch_dispatch(command, &store).unwrap_err();
+        assert_eq!(
+            error.to_string(),
+            "'migrate-part-layout' cannot be used in a batch"
+        );
     }
 }
