@@ -116,6 +116,13 @@ impl TicketServer {
         ))
     }
 
+    fn resolve_explicit_workspace_root(&self, workspace: &str) -> Result<PathBuf, McpError> {
+        let workspace =
+            ticket_api::workspace::normalize_explicit_workspace_selector(Some(workspace))
+                .map_err(|error| McpError::invalid_params(error.to_string(), None))?;
+        self.resolve_workspace_root(&workspace.to_string_lossy())
+    }
+
     fn resolve_uuid_with(store: &TicketStore, value: &str) -> Result<Uuid, McpError> {
         ticket_api::query_helpers::resolve_uuid_with_prefix(store, value).map_err(Self::store_err)
     }
@@ -165,11 +172,27 @@ impl TicketServer {
         workspace: &str,
         f: impl FnOnce(&TicketStore) -> Result<T, McpError>,
     ) -> Result<T, McpError> {
-        let workspace =
-            ticket_api::workspace::normalize_explicit_workspace_selector(Some(workspace))
-                .map_err(|error| McpError::invalid_params(error.to_string(), None))?;
-        let workspace = workspace.to_string_lossy();
-        let index_root = self.resolve_workspace_root(&workspace)?;
+        let index_root = self.resolve_explicit_workspace_root(workspace)?;
+        self.with_resolved_store_ext(index_root, f).await
+    }
+
+    async fn with_read_store_ext<T>(
+        &self,
+        workspace: Option<&str>,
+        f: impl FnOnce(&TicketStore) -> Result<T, McpError>,
+    ) -> Result<T, McpError> {
+        let index_root = match workspace {
+            Some(workspace) => self.resolve_explicit_workspace_root(workspace)?,
+            None => self.resolve_workspace_root("default")?,
+        };
+        self.with_resolved_store_ext(index_root, f).await
+    }
+
+    async fn with_resolved_store_ext<T>(
+        &self,
+        index_root: PathBuf,
+        f: impl FnOnce(&TicketStore) -> Result<T, McpError>,
+    ) -> Result<T, McpError> {
         let _guard = self.store_lock.lock().await;
         let store = TicketStore::open_or_init_in_workspace(&index_root).map_err(Self::store_err)?;
         store.scan(false).map_err(Self::store_err)?;

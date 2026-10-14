@@ -55,12 +55,15 @@ impl TicketServer {
         &self,
         input: TicketRefInput,
     ) -> Result<CallToolResult, McpError> {
-        let workspace = input.workspace.unwrap_or_else(|| "default".to_string());
+        let workspace_selector = input.workspace;
+        let workspace = workspace_selector
+            .clone()
+            .unwrap_or_else(|| "default".to_string());
         let id_str = input.id;
         let view = input.view;
         let parts = input.parts;
 
-        self.with_store_ext(&workspace.clone(), move |store| {
+        self.with_read_store_ext(workspace_selector.as_deref(), move |store| {
             let id = Self::resolve_uuid_for_read(store, &id_str)?;
             let projection =
                 ticket_api::storage::ReadProjection::decode(view.as_deref(), parts.as_deref())
@@ -96,10 +99,13 @@ impl TicketServer {
         &self,
         input: TicketRefInput,
     ) -> Result<CallToolResult, McpError> {
-        let workspace = input.workspace.unwrap_or_else(|| "default".to_string());
+        let workspace_selector = input.workspace;
+        let workspace = workspace_selector
+            .clone()
+            .unwrap_or_else(|| "default".to_string());
         let id_str = input.id;
 
-        self.with_store_ext(&workspace.clone(), move |store| {
+        self.with_read_store_ext(workspace_selector.as_deref(), move |store| {
             let id = Self::resolve_uuid_for_read(store, &id_str)?;
             let indexed = store
                 .get_indexed(&id)
@@ -234,7 +240,7 @@ mod tests {
                 None,
                 "tracker-improvement",
                 Some("path output regression"),
-                Some("open"),
+                Some("planning"),
                 BTreeMap::new(),
                 None,
                 None,
@@ -279,7 +285,7 @@ mod tests {
                 None,
                 "tracker-improvement",
                 Some("mcp projection"),
-                Some("open"),
+                Some("planning"),
                 BTreeMap::new(),
                 None,
                 Some("objective body"),
@@ -317,7 +323,7 @@ mod tests {
                 None,
                 "tracker-improvement",
                 Some("descendant ticket"),
-                Some("open"),
+                Some("planning"),
                 BTreeMap::new(),
                 None,
                 None,
@@ -356,7 +362,7 @@ mod tests {
 
         let error = server
             .get_ticket_tool(TicketRefInput {
-                workspace: Some(dir.path().to_string_lossy().into_owned()),
+                workspace: None,
                 id: "deadbeef".to_string(),
                 view: None,
                 parts: None,
@@ -385,7 +391,7 @@ mod tests {
                 None,
                 "tracker-improvement",
                 Some("default output shaping"),
-                Some("open"),
+                Some("planning"),
                 BTreeMap::new(),
                 None,
                 None,
@@ -418,7 +424,7 @@ mod tests {
                 None,
                 "tracker-improvement",
                 Some("external description write"),
-                Some("open"),
+                Some("planning"),
                 BTreeMap::new(),
                 None,
                 Some("# Existing section"),
@@ -474,7 +480,7 @@ mod tests {
                 None,
                 "tracker-improvement",
                 Some("already indexed ticket"),
-                Some("open"),
+                Some("planning"),
                 BTreeMap::new(),
                 None,
                 None,
@@ -498,7 +504,7 @@ mod tests {
                 None,
                 "tracker-improvement",
                 Some("externally added ticket"),
-                Some("open"),
+                Some("planning"),
                 BTreeMap::new(),
                 None,
                 None,
@@ -544,7 +550,7 @@ mod tests {
                 None,
                 "tracker-improvement",
                 Some("already indexed ticket"),
-                Some("open"),
+                Some("planning"),
                 BTreeMap::new(),
                 None,
                 None,
@@ -568,7 +574,7 @@ mod tests {
                 None,
                 "tracker-improvement",
                 Some("read-time reconciliation"),
-                Some("open"),
+                Some("planning"),
                 BTreeMap::new(),
                 None,
                 Some("## Visible without a staleness window"),
