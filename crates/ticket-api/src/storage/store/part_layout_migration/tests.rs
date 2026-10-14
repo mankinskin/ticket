@@ -4,7 +4,7 @@ use tempfile::TempDir;
 use uuid::Uuid;
 
 use crate::{
-    model::ticket::TicketManifestExt,
+    model::{filesystem::ScanRoot, ticket::TicketManifestExt},
     storage::{TicketStore, ticket_fs::TicketFs},
 };
 
@@ -64,6 +64,132 @@ fn create_ticket_with_parts(
     .unwrap();
     let original_manifest = fs::read_to_string(ticket_path.join("ticket.toml")).unwrap();
     (id, ticket_path, ids, original_manifest)
+}
+
+#[test]
+fn migration_plans_and_saved_reports_are_limited_to_the_selected_store() {
+    let directory = tempfile::tempdir().unwrap();
+    let root_workspace = directory.path().join("repo");
+    let nested_workspace = root_workspace.join("workflow-tools").join("ticket");
+    fs::create_dir_all(&nested_workspace).unwrap();
+
+    let root_store = TicketStore::init(&root_workspace).unwrap();
+    let nested_store = TicketStore::init(&nested_workspace).unwrap();
+    let (root_id, root_ticket_path, root_part_ids, _) = create_ticket_with_parts(
+        &root_store,
+        "Root store ticket",
+        &[("design", "root content", false, false)],
+    );
+    let (nested_id, nested_ticket_path, nested_part_ids, _) = create_ticket_with_parts(
+        &nested_store,
+        "Nested store ticket",
+        &[("design", "nested content", false, false)],
+    );
+
+    root_store
+        .add_scan_root(ScanRoot {
+            path: nested_store.index_root.join("tickets"),
+            label: "nested store".to_string(),
+        })
+        .unwrap();
+    nested_store
+        .add_scan_root(ScanRoot {
+            path: root_store.index_root.join("tickets"),
+            label: "root store".to_string(),
+        })
+        .unwrap();
+    root_store.scan(true).unwrap();
+    nested_store.scan(true).unwrap();
+
+    assert!(
+        root_store
+            .list(None, None, None)
+            .unwrap()
+            .iter()
+            .any(|ticket| ticket.id == nested_id)
+    );
+    assert!(
+        nested_store
+            .list(None, None, None)
+            .unwrap()
+            .iter()
+            .any(|ticket| ticket.id == root_id)
+    );
+
+    let root_manifest_path = root_ticket_path.join("ticket.toml");
+    let root_part_path = root_ticket_path
+        .join("parts")
+        .join(format!("{}.md", root_part_ids[0]));
+    let nested_manifest_path = nested_ticket_path.join("ticket.toml");
+    let nested_part_path = nested_ticket_path
+        .join("parts")
+        .join(format!("{}.md", nested_part_ids[0]));
+    let root_before = (
+        fs::read(&root_manifest_path).unwrap(),
+        fs::read(&root_part_path).unwrap(),
+    );
+    let nested_before = (
+        fs::read(&nested_manifest_path).unwrap(),
+        fs::read(&nested_part_path).unwrap(),
+    );
+
+    let root_plan = root_store.part_layout_dry_run().unwrap();
+    let nested_plan = nested_store.part_layout_dry_run().unwrap();
+    assert_eq!(root_plan.scanned_tickets, 1);
+    assert_eq!(nested_plan.scanned_tickets, 1);
+    assert_eq!(root_plan.tickets[0].id, root_id);
+    assert_eq!(nested_plan.tickets[0].id, nested_id);
+
+    for (store, plan) in [(&root_store, &root_plan), (&nested_store, &nested_plan)] {
+        let tickets_root = fs::canonicalize(store.index_root.join("tickets"))
+            .unwrap()
+            .to_string_lossy()
+            .replace('\\', "/");
+        let prefix = format!("{}/", tickets_root.trim_end_matches('/'));
+        assert!(
+            plan.tickets
+                .iter()
+                .all(|ticket| ticket.ticket_path.starts_with(&prefix))
+        );
+    }
+
+    let mut foreign_plan = nested_plan.clone();
+    foreign_plan.store_root = root_plan.store_root.clone();
+    let apply_error = root_store
+        .part_layout_apply(&foreign_plan)
+        .unwrap_err()
+        .to_string();
+    assert!(apply_error.contains("outside selected store tickets directory"));
+
+    let foreign_apply = PartLayoutApplyReport {
+        version: foreign_plan.version,
+        apply_id: Uuid::new_v4(),
+        plan_id: foreign_plan.plan_id,
+        store_root: root_plan.store_root,
+        completed_tickets: foreign_plan.tickets,
+        unapplied_ticket_ids: Vec::new(),
+        recovery_required_ticket_ids: Vec::new(),
+        failure: None,
+    };
+    assert!(
+        root_store
+            .part_layout_verify(&foreign_apply)
+            .unwrap_err()
+            .to_string()
+            .contains("outside selected store tickets directory")
+    );
+    assert!(
+        root_store
+            .part_layout_undo(&foreign_apply)
+            .unwrap_err()
+            .to_string()
+            .contains("outside selected store tickets directory")
+    );
+
+    assert_eq!(fs::read(root_manifest_path).unwrap(), root_before.0);
+    assert_eq!(fs::read(root_part_path).unwrap(), root_before.1);
+    assert_eq!(fs::read(nested_manifest_path).unwrap(), nested_before.0);
+    assert_eq!(fs::read(nested_part_path).unwrap(), nested_before.1);
 }
 
 #[test]

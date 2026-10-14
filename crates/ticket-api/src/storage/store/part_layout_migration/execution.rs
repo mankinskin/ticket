@@ -1,5 +1,5 @@
 use super::{
-    integrity::{canonical_path, internal_fingerprints},
+    integrity::{canonical_path, internal_fingerprints, ticket_path_is_within_store},
     planning::*,
     reports::*,
 };
@@ -17,10 +17,14 @@ impl TicketStore {
     /// checks and preservation verification.
     pub fn part_layout_dry_run(&self) -> Result<PartLayoutDryRunReport, StorageError> {
         let store_root = canonical_path(&self.index_root)?;
+        let tickets_root = canonical_path(&self.index_root.join("tickets"))?;
         let indexed = self.list(None, None, None)?;
         let mut tickets = Vec::with_capacity(indexed.len());
         for ticket in indexed {
             let ticket_path = canonical_path(&ticket.path)?;
+            if !ticket_path_is_within_store(&ticket_path, &tickets_root) {
+                continue;
+            }
             let snapshot = TicketFs::part_layout_snapshot_read_only(&ticket.path)?;
             tickets.push(build_ticket_plan(ticket, ticket_path, snapshot)?);
         }
@@ -72,6 +76,7 @@ impl TicketStore {
         plan: &PartLayoutDryRunReport,
     ) -> Result<PartLayoutApplyReport, StorageError> {
         self.validate_layout_report(plan.version, &plan.store_root)?;
+        self.validate_ticket_paths(&plan.tickets)?;
 
         let planned = plan
             .tickets

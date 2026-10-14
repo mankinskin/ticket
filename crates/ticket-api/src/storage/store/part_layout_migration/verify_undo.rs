@@ -1,3 +1,5 @@
+use std::path::Path;
+
 use super::{integrity::*, reports::*};
 use crate::{
     error::StorageError,
@@ -14,6 +16,7 @@ impl TicketStore {
         apply: &PartLayoutApplyReport,
     ) -> Result<PartLayoutVerifyReport, StorageError> {
         self.validate_layout_report(apply.version, &apply.store_root)?;
+        self.validate_ticket_paths(&apply.completed_tickets)?;
         let mut report = PartLayoutVerifyReport {
             version: PART_LAYOUT_REPORT_VERSION,
             apply_id: apply.apply_id,
@@ -45,6 +48,7 @@ impl TicketStore {
         apply: &PartLayoutApplyReport,
     ) -> Result<PartLayoutUndoReport, StorageError> {
         self.validate_layout_report(apply.version, &apply.store_root)?;
+        self.validate_ticket_paths(&apply.completed_tickets)?;
         let mut report = PartLayoutUndoReport {
             version: PART_LAYOUT_REPORT_VERSION,
             apply_id: apply.apply_id,
@@ -264,6 +268,23 @@ impl TicketStore {
             return Err(StorageError::Other(format!(
                 "part-layout report targets store {store_root}, but this command opened {actual_root}"
             )));
+        }
+        Ok(())
+    }
+
+    pub(super) fn validate_ticket_paths(
+        &self,
+        plans: &[PartLayoutTicketPlan],
+    ) -> Result<(), StorageError> {
+        let tickets_root = canonical_path(&self.index_root.join("tickets"))?;
+        for plan in plans {
+            let ticket_path = canonical_path(Path::new(&plan.ticket_path))?;
+            if !ticket_path_is_within_store(&ticket_path, &tickets_root) {
+                return Err(StorageError::Other(format!(
+                    "part-layout report ticket {} at {} is outside selected store tickets directory {}",
+                    plan.id, ticket_path, tickets_root
+                )));
+            }
         }
         Ok(())
     }

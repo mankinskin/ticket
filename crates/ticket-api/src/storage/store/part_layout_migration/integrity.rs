@@ -313,3 +313,8 @@ pub(super) fn fingerprints_match(
 pub(super) fn canonical_path(path: &Path) -> Result<String, StorageError> {
     Ok(fs::canonicalize(path)?.to_string_lossy().replace('\\', "/"))
 }
+
+pub(super) fn ticket_path_is_within_store(ticket_path: &str, tickets_root: &str) -> bool {
+    let prefix = format!("{}/", tickets_root.trim_end_matches('/'));
+    ticket_path.starts_with(&prefix)
+}
