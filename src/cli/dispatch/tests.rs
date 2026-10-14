@@ -2,7 +2,8 @@ use std::collections::BTreeMap;
 
 use super::*;
 use crate::cli::{
-    BoardArgs, BoardCommand, IdArgs, ListArgs, ScanArgs, TextArgs, WorkspaceArgs, WorkspaceCommand,
+    BoardArgs, BoardCommand, IdArgs, ListArgs, MigratePartLayoutArgs, ScanArgs, TextArgs,
+    WorkspaceArgs, WorkspaceCommand,
 };
 use tempfile::tempdir;
 use ticket_api::storage::index::RedbIndexStore;
@@ -185,6 +186,132 @@ fn create_nested_ticket_fixture() -> (tempfile::TempDir, PathBuf, PathBuf, Strin
         .unwrap();
 
     (dir, repo, child, ticket_id.to_string())
+}
+
+fn snapshot_migration_ticket(store_root: &Path, ticket_id: &str) -> BTreeMap<PathBuf, Vec<u8>> {
+    let ticket_dir = store_root.join("tickets").join(ticket_id);
+    let mut snapshot = BTreeMap::new();
+    let manifest = ticket_dir.join("ticket.toml");
+    snapshot.insert(
+        PathBuf::from("ticket.toml"),
+        std::fs::read(manifest).unwrap(),
+    );
+
+    let parts_dir = ticket_dir.join("parts");
+    for entry in std::fs::read_dir(parts_dir).unwrap() {
+        let entry = entry.unwrap();
+        let relative_path = PathBuf::from("parts").join(entry.file_name());
+        snapshot.insert(relative_path, std::fs::read(entry.path()).unwrap());
+    }
+
+    snapshot
+}
+
+#[test]
+fn migrate_part_layout_dispatch_routes_to_runtime() {
+    let directory = tempdir().unwrap();
+    let repo = directory.path().join("repo");
+    let child = repo.join("memory-api");
+    std::fs::create_dir_all(&child).unwrap();
+
+    let root_store = TicketStore::init(&repo).unwrap();
+    let root_ticket = root_store
+        .create(
+            None,
+            "tracker-improvement",
+            Some("Root migration dispatch fixture"),
+            Some("planning"),
+            BTreeMap::new(),
+            None,
+            Some("Root ticket part content"),
+        )
+        .unwrap();
+    root_store
+        .write_part(
+            &root_ticket,
+            Uuid::new_v4(),
+            "review",
+            "Root ticket part content",
+            None,
+        )
+        .unwrap();
+    let root_store_root = root_store.index_root.clone();
+    drop(root_store);
+
+    let child_store = TicketStore::init(&child).unwrap();
+    let child_ticket = child_store
+        .create(
+            None,
+            "tracker-improvement",
+            Some("Nested migration dispatch fixture"),
+            Some("planning"),
+            BTreeMap::new(),
+            None,
+            Some("Nested ticket part content"),
+        )
+        .unwrap();
+    child_store
+        .write_part(
+            &child_ticket,
+            Uuid::new_v4(),
+            "review",
+            "Nested ticket part content",
+            None,
+        )
+        .unwrap();
+    let child_store_root = child_store.index_root.clone();
+    drop(child_store);
+
+    let root_before = snapshot_migration_ticket(&root_store_root, &root_ticket.to_string());
+    let child_before = snapshot_migration_ticket(&child_store_root, &child_ticket.to_string());
+    assert!(root_before.keys().any(|path| path.starts_with("parts")));
+    assert!(child_before.keys().any(|path| path.starts_with("parts")));
+
+    for (workspace, store_root, ticket_id, report_name, before) in [
+        (
+            repo.as_path(),
+            root_store_root.as_path(),
+            root_ticket.to_string(),
+            "root-dry-run.json",
+            &root_before,
+        ),
+        (
+            child.as_path(),
+            child_store_root.as_path(),
+            child_ticket.to_string(),
+            "nested-dry-run.json",
+            &child_before,
+        ),
+    ] {
+        let report_file = directory.path().join(report_name);
+        let payload = dispatch(
+            TicketCommandCli::MigratePartLayout(MigratePartLayoutArgs {
+                apply: false,
+                verify: false,
+                undo: false,
+                plan_file: None,
+                apply_report: None,
+                report_file: report_file.clone(),
+            }),
+            None,
+            Some(workspace),
+            None,
+            true,
+            true,
+        )
+        .unwrap();
+
+        assert_eq!(payload["status"], json!("planned"));
+        let expected_store_root = std::fs::canonicalize(store_root)
+            .unwrap()
+            .to_string_lossy()
+            .replace('\\', "/");
+        assert_eq!(payload["report"]["store_root"], json!(expected_store_root));
+        let saved_report: serde_json::Value =
+            serde_json::from_slice(&std::fs::read(report_file).unwrap()).unwrap();
+        assert_eq!(saved_report, payload["report"]);
+        assert_eq!(snapshot_migration_ticket(store_root, &ticket_id), *before);
+    }
 }
 
 #[test]

@@ -713,6 +713,7 @@ fn dispatch_store_command_ops(
         | TicketCommandCli::Close(_)
         | TicketCommandCli::Cancel(_)
         | TicketCommandCli::Move(_)
+        | TicketCommandCli::MigratePartLayout(_)
         | TicketCommandCli::Attach(_)
         | TicketCommandCli::Assets(_)
         | TicketCommandCli::Transitions(_) => {
