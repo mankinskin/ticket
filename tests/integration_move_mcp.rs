@@ -51,7 +51,7 @@ async fn move_tools_preflight_and_apply_smoke() {
             None,
             "tracker-improvement",
             Some("Move via MCP"),
-            Some("planned"),
+            Some("ready"),
             BTreeMap::new(),
             None,
             None,
@@ -60,7 +60,7 @@ async fn move_tools_preflight_and_apply_smoke() {
 
     let preflight = server
         .move_preflight(Parameters(MovePreflightInput {
-            workspace: "default".to_string(),
+            workspace: tmp.path().to_string_lossy().into_owned(),
             id: ticket_id.to_string(),
             to_workspace_root: target_workspace.to_string_lossy().to_string(),
         }))
@@ -74,7 +74,7 @@ async fn move_tools_preflight_and_apply_smoke() {
 
     let apply = server
         .move_apply(Parameters(MoveApplyInput {
-            workspace: "default".to_string(),
+            workspace: tmp.path().to_string_lossy().into_owned(),
             id: ticket_id.to_string(),
             to_workspace_root: target_workspace.to_string_lossy().to_string(),
         }))
