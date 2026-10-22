@@ -438,10 +438,11 @@ impl TicketFs {
     }
 
     fn read_description_unlocked(ticket_path: &Path) -> Result<Option<String>, StorageError> {
-        match fs::read_to_string(ticket_path.join("description.md")) {
+        let description_path = ticket_path.join("description.md");
+        match fs::read_to_string(&description_path) {
             Ok(description) => Ok(Some(description)),
             Err(error) if error.kind() == std::io::ErrorKind::NotFound => Ok(None),
-            Err(error) => Err(StorageError::Io(error)),
+            Err(error) => Err(io_error_at(&description_path, error)),
         }
     }
 
@@ -488,7 +489,9 @@ impl TicketFs {
             let mut parts = Vec::with_capacity(entries.len());
             let mut referenced_paths: BTreeSet<String> = BTreeSet::new();
             for entry in entries {
-                let content = fs::read_to_string(ticket_path.join(&entry.path))?;
+                let part_path = ticket_path.join(&entry.path);
+                let content = fs::read_to_string(&part_path)
+                    .map_err(|error| io_error_at(&part_path, error))?;
                 referenced_paths.insert(entry.path.clone());
                 parts.push(LoadedPart {
                     id: entry.id,
@@ -1033,14 +1036,34 @@ fn parse_edge_targets(
     Ok(targets)
 }
 
+/// Wrap an io error so its message names the path it failed on while keeping
+/// its `ErrorKind`, so existing kind-based matches keep working.
+fn io_error_at(path: &Path, error: std::io::Error) -> StorageError {
+    StorageError::Io(std::io::Error::new(
+        error.kind(),
+        format!("{}: {error}", path.display()),
+    ))
+}
+
 fn acquire_lock(lock_path: &Path) -> Result<File, StorageError> {
+    // Refuse to lock inside a missing ticket dir: creating the lock file would fail with a
+    // bare OS error, and recreating the directory would resurrect a deleted ticket.
+    if let Some(ticket_path) = lock_path.parent() {
+        if !ticket_path.is_dir() {
+            return Err(StorageError::Io(std::io::Error::new(
+                std::io::ErrorKind::NotFound,
+                format!("ticket directory not found: {}", ticket_path.display()),
+            )));
+        }
+    }
     // Keep the path stable; unlinking after unlock lets concurrent writers lock different inodes.
     let file = OpenOptions::new()
         .create(true)
         .truncate(false)
         .read(true)
         .write(true)
-        .open(lock_path)?;
+        .open(lock_path)
+        .map_err(|error| io_error_at(lock_path, error))?;
     file.lock_exclusive().map_err(StorageError::Io)?;
     if let Some(ticket_path) = lock_path.parent() {
         transaction::recover(ticket_path)?;
