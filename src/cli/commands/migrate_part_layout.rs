@@ -109,6 +109,28 @@ pub(crate) fn cmd_migrate_part_layout(
     }
 }
 
+pub(crate) fn cmd_migrate_part_layout_dry_run(
+    args: MigratePartLayoutArgs,
+    index_root: &Path,
+) -> Result<Value, CliRunError> {
+    let _ = resolve_operation(&args, true)?;
+    ensure_report_destination(&args.report_file, None)?;
+    let report_file = super::normalize_display_path(&args.report_file);
+    let report = TicketStore::part_layout_dry_run_from_filesystem(index_root)?;
+    let status = if report.conflict_tickets == 0 {
+        "planned"
+    } else {
+        "conflicts"
+    };
+    write_report(&args.report_file, &report)?;
+    Ok(json!({
+        "command": "migrate_part_layout",
+        "status": status,
+        "report_file": report_file,
+        "report": report,
+    }))
+}
+
 fn resolve_operation(
     args: &MigratePartLayoutArgs,
     global_dry_run: bool,

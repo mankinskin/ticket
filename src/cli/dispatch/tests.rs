@@ -207,6 +207,27 @@ fn snapshot_migration_ticket(store_root: &Path, ticket_id: &str) -> BTreeMap<Pat
     snapshot
 }
 
+fn snapshot_directory_files(root: &Path) -> BTreeMap<PathBuf, Vec<u8>> {
+    fn visit(root: &Path, current: &Path, snapshot: &mut BTreeMap<PathBuf, Vec<u8>>) {
+        for entry in std::fs::read_dir(current).unwrap() {
+            let entry = entry.unwrap();
+            let path = entry.path();
+            if entry.file_type().unwrap().is_dir() {
+                visit(root, &path, snapshot);
+            } else {
+                snapshot.insert(
+                    path.strip_prefix(root).unwrap().to_path_buf(),
+                    std::fs::read(path).unwrap(),
+                );
+            }
+        }
+    }
+
+    let mut snapshot = BTreeMap::new();
+    visit(root, root, &mut snapshot);
+    snapshot
+}
+
 #[test]
 fn migrate_part_layout_dispatch_routes_to_runtime() {
     let directory = tempdir().unwrap();
@@ -264,16 +285,19 @@ fn migrate_part_layout_dispatch_routes_to_runtime() {
 
     let root_before = snapshot_migration_ticket(&root_store_root, &root_ticket.to_string());
     let child_before = snapshot_migration_ticket(&child_store_root, &child_ticket.to_string());
+    let root_store_before = snapshot_directory_files(&root_store_root);
+    let child_store_before = snapshot_directory_files(&child_store_root);
     assert!(root_before.keys().any(|path| path.starts_with("parts")));
     assert!(child_before.keys().any(|path| path.starts_with("parts")));
 
-    for (workspace, store_root, ticket_id, report_name, before) in [
+    for (workspace, store_root, ticket_id, report_name, before, store_before) in [
         (
             repo.as_path(),
             root_store_root.as_path(),
             root_ticket.to_string(),
             "root-dry-run.json",
             &root_before,
+            &root_store_before,
         ),
         (
             child.as_path(),
@@ -281,6 +305,7 @@ fn migrate_part_layout_dispatch_routes_to_runtime() {
             child_ticket.to_string(),
             "nested-dry-run.json",
             &child_before,
+            &child_store_before,
         ),
     ] {
         let report_file = directory.path().join(report_name);
@@ -311,7 +336,69 @@ fn migrate_part_layout_dispatch_routes_to_runtime() {
             serde_json::from_slice(&std::fs::read(report_file).unwrap()).unwrap();
         assert_eq!(saved_report, payload["report"]);
         assert_eq!(snapshot_migration_ticket(store_root, &ticket_id), *before);
+        assert_eq!(snapshot_directory_files(store_root), *store_before);
     }
+}
+
+#[test]
+fn migrate_part_layout_dry_run_does_not_initialize_a_missing_index() {
+    let directory = tempdir().unwrap();
+    let repo = directory.path().join("repo");
+    let store = TicketStore::init(&repo).unwrap();
+    let ticket_id = store
+        .create(
+            None,
+            "tracker-improvement",
+            Some("Filesystem-only migration fixture"),
+            Some("planning"),
+            BTreeMap::new(),
+            None,
+            Some("Ticket content"),
+        )
+        .unwrap();
+    store
+        .write_part(
+            &ticket_id,
+            Uuid::new_v4(),
+            "review",
+            "Ticket review content",
+            None,
+        )
+        .unwrap();
+    let store_root = store.index_root.clone();
+    drop(store);
+
+    std::fs::remove_file(store_root.join("tickets.db")).unwrap();
+    std::fs::remove_dir_all(store_root.join("search_index")).unwrap();
+    let ticket_before = snapshot_migration_ticket(&store_root, &ticket_id.to_string());
+
+    let report_file = directory.path().join("dry-run.json");
+    let payload = dispatch(
+        TicketCommandCli::MigratePartLayout(MigratePartLayoutArgs {
+            apply: false,
+            verify: false,
+            undo: false,
+            plan_file: None,
+            apply_report: None,
+            report_file: report_file.clone(),
+        }),
+        None,
+        Some(&repo),
+        None,
+        true,
+        true,
+    )
+    .unwrap();
+
+    assert_eq!(payload["status"], json!("planned"));
+    assert_eq!(payload["report"]["scanned_tickets"], json!(1));
+    assert!(!store_root.join("tickets.db").exists());
+    assert!(!store_root.join("search_index").exists());
+    assert_eq!(
+        snapshot_migration_ticket(&store_root, &ticket_id.to_string()),
+        ticket_before
+    );
+    assert!(report_file.is_file());
 }
 
 #[test]

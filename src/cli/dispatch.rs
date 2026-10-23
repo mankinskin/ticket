@@ -257,6 +257,12 @@ fn dispatch_store_backed(
     let index_root =
         resolve_board_index_root(&command, index_root_override, workspace_root_override)?;
     let workspace_root = resolve_workspace_root(&index_root, workspace_root_override);
+    if dry_run && matches!(&command, TicketCommandCli::MigratePartLayout(_)) {
+        let TicketCommandCli::MigratePartLayout(args) = command else {
+            unreachable!("command variant was checked above");
+        };
+        return commands::cmd_migrate_part_layout_dry_run(args, &index_root);
+    }
     let store_workspace_root =
         if index_root_override.is_some() || matches!(&command, TicketCommandCli::Board(_)) {
             resolve_workspace_root(&index_root, None)

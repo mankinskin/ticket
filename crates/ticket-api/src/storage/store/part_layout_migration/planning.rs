@@ -6,10 +6,7 @@ use crate::{
         parts::{is_planning_part_kind, part_kind_slug, part_slug_filename},
         ticket::{TicketManifestExt, TicketPart},
     },
-    storage::{
-        indexed::IndexedTicket,
-        ticket_fs::{PartLayoutSnapshot, sha256_bytes},
-    },
+    storage::ticket_fs::{PartLayoutSnapshot, sha256_bytes},
 };
 use std::{
     collections::{BTreeMap, BTreeSet, HashMap, HashSet},
@@ -19,7 +16,8 @@ use std::{
 use uuid::Uuid;
 
 pub(super) fn build_ticket_plan(
-    ticket: IndexedTicket,
+    ticket_id: Uuid,
+    title: Option<String>,
     ticket_path: String,
     snapshot: PartLayoutSnapshot,
 ) -> Result<PartLayoutTicketPlan, StorageError> {
@@ -202,7 +200,7 @@ pub(super) fn build_ticket_plan(
             continue;
         }
 
-        let indexed_path = Path::new(&ticket.path).join(&change.to);
+        let indexed_path = Path::new(&ticket_path).join(&change.to);
         match fs::symlink_metadata(&indexed_path) {
             Ok(_) => conflicts.push(format!("foreign file occupies desired path {}", change.to)),
             Err(error) if error.kind() == std::io::ErrorKind::NotFound => {
@@ -250,8 +248,8 @@ pub(super) fn build_ticket_plan(
     let preservation = snapshot.files.iter().map(public_fingerprint).collect();
 
     Ok(PartLayoutTicketPlan {
-        id: ticket.id,
-        title: ticket.title,
+        id: ticket_id,
+        title,
         ticket_path,
         status,
         manifest_before: snapshot.manifest_contents,

@@ -7,6 +7,7 @@ use crate::{
     error::StorageError,
     storage::{TicketStore, ticket_fs::TicketFs},
 };
+use std::{fs, path::Path};
 use uuid::Uuid;
 
 impl TicketStore {
@@ -16,17 +17,92 @@ impl TicketStore {
     /// manifest-referenced part and discovered orphan for later stale-input
     /// checks and preservation verification.
     pub fn part_layout_dry_run(&self) -> Result<PartLayoutDryRunReport, StorageError> {
-        let store_root = canonical_path(&self.index_root)?;
-        let tickets_root = canonical_path(&self.index_root.join("tickets"))?;
-        let indexed = self.list(None, None, None)?;
-        let mut tickets = Vec::with_capacity(indexed.len());
-        for ticket in indexed {
-            let ticket_path = canonical_path(&ticket.path)?;
-            if !ticket_path_is_within_store(&ticket_path, &tickets_root) {
+        Self::part_layout_dry_run_from_filesystem(&self.index_root)
+    }
+
+    /// Plan from the selected store's ticket folders without opening its index.
+    ///
+    /// This path is used by CLI dry-runs so store-open recovery cannot mutate
+    /// derived index files before a read-only plan is produced.
+    pub fn part_layout_dry_run_from_filesystem(
+        index_root: &Path,
+    ) -> Result<PartLayoutDryRunReport, StorageError> {
+        let store_root = canonical_path(index_root)?;
+        let tickets_root = canonical_path(&index_root.join("tickets"))?;
+        let tickets_root_path = Path::new(&tickets_root);
+        let mut ticket_dirs = Vec::new();
+        for entry in fs::read_dir(tickets_root_path)? {
+            let entry = entry?;
+            let path = entry.path();
+            let metadata = fs::symlink_metadata(&path)?;
+            if metadata.file_type().is_symlink() {
+                if path.join("ticket.toml").is_file() {
+                    return Err(StorageError::Other(format!(
+                        "ticket folder symlink is not supported in a migration dry-run: {}",
+                        path.display()
+                    )));
+                }
                 continue;
             }
-            let snapshot = TicketFs::part_layout_snapshot_read_only(&ticket.path)?;
-            tickets.push(build_ticket_plan(ticket, ticket_path, snapshot)?);
+            if metadata.is_dir() {
+                let manifest_path = path.join("ticket.toml");
+                match fs::symlink_metadata(&manifest_path) {
+                    Ok(manifest_metadata) if manifest_metadata.file_type().is_symlink() => {
+                        return Err(StorageError::Other(format!(
+                            "ticket manifest symlink is not supported in a migration dry-run: {}",
+                            manifest_path.display()
+                        )));
+                    }
+                    Ok(manifest_metadata) if manifest_metadata.is_file() => {
+                        ticket_dirs.push(path);
+                    }
+                    Ok(_) => {
+                        return Err(StorageError::Other(format!(
+                            "ticket manifest path is not a regular file: {}",
+                            manifest_path.display()
+                        )));
+                    }
+                    Err(error) if error.kind() == std::io::ErrorKind::NotFound => {}
+                    Err(error) => return Err(StorageError::Io(error)),
+                }
+            }
+        }
+        ticket_dirs.sort();
+
+        let mut tickets = Vec::with_capacity(ticket_dirs.len());
+        for ticket_dir in ticket_dirs {
+            let snapshot = TicketFs::part_layout_snapshot_read_only(&ticket_dir)?;
+            let ticket_id = snapshot.manifest.id;
+            let directory_id = ticket_dir
+                .file_name()
+                .and_then(|name| name.to_str())
+                .and_then(|name| Uuid::parse_str(name).ok())
+                .ok_or_else(|| {
+                    StorageError::Other(format!(
+                        "ticket folder does not have a UUID name: {}",
+                        ticket_dir.display()
+                    ))
+                })?;
+            if ticket_id != directory_id {
+                return Err(StorageError::Other(format!(
+                    "ticket folder id does not match its manifest id: {}",
+                    ticket_dir.display()
+                )));
+            }
+            let ticket_path = canonical_path(&ticket_dir)?;
+            if !ticket_path_is_within_store(&ticket_path, &tickets_root) {
+                return Err(StorageError::Other(format!(
+                    "ticket folder resolves outside the selected store: {}",
+                    ticket_dir.display()
+                )));
+            }
+            let title = snapshot
+                .manifest
+                .extra
+                .get("title")
+                .and_then(|value| value.as_str())
+                .map(str::to_string);
+            tickets.push(build_ticket_plan(ticket_id, title, ticket_path, snapshot)?);
         }
 
         let scanned_tickets = tickets.len();
@@ -155,7 +231,8 @@ impl TicketStore {
                 }
             };
             let live_plan = match build_ticket_plan(
-                current.clone(),
+                current.id,
+                current.title.clone(),
                 ticket_plan.ticket_path.clone(),
                 live_snapshot,
             ) {
