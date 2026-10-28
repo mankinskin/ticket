@@ -20,6 +20,13 @@ cargo run -p ticket --features http --bin ticket-http
 
 `ticket` finds the nearest `.ticket` workspace by walking up from the current directory.
 
+For board commands, an explicit `--workspace` pointing to a submodule or a
+checkout with a separate Git directory uses that checkout's own ticket store.
+A managed linked worktree at `.worktrees/<session>/<slug>` instead shares its
+main checkout's board. A `.git` file alone does not imply a linked worktree;
+submodules normally have no `commondir` file. Invalid linked-worktree metadata
+is still rejected. An explicit `--index-root` overrides this board routing.
+
 ## Examples
 
 ```bash

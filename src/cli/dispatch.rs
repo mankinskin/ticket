@@ -402,12 +402,25 @@ fn resolve_worktree_git_dir(
 }
 
 fn resolve_main_checkout(workspace_root: &Path, git_dir: &Path) -> Result<PathBuf, CliRunError> {
-    let common_dir = fs::read_to_string(git_dir.join("commondir")).map_err(|error| {
-        CliRunError::BadRequest(format!(
-            "invalid board workspace '{}': Git worktree has no commondir: {error}",
-            workspace_root.display()
-        ))
-    })?;
+    let common_dir = match fs::read_to_string(git_dir.join("commondir")) {
+        Ok(contents) => contents,
+        Err(error)
+            if error.kind() == std::io::ErrorKind::NotFound
+                && git_dir.join("HEAD").is_file()
+                && git_dir.join("objects").is_dir()
+                && git_dir.join("refs").is_dir()
+                && !git_dir.join("gitdir").exists() =>
+        {
+            // Submodules and separate Git directories own their objects, unlike linked worktrees.
+            return Ok(workspace_root.to_path_buf());
+        }
+        Err(error) => {
+            return Err(CliRunError::BadRequest(format!(
+                "invalid board workspace '{}': Git worktree has no commondir: {error}",
+                workspace_root.display()
+            )));
+        }
+    };
     let common_dir = common_dir
         .lines()
         .next()
