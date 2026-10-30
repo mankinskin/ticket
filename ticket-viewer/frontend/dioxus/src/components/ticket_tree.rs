@@ -86,8 +86,11 @@ const STATE_CHIPS: &[(&str, &str)] = &[
     ("cancelled", "cancelled"),
 ];
 
+#[path = "ticket_tree/header.rs"]
 mod header;
+#[path = "ticket_tree/page.rs"]
 mod page;
+#[path = "ticket_tree/rows.rs"]
 mod rows;
 
 pub use page::TicketTree;

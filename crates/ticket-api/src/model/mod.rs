@@ -3,6 +3,7 @@ pub mod domain_adoption;
 pub mod edge;
 pub mod event;
 pub mod filesystem;
+pub mod lifecycle;
 pub mod manifest_format;
 pub mod parts;
 pub mod query;

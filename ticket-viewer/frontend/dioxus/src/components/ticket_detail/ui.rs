@@ -1,4 +1,6 @@
+#[path = "ui/render.rs"]
 mod render;
+#[path = "ui/widgets.rs"]
 mod widgets;
 
-pub(super) use render::{render_ticket_detail, TicketDetailHandlers, TicketDetailViewState};
+pub(super) use render::{TicketDetailHandlers, TicketDetailViewState, render_ticket_detail};

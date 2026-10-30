@@ -32,10 +32,15 @@ pub(crate) const TAB_ACTIVE_STYLE: &str = "
     cursor: pointer;
 ";
 
+#[path = "ticket_content/edit.rs"]
 mod edit;
+#[path = "ticket_content/helpers.rs"]
 mod helpers;
+#[path = "ticket_content/page.rs"]
 mod page;
+#[path = "ticket_content/parts.rs"]
 mod parts;
+#[path = "ticket_content/render.rs"]
 mod render;
 
 pub use page::TicketContent;

@@ -10,7 +10,9 @@ use viewer_api::error::RequestIdExt;
 
 use crate::serve::{AppState, handlers::tickets::TicketRef};
 
+#[path = "graph/quality.rs"]
 mod quality;
+#[path = "graph/traversal.rs"]
 mod traversal;
 
 #[derive(Deserialize)]

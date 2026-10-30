@@ -4,11 +4,17 @@ use crate::{layout::LayoutMode, types::TicketRef};
 
 use viewer_api_dioxus::Projection;
 
+#[path = "dep_graph/edge_list.rs"]
 mod edge_list;
+#[path = "dep_graph/interactions.rs"]
 mod interactions;
+#[path = "dep_graph/page.rs"]
 mod page;
+#[path = "dep_graph/picker.rs"]
 mod picker;
+#[path = "dep_graph/state.rs"]
 mod state;
+#[path = "dep_graph/viewport.rs"]
 mod viewport;
 
 // ── Props ──────────────────────────────────────────────────────────────────

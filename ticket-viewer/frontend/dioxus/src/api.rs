@@ -4,9 +4,10 @@
 //! `ticket-http`. The HTTP implementation calls those endpoints using the
 //! browser Fetch API via `gloo-net`.
 
-use percent_encoding::{utf8_percent_encode, NON_ALPHANUMERIC};
+use percent_encoding::{NON_ALPHANUMERIC, utf8_percent_encode};
 use serde::Deserialize;
 
+#[path = "api/backend.rs"]
 mod backend;
 
 pub use self::backend::TicketBackend;

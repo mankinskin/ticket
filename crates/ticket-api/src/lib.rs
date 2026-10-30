@@ -30,3 +30,4 @@ pub use store_index::{
 };
 
 pub use missing_rule::{SituationQuery, handle_missing_rule_match};
+pub use model::lifecycle::TicketLifecycle;

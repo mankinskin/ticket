@@ -15,9 +15,13 @@
 //! * `prefill: Option<TicketSummary>` prop pre-populates all fields (template
 //!   mode).
 
+#[path = "create_ticket/actions.rs"]
 mod actions;
+#[path = "create_ticket/draft.rs"]
 mod draft;
+#[path = "create_ticket/fields.rs"]
 mod fields;
+#[path = "create_ticket/page.rs"]
 mod page;
 
 pub use page::CreateTicketModal;

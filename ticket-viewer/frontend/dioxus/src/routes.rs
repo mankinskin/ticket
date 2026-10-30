@@ -7,8 +7,11 @@ use crate::{
     types::WorkspacesResponse,
 };
 
+#[path = "routes/detail.rs"]
 mod detail;
+#[path = "routes/list.rs"]
 mod list;
+#[path = "routes/new_ticket.rs"]
 mod new_ticket;
 
 pub use detail::TicketDetailPage;

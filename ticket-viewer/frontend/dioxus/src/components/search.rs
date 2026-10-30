@@ -33,9 +33,13 @@
 //! title/body free-text scope, AND semantics between terms, and quoted-phrase
 //! behavior without advertising unsupported fields.
 
+#[path = "search/facets.rs"]
 mod facets;
+#[path = "search/page.rs"]
 mod page;
+#[path = "search/recent.rs"]
 mod recent;
+#[path = "search/results.rs"]
 mod results;
 
 pub use page::SearchBar;
