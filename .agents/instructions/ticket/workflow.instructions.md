@@ -6,7 +6,7 @@ description: "Use in ticket workflow operations that apply across sessions: orie
 
 These operations apply during **every session**, not only when working on
 ticket-system code. Session-wide principles (create tickets before code, keep
-state current, review before close) live in [AGENTS.md](../../../../AGENTS.md); the
+state current, review before close) live in AGENTS.md (`../../../../AGENTS.md`); the
 operational detail lives here.
 
 ### Orientation (start of every session)
@@ -103,7 +103,7 @@ do not.
 
 ### Discovery Before Creating
 
-[entity-discovery.instructions.md](../../../../.agents/instructions/workflow/entity-discovery.instructions.md)
+entity-discovery.instructions.md (`../../../../.agents/instructions/workflow/entity-discovery.instructions.md`)
 owns this rule for every store, including which phases it binds, how to record
 coverage, and the three permitted reuse forms. Do not restate it here.
 
@@ -247,7 +247,7 @@ Opportunistically improve ticket quality whenever you touch the store:
   follow-up ticket-api command that returns the authoritative path before
   responding.
 - Render ticket references per the Clickable Reference Policy in
-  [AGENTS.md](../../../../AGENTS.md).
+  AGENTS.md (`../../../../AGENTS.md`).
 
 ## Health Checks
 
