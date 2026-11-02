@@ -102,7 +102,14 @@ pub(super) fn validate_target(relative: &str) -> Result<(), String> {
         return Err(format!("unsafe transaction path: {relative}"));
     }
     let components = path.components().collect::<Vec<_>>();
-    let allowed = matches!(relative, "ticket.toml" | "description.md" | GENERATION_FILE)
+    let reopen_receipt = relative
+        .strip_prefix(".reopen-")
+        .and_then(|s| s.strip_suffix(".json"))
+        .is_some_and(|s| Uuid::parse_str(s).is_ok());
+    let allowed = matches!(
+        relative,
+        "ticket.toml" | "description.md" | "history.ndjson" | GENERATION_FILE
+    ) || reopen_receipt
         || (components.len() >= 2
             && components[0].as_os_str() == "parts"
             && components

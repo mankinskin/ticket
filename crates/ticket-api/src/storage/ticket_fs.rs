@@ -26,6 +26,8 @@ use crate::{
 
 #[path = "ticket_fs/part_layout.rs"]
 mod part_layout;
+#[path = "ticket_fs/reopen.rs"]
+mod reopen;
 #[cfg(test)]
 #[path = "ticket_fs/tests.rs"]
 mod tests;

@@ -44,6 +44,8 @@ mod projection;
 mod query;
 #[path = "store/release.rs"]
 mod release;
+#[path = "store/reopen.rs"]
+mod reopen;
 #[path = "store/scan.rs"]
 mod scan;
 #[path = "store/store_open.rs"]
