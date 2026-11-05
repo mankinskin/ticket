@@ -11,7 +11,7 @@ fn extract_text(result: &rmcp::model::CallToolResult) -> String {
         .content
         .iter()
         .find_map(|content| {
-            if let rmcp::model::RawContent::Text(text) = &content.raw {
+            if let rmcp::model::ContentBlock::Text(text) = content {
                 Some(text.text.clone())
             } else {
                 None

@@ -1,6 +1,50 @@
 use super::*;
 
 #[test]
+fn incremental_policy_reconciliation_recovers_unhealthy_search_index() {
+    let dir = tempdir().unwrap();
+    let store = TicketStore::init(dir.path()).unwrap();
+    let id = store
+        .create(
+            None,
+            "tracker-improvement",
+            Some("policyrecoverymarker"),
+            Some("planning"),
+            Default::default(),
+            None,
+            None,
+        )
+        .unwrap();
+    let warm = store.reconcile_workspace_policy(dir.path()).unwrap();
+    assert!(!warm.phase_timings_ms.contains_key("reset_search_index_ms"));
+    assert!(warm.phase_timings_ms.contains_key("policy_discovery_ms"));
+    assert!(
+        warm.phase_timings_ms
+            .contains_key("policy_root_registration_ms")
+    );
+    assert!(warm.phase_timings_ms.contains_key("policy_total_ms"));
+
+    corrupt_search_index_meta(&store.index_root);
+    let recovered = store.reconcile_workspace_policy(dir.path()).unwrap();
+    assert!(
+        recovered
+            .phase_timings_ms
+            .contains_key("reset_search_index_ms")
+    );
+    assert_eq!(
+        store.search_tickets("policyrecoverymarker", 10).unwrap()[0].id,
+        id
+    );
+
+    let forced = store.reapply_workspace_policy(dir.path()).unwrap();
+    assert!(
+        forced
+            .phase_timings_ms
+            .contains_key("reset_search_index_ms")
+    );
+}
+
+#[test]
 fn open_prunes_persisted_sibling_worktree_scan_root() {
     use memory_kernel::storage::index::RedbIndexStore;
 

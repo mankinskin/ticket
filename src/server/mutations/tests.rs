@@ -86,8 +86,8 @@ async fn explicit_dot_workspace_creates_and_reads_back_in_current_workspace() {
     let text = result
         .content
         .iter()
-        .find_map(|content| match &content.raw {
-            rmcp::model::RawContent::Text(text) => Some(text.text.as_str()),
+        .find_map(|content| match content {
+            rmcp::model::ContentBlock::Text(text) => Some(text.text.as_str()),
             _ => None,
         })
         .expect("ticket create response");

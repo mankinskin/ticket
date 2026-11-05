@@ -27,7 +27,7 @@ fn extract_json(result: rmcp::model::CallToolResult) -> Value {
         .content
         .iter()
         .find_map(|content| {
-            if let rmcp::model::RawContent::Text(text) = &content.raw {
+            if let rmcp::model::ContentBlock::Text(text) = content {
                 Some(text.text.clone())
             } else {
                 None

@@ -1,6 +1,7 @@
 use std::{
     path::{Path, PathBuf},
     sync::Arc,
+    time::Instant,
 };
 
 use rmcp::{
@@ -47,13 +48,53 @@ pub struct TicketServer {
 pub fn open_canonical_store(
     index_root: &Path,
 ) -> Result<TicketStore, ticket_api::error::StorageError> {
+    let started = Instant::now();
+    tracing::info!(
+        index_root = %index_root.display(),
+        "ticket_mcp_store_open_started"
+    );
+    let resolution_started = Instant::now();
     let resolution = TicketStore::resolve_workspace_store(
         index_root,
         memory_kernel::domain_store::StoreAccessMode::CreateOrOpen,
-    )?;
+    )
+    .inspect_err(|error| {
+        tracing::error!(
+            phase = "resolve",
+            elapsed_ms = resolution_started.elapsed().as_millis() as u64,
+            %error,
+            "ticket_mcp_startup_failed"
+        );
+    })?;
+    let resolve_ms = resolution_started.elapsed().as_millis() as u64;
     let workspace_root = resolution.local_workspace;
-    let store = TicketStore::open_or_init_in_workspace(&workspace_root)?;
-    store.reapply_workspace_policy(&workspace_root)?;
+    let open_started = Instant::now();
+    let store = TicketStore::open_or_init_in_workspace(&workspace_root).inspect_err(|error| {
+        tracing::error!(
+            phase = "open",
+            elapsed_ms = open_started.elapsed().as_millis() as u64,
+            %error,
+            "ticket_mcp_startup_failed"
+        );
+    })?;
+    let open_ms = open_started.elapsed().as_millis() as u64;
+    tracing::info!(resolve_ms, open_ms, "ticket_mcp_store_open_complete");
+    let policy_started = Instant::now();
+    let report = store
+        .reconcile_workspace_policy(&workspace_root)
+        .inspect_err(|error| {
+            tracing::error!(
+                phase = "policy_reconciliation",
+                elapsed_ms = policy_started.elapsed().as_millis() as u64,
+                %error,
+                "ticket_mcp_startup_failed"
+            );
+        })?;
+    tracing::info!(
+        elapsed_ms = started.elapsed().as_millis() as u64,
+        phase_timings_ms = ?report.phase_timings_ms,
+        "ticket_mcp_store_ready"
+    );
     Ok(store)
 }
 
@@ -72,7 +113,7 @@ impl TicketServer {
         ticket_api::output::strip_default_metadata(&mut value);
         let text = serde_json::to_string(&value)
             .map_err(|error| McpError::internal_error(format!("serialization: {error}"), None))?;
-        Ok(CallToolResult::success(vec![Content::text(text)]))
+        Ok(CallToolResult::success(vec![ContentBlock::text(text)]))
     }
 
     fn store_err(error: ticket_api::error::StorageError) -> McpError {
@@ -211,22 +252,17 @@ impl TicketServer {
     }
 }
 
-#[tool_handler]
+#[tool_handler(router = self.tool_router)]
 impl ServerHandler for TicketServer {
-    fn get_info(&self) -> ServerInfo {
-        ServerInfo {
-            server_info: Implementation {
-                name: env!("CARGO_PKG_NAME").to_string(),
-                version: env!("CARGO_PKG_VERSION").to_string(),
-                ..Default::default()
-            },
-            instructions: Some(
-                "ticket-mcp provides direct access to the ticket store. No HTTP backend required. Use named tools for ticket operations. Call ticket_capabilities to discover the canonical ticket/spec/rule workflows, required params, and nested-root targeting."
-                    .to_string(),
-            ),
-            capabilities: ServerCapabilities::builder().enable_tools().build(),
-            ..Default::default()
-        }
+    fn get_info(&self) -> ServerConfig {
+        ServerConfig::new(ServerCapabilities::builder().enable_tools().build())
+            .with_server_info(Implementation::new(
+                env!("CARGO_PKG_NAME"),
+                env!("CARGO_PKG_VERSION"),
+            ))
+            .with_instructions(
+                "ticket-mcp provides direct access to the ticket store. No HTTP backend required. Use named tools for ticket operations. Call ticket_capabilities to discover the canonical ticket/spec/rule workflows, required params, and nested-root targeting.",
+            )
     }
 }
 
@@ -263,9 +299,20 @@ pub async fn run_mcp_server(
 
     tracing::info!("Starting ticket-mcp server on stdio (direct store access)");
 
+    let handshake_started = Instant::now();
     let service = server.serve(stdio()).await.inspect_err(|error| {
+        tracing::error!(
+            phase = "handshake",
+            elapsed_ms = handshake_started.elapsed().as_millis() as u64,
+            %error,
+            "ticket_mcp_startup_failed"
+        );
         eprintln!("Server error: {error:?}");
     })?;
+    tracing::info!(
+        handshake_ms = handshake_started.elapsed().as_millis() as u64,
+        "ticket_mcp_protocol_ready"
+    );
 
     service.waiting().await?;
     Ok(())
@@ -273,3 +320,164 @@ pub async fn run_mcp_server(
 
 #[path = "server/ticket_tools.rs"]
 mod ticket_tools;
+
+#[cfg(test)]
+mod startup_tests {
+    use super::open_canonical_store;
+    use ticket_api::{
+        storage::store::TicketStore,
+        workspace_policy::{WorkspacePolicy, save_workspace_policy},
+    };
+
+    #[test]
+    fn warm_mcp_store_open_does_not_reindex_unchanged_tickets() {
+        let temp = tempfile::tempdir().expect("temporary workspace");
+        let store = open_canonical_store(temp.path()).expect("open store");
+        let id = store
+            .create(
+                None,
+                "tracker-improvement",
+                Some("Unchanged startup fixture"),
+                Some("planning"),
+                Default::default(),
+                None,
+                Some("Searchable startup content"),
+            )
+            .expect("create ticket");
+        store
+            .reconcile_workspace_policy(temp.path())
+            .expect("warm fixture after creation");
+        let indexed = store.get_indexed(&id).expect("read index").expect("ticket");
+        drop(store);
+
+        let reopened = open_canonical_store(temp.path()).expect("reopen store");
+        let after = reopened
+            .get_indexed(&id)
+            .expect("read index")
+            .expect("ticket");
+        assert_eq!(
+            after.updated_at, indexed.updated_at,
+            "warm startup must preserve unchanged indexed rows rather than rebuild them"
+        );
+        assert_eq!(
+            reopened.search_tickets("Searchable", 10).expect("search")[0].id,
+            id
+        );
+    }
+
+    #[test]
+    fn mcp_startup_reconciles_description_changes_and_deleted_tickets() {
+        let temp = tempfile::tempdir().expect("temporary workspace");
+        let store = open_canonical_store(temp.path()).expect("open store");
+        let id = store
+            .create(
+                None,
+                "tracker-improvement",
+                Some("Startup reconciliation"),
+                Some("planning"),
+                Default::default(),
+                None,
+                Some("oldstartupmarker"),
+            )
+            .expect("create ticket");
+        let path = store.get_indexed(&id).unwrap().unwrap().path;
+        drop(store);
+        std::fs::write(path.join("description.md"), "newstartupmarker")
+            .expect("edit fixture description");
+
+        let reopened = open_canonical_store(temp.path()).expect("reopen store");
+        assert_eq!(
+            reopened.search_tickets("newstartupmarker", 10).unwrap()[0].id,
+            id
+        );
+        assert!(
+            reopened
+                .search_tickets("oldstartupmarker", 10)
+                .unwrap()
+                .is_empty()
+        );
+        drop(reopened);
+        std::fs::remove_dir_all(&path).expect("delete fixture ticket");
+
+        let reopened = open_canonical_store(temp.path()).expect("reopen after deletion");
+        assert!(reopened.get_indexed(&id).unwrap().is_none());
+        assert!(
+            reopened
+                .search_tickets("newstartupmarker", 10)
+                .unwrap()
+                .is_empty()
+        );
+    }
+
+    #[test]
+    fn mcp_startup_discovers_new_roots_and_enforces_policy_changes() {
+        let temp = tempfile::tempdir().expect("temporary workspace");
+        drop(open_canonical_store(temp.path()).expect("initialize parent"));
+        let child = TicketStore::init(&temp.path().join("fixtures")).expect("child store");
+        let id = child
+            .create(
+                None,
+                "tracker-improvement",
+                Some("descendantstartupmarker"),
+                Some("planning"),
+                Default::default(),
+                None,
+                None,
+            )
+            .expect("create descendant ticket");
+        drop(child);
+
+        let store = open_canonical_store(temp.path()).expect("discover new child");
+        assert_eq!(
+            store.search_tickets("descendantstartupmarker", 10).unwrap()[0].id,
+            id
+        );
+        drop(store);
+        let mut policy = WorkspacePolicy::default();
+        policy.ignore_workspaces.push("fixtures".to_string());
+        save_workspace_policy(temp.path(), &policy).expect("exclude child");
+
+        let store = open_canonical_store(temp.path()).expect("apply exclusion");
+        assert!(store.get_indexed(&id).unwrap().is_none());
+        assert!(
+            store
+                .search_tickets("descendantstartupmarker", 10)
+                .unwrap()
+                .is_empty()
+        );
+        drop(store);
+        policy.ignore_workspaces.clear();
+        save_workspace_policy(temp.path(), &policy).expect("include child");
+        let store = open_canonical_store(temp.path()).expect("apply inclusion");
+        assert_eq!(
+            store.search_tickets("descendantstartupmarker", 10).unwrap()[0].id,
+            id
+        );
+    }
+
+    #[test]
+    fn mcp_startup_recovers_missing_search_index() {
+        let temp = tempfile::tempdir().expect("temporary workspace");
+        let store = open_canonical_store(temp.path()).expect("open store");
+        let id = store
+            .create(
+                None,
+                "tracker-improvement",
+                Some("startuprecoverymarker"),
+                Some("planning"),
+                Default::default(),
+                None,
+                None,
+            )
+            .expect("create ticket");
+        let search_path = store.index_root.join("search_index");
+        drop(store);
+        std::fs::remove_dir_all(search_path).expect("remove fixture search index");
+
+        let store = open_canonical_store(temp.path()).expect("recover search index");
+        assert_eq!(
+            store.search_tickets("startuprecoverymarker", 10).unwrap()[0].id,
+            id
+        );
+    }
+}

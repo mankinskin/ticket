@@ -143,6 +143,31 @@ impl TicketStore {
         &self,
         workspace_root: &Path,
     ) -> Result<ScanReport, StorageError> {
+        self.apply_workspace_policy(workspace_root, true)
+    }
+
+    /// Reconcile workspace policy and on-disk tickets without rebuilding
+    /// unchanged index rows. An unhealthy search index still triggers recovery.
+    pub fn reconcile_workspace_policy(
+        &self,
+        workspace_root: &Path,
+    ) -> Result<ScanReport, StorageError> {
+        self.apply_workspace_policy(workspace_root, false)
+    }
+
+    fn apply_workspace_policy(
+        &self,
+        workspace_root: &Path,
+        reindex: bool,
+    ) -> Result<ScanReport, StorageError> {
+        let overall_started = Instant::now();
+        tracing::info!(
+            target: STORE_TRACE_TARGET,
+            workspace_root = %workspace_root.display(),
+            requested_reindex = reindex,
+            "ticket_workspace_policy_started"
+        );
+        let discovery_started = Instant::now();
         let policy = crate::workspace_policy::load_workspace_policy(workspace_root);
 
         let allowed = crate::workspace::discover_workspace_scan_roots_with_policy(
@@ -155,6 +180,8 @@ impl TicketStore {
             .iter()
             .map(|root| self.resolve_scan_root_path(&root.path))
             .collect();
+        let discovery_ms = elapsed_ms(discovery_started);
+        let registration_started = Instant::now();
 
         // Flip previously-registered roots the policy no longer allows.
         for persisted in self.list_scan_roots_with_metadata()? {
@@ -182,6 +209,24 @@ impl TicketStore {
             )?;
         }
 
-        self.scan(true)
+        let registration_ms = elapsed_ms(registration_started);
+        tracing::info!(
+            target: STORE_TRACE_TARGET,
+            discovery_ms,
+            registration_ms,
+            allowed_roots = allowed_paths.len(),
+            "ticket_workspace_policy_roots_ready"
+        );
+        let mut report = self.scan(reindex)?;
+        report
+            .phase_timings_ms
+            .insert("policy_discovery_ms".to_string(), discovery_ms);
+        report
+            .phase_timings_ms
+            .insert("policy_root_registration_ms".to_string(), registration_ms);
+        report
+            .phase_timings_ms
+            .insert("policy_total_ms".to_string(), elapsed_ms(overall_started));
+        Ok(report)
     }
 }

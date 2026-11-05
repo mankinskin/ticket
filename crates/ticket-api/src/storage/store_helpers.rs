@@ -135,11 +135,12 @@ pub(super) fn apply_edge_patch_plans(
 }
 
 pub(super) fn emit_store_open_report(event_name: &'static str, report: &StoreOpenReport) {
-    tracing::debug!(
+    tracing::info!(
         target: STORE_TRACE_TARGET,
         initialized_store = report.initialized_store,
         phase_count = report.phase_timings_ms.len(),
         scan_report_count = report.scan_reports.len(),
+        phase_timings_ms = ?report.phase_timings_ms,
         "{event_name}"
     );
 }

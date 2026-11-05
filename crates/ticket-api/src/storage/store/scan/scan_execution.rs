@@ -19,6 +19,19 @@ impl TicketStore {
         let force = reindex || self.search_needs_rebuild()?;
         let search_rebuild_elapsed = elapsed_ms(search_rebuild_started);
         span.record("forced_reindex", force);
+        tracing::info!(
+            target: STORE_TRACE_TARGET,
+            requested_reindex = reindex,
+            forced_reindex = force,
+            reason = if reindex {
+                "requested"
+            } else if force {
+                "search_index_recovery"
+            } else {
+                "incremental"
+            },
+            "ticket_store_scan_started"
+        );
         let mut report = self.scan_once(force)?;
         report.phase_timings_ms.insert(
             "search_rebuild_check_ms".to_string(),
@@ -29,12 +42,15 @@ impl TicketStore {
             "scan_total_ms",
             overall_started,
         );
-        tracing::debug!(
+        tracing::info!(
             target: STORE_TRACE_TARGET,
-            integrated = report.integrated,
+            scanned_tickets = report.integrated,
             pruned = report.pruned,
             diagnostics = report.diagnostics.len(),
             scan_roots = report.root_entry_counts.len(),
+            phase_timings_ms = ?report.phase_timings_ms,
+            root_entry_counts = ?report.root_entry_counts,
+            skipped_roots = ?report.skipped_roots,
             "ticket_store_scan_complete"
         );
         Ok(report)
@@ -254,6 +270,7 @@ impl TicketStore {
         );
 
         let mut integrated = 0usize;
+        let mut updated = 0usize;
         let mut diagnostics = Vec::new();
         let mut disk_ids = HashSet::new();
         let mut workflow_root_ids = HashSet::new();
@@ -310,6 +327,7 @@ impl TicketStore {
             }
 
             let index_upsert_started = Instant::now();
+            updated += indexed_updates.len();
             self.index.upsert_tickets_batch(&indexed_updates)?;
             add_phase_elapsed(
                 &mut phase_timings_ms,
@@ -374,9 +392,10 @@ impl TicketStore {
             workflow_started,
         );
 
-        tracing::debug!(
+        tracing::info!(
             target: STORE_TRACE_TARGET,
-            integrated,
+            scanned_tickets = integrated,
+            updated_tickets = updated,
             pruned,
             diagnostics = diagnostics.len(),
             "ticket_store_scan_once_complete"

@@ -18,6 +18,34 @@ cargo run -p ticket --features mcp --bin ticket-mcp
 cargo run -p ticket --features http --bin ticket-http
 ```
 
+The MCP transport supports MCP 2026-07-28 `server/discover` and the legacy
+`initialize` handshake. Run its stdio regression with the `mcp` feature enabled:
+
+```bash
+cargo test -p ticket --features mcp --test integration_stdio_discovery --locked -j 1
+```
+
+MCP startup reconciles workspace policy and on-disk tickets incrementally:
+unchanged rows and search documents are retained, new/changed tickets are
+indexed, and deleted or newly excluded tickets are pruned before serving.
+Missing or inconsistent search indexes still trigger a full recovery rebuild.
+Explicit policy rescans retain their full-reindex behavior.
+
+Startup diagnostics go to stderr (never MCP stdout). Default INFO logs include
+store resolution/open/close and protocol-handshake durations, policy discovery
+and root-registration durations, actual scan mode/rebuild reason, scanned and
+updated Ticket counts, skipped roots, per-root counts, and scan-phase timings.
+`startup_ms` ends before the handshake; `handshake_ms` includes waiting for the
+client. `RUST_LOG` overrides the defaults; use
+`RUST_LOG=warn,ticket=info,ticket_mcp=info,ticket_api::storage::store=debug`
+for detailed storage phase events.
+
+Compare warm policy-reconciliation costs on a disposable fixture:
+
+```bash
+cargo bench -p ticket-api --bench fixture_scan --locked -- fixture_startup_policy
+```
+
 `ticket` finds the nearest `.ticket` workspace by walking up from the current directory.
 
 For board commands, an explicit `--workspace` pointing to a submodule or a

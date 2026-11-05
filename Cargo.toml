@@ -32,6 +32,11 @@ required-features = ["http"]
 name = "ticket-record-merge"
 path = "src/bin/ticket-record-merge.rs"
 
+[[test]]
+name = "integration_stdio_discovery"
+path = "tests/integration_stdio_discovery.rs"
+required-features = ["mcp"]
+
 [dependencies]
 ticket-api = { path = "crates/ticket-api" }
 toml = "0.8"
@@ -42,7 +47,7 @@ chrono = { version = "0.4", features = ["serde"], optional = true }
 clap = { version = "4", features = ["derive"], optional = true }
 futures-util = { version = "0.3", optional = true }
 memory-kernel = { git = "https://github.com/mankinskin/memory-kernel", branch = "main", optional = true   }
-rmcp = { version = "0.14", features = ["server", "transport-io"], optional = true }
+rmcp = { version = "3", features = ["server", "transport-io"], optional = true }
 serde = { version = "1", features = ["derive"], optional = true }
 serde_json = "1"
 shell-words = { version = "1", optional = true }
