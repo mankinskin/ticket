@@ -3,6 +3,7 @@ use super::*;
 
 #[derive(Debug, Deserialize, JsonSchema)]
 pub struct BoardShowInput {
+    /// Explicit workspace root or .ticket store path required; omitted/empty/default/.. rejected; . means server cwd.
     pub workspace: String,
     #[serde(default)]
     pub agent_id: Option<String>,
@@ -10,6 +11,7 @@ pub struct BoardShowInput {
 
 #[derive(Debug, Deserialize, JsonSchema)]
 pub struct BoardHistoryInput {
+    /// Explicit workspace root or .ticket store path required; omitted/empty/default/.. rejected; . means server cwd.
     pub workspace: String,
     #[serde(default)]
     pub agent_id: Option<String>,
@@ -17,6 +19,7 @@ pub struct BoardHistoryInput {
 
 #[derive(Debug, Deserialize, JsonSchema)]
 pub struct BoardCheckInInput {
+    /// Explicit workspace root or .ticket store path required; omitted/empty/default/.. rejected; . means server cwd.
     pub workspace: String,
     pub ticket_id: String,
     pub agent_id: String,
@@ -36,11 +39,13 @@ pub struct BoardCheckInInput {
 
 #[derive(Debug, Deserialize, JsonSchema)]
 pub struct BoardWorktreesInput {
+    /// Explicit workspace root or .ticket store path required; omitted/empty/default/.. rejected; . means server cwd.
     pub workspace: String,
 }
 
 #[derive(Debug, Deserialize, JsonSchema)]
 pub struct BoardCheckOutInput {
+    /// Explicit workspace root or .ticket store path required; omitted/empty/default/.. rejected; . means server cwd.
     pub workspace: String,
     pub ticket_id: String,
     #[serde(default)]
@@ -51,6 +56,7 @@ pub struct BoardCheckOutInput {
 
 #[derive(Debug, Deserialize, JsonSchema)]
 pub struct BoardReleaseLeaseInput {
+    /// Explicit workspace root or .ticket store path required; omitted/empty/default/.. rejected; . means server cwd.
     pub workspace: String,
     pub ticket_id: String,
     pub requester: String,
@@ -58,12 +64,14 @@ pub struct BoardReleaseLeaseInput {
 
 #[derive(Debug, Deserialize, JsonSchema)]
 pub struct BoardHeartbeatInput {
+    /// Explicit workspace root or .ticket store path required; omitted/empty/default/.. rejected; . means server cwd.
     pub workspace: String,
     pub entry_id: String,
 }
 
 #[derive(Debug, Deserialize, JsonSchema)]
 pub struct BoardConfigureInput {
+    /// Explicit workspace root or .ticket store path required; omitted/empty/default/.. rejected; . means server cwd.
     pub workspace: String,
     #[serde(default)]
     pub max_wip: Option<u32>,
@@ -75,6 +83,7 @@ pub struct BoardConfigureInput {
 
 #[derive(Debug, Deserialize, JsonSchema)]
 pub struct BoardCleanPreviewInput {
+    /// Explicit workspace root or .ticket store path required; omitted/empty/default/.. rejected; . means server cwd.
     pub workspace: String,
     #[serde(default)]
     pub include_stale: Option<bool>,
@@ -82,6 +91,7 @@ pub struct BoardCleanPreviewInput {
 
 #[derive(Debug, Deserialize, JsonSchema)]
 pub struct BoardCleanApplyInput {
+    /// Explicit workspace root or .ticket store path required; omitted/empty/default/.. rejected; . means server cwd.
     pub workspace: String,
     pub token: String,
     #[serde(default)]
@@ -90,6 +100,7 @@ pub struct BoardCleanApplyInput {
 
 #[derive(Debug, Deserialize, JsonSchema)]
 pub struct BoardUpdateFilesInput {
+    /// Explicit workspace root or .ticket store path required; omitted/empty/default/.. rejected; . means server cwd.
     pub workspace: String,
     pub ticket_id: String,
     pub agent_id: String,
@@ -101,6 +112,7 @@ pub struct BoardUpdateFilesInput {
 
 #[derive(Debug, Deserialize, JsonSchema)]
 pub struct BoardRenameFileInput {
+    /// Explicit workspace root or .ticket store path required; omitted/empty/default/.. rejected; . means server cwd.
     pub workspace: String,
     pub ticket_id: String,
     pub agent_id: String,

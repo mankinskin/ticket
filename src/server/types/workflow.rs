@@ -15,6 +15,7 @@ pub struct WorkflowInput {
 
 #[derive(Debug, Deserialize, JsonSchema)]
 pub struct NextTicketsInput {
+    /// Explicit workspace root or .ticket store path required; omitted/empty/default/.. rejected; . means server cwd.
     pub workspace: String,
     #[serde(default)]
     pub limit: Option<usize>,

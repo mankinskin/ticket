@@ -13,7 +13,7 @@ impl TicketServer {
 
     #[tool(
         name = "list_workspaces",
-        description = "List available ticket workspaces."
+        description = "List available ticket workspaces. Requires an explicit workspace root or .ticket store path; omitted, empty, default and .. are rejected; . selects server cwd. Opens/initializes and rescans the addressed store."
     )]
     pub(super) async fn list_workspaces(&self) -> Result<CallToolResult, McpError> {
         self.list_workspaces_tool().await
@@ -29,7 +29,7 @@ impl TicketServer {
 
     #[tool(
         name = "list_tickets",
-        description = "List tickets with optional state/query/limit filters."
+        description = "List tickets with state/type filters, or full-text query (query ignores state/type). Query limit defaults 100; otherwise unlimited; explicit limits cap at 1000. Returns count/items including effort. Empty/default workspace uses server store."
     )]
     pub async fn list_tickets(
         &self,
@@ -38,7 +38,7 @@ impl TicketServer {
         self.list_tickets_tool(input).await
     }
 
-    #[tool(name = "get_ticket", description = "Get one ticket by id.")]
+    #[tool(name = "get_ticket", description = "Read a ticket by UUID or 8+ hex prefix. Omitted/blank workspace uses server store. Default view summary; choose summary/plan/review/full or parts, not both. Returns projected ticket content and owning-store context.")]
     pub async fn get_ticket(
         &self,
         Parameters(input): Parameters<TicketRefInput>,
@@ -48,7 +48,7 @@ impl TicketServer {
 
     #[tool(
         name = "get_ticket_description",
-        description = "Get ticket markdown description by id."
+        description = "Read ticket markdown description by UUID or 8+ hex prefix. Omitted/blank workspace uses server store. view/parts are ignored here; use get_ticket for projections."
     )]
     pub(super) async fn get_ticket_description(
         &self,
@@ -59,7 +59,7 @@ impl TicketServer {
 
     #[tool(
         name = "list_edges",
-        description = "List ticket graph edges, optionally filtered by edge kind."
+        description = "List all graph edges, optionally filtered by kind; omitted/all means every kind. No pagination. Empty/default workspace uses server store."
     )]
     pub(super) async fn list_edges(
         &self,
@@ -70,7 +70,7 @@ impl TicketServer {
 
     #[tool(
         name = "subgraph",
-        description = "Fetch dependency subgraph for a root ticket via BFS traversal."
+        description = "BFS graph from root: direction out/in/both (default both), depth default 2 capped 8, node limit default 500, edge limit default 2000. Omitted/all edge_kind is unfiltered. Returns stats/truncated; inspect truncation before treating the result as complete. Requires an explicit workspace root or .ticket store path; omitted, empty, default and .. are rejected; . selects server cwd. Opens/initializes and rescans the addressed store."
     )]
     pub(super) async fn subgraph(
         &self,
@@ -90,7 +90,7 @@ impl TicketServer {
 
     #[tool(
         name = "topgraph",
-        description = "Fetch reverse dependency graph (tickets that depend on the root) via BFS traversal."
+        description = "BFS reverse dependency graph from root: default direction in, overridable out/in/both. Same depth/node/edge defaults as subgraph; returns stats/truncated. Requires an explicit workspace root or .ticket store path; omitted, empty, default and .. are rejected; . selects server cwd. Opens/initializes and rescans the addressed store."
     )]
     pub(super) async fn topgraph(
         &self,
@@ -110,7 +110,7 @@ impl TicketServer {
 
     #[tool(
         name = "next_tickets",
-        description = "List unblocked tickets in any non-terminal state whose dependencies are all satisfied, ordered by workflow convergence pressure, then ascending effort (smaller token-budget work first), then recency, priority, state progress, and dependee count. Active or stale board entries are surfaced through exclusions and warnings; use board_show for the full board snapshot."
+        description = "Select prerequisite-eligible tickets, excluding board-owned work. root scopes to frontier leaf blockers; omitted root selects global queue. filter is a title prefix. Limit defaults 20 without root, unlimited with root; supplied limit caps at 100. Returns eligible work and board exclusions; eligibility is not authority to dispatch or close. Requires an explicit workspace root or .ticket store path; omitted, empty, default and .. are rejected; . selects server cwd. Opens/initializes and rescans the addressed store."
     )]
     pub async fn next_tickets(
         &self,
@@ -121,7 +121,7 @@ impl TicketServer {
 
     #[tool(
         name = "health_check",
-        description = "Run health checks on tickets: validates descriptions, titles, dependency state consistency, and dangling edges. Scope by root (BFS subgraph), explicit IDs, or all tickets."
+        description = "Check descriptions/titles/dependency states/dangling edges. Scope precedence ids, all, root; one required. BFS depth defaults 6 capped 8, direction out. where entries are key=value; terminal tickets are excluded from tickets_checked. Requires an explicit workspace root or .ticket store path; omitted, empty, default and .. are rejected; . selects server cwd. Opens/initializes and rescans the addressed store."
     )]
     pub(super) async fn health_check(
         &self,
@@ -141,7 +141,7 @@ impl TicketServer {
 
     #[tool(
         name = "update_ticket",
-        description = "Update a ticket: apply field patches and/or transition state. Set undo=true to revert to the previous history revision. If description is provided, description_mode must also be provided; valid values are 'replace' and 'append'. There is no default. Omitting both description and description_mode leaves the description unchanged."
+        description = "Update a ticket: apply field patches and/or transition state. Set undo=true to revert to the previous history revision. If description is provided, description_mode must also be provided; valid values are 'replace' and 'append'. There is no default. Omitting both description and description_mode leaves the description unchanged. Requires an explicit workspace root or .ticket store path; omitted, empty, default and .. are rejected; . selects server cwd. Opens/initializes and rescans the addressed store."
     )]
     pub async fn update_ticket(
         &self,
@@ -152,7 +152,7 @@ impl TicketServer {
 
     #[tool(
         name = "close_ticket",
-        description = "Fast-forward a ticket to a target state by traversing all intermediate transitions (default: done)."
+        description = "Fast-forward through legal intermediate states to to_state (default done), returning traversed_states; not a force override of lifecycle guards. Requires an explicit workspace root or .ticket store path; omitted, empty, default and .. are rejected; . selects server cwd. Opens/initializes and rescans the addressed store."
     )]
     pub(super) async fn close_ticket(
         &self,
@@ -163,7 +163,7 @@ impl TicketServer {
 
     #[tool(
         name = "cancel_ticket",
-        description = "Cancel a ticket (fast-forward to 'cancelled' state)."
+        description = "Fast-forward through legal intermediate states to cancelled, equivalent to close_ticket with to_state=cancelled; retains lifecycle guards. Requires an explicit workspace root or .ticket store path; omitted, empty, default and .. are rejected; . selects server cwd. Opens/initializes and rescans the addressed store."
     )]
     pub(super) async fn cancel_ticket(
         &self,
@@ -174,7 +174,7 @@ impl TicketServer {
 
     #[tool(
         name = "create_ticket",
-        description = "Create a new ticket with the given type, optional title, state, fields, and description."
+        description = "Create a ticket of required type with title and key=value string fields. Omitted state uses its workflow default. Returns created ticket identity; does not authorize execution. Requires an explicit workspace root or .ticket store path; omitted, empty, default and .. are rejected; . selects server cwd. Opens/initializes and rescans the addressed store."
     )]
     pub async fn create_ticket(
         &self,
@@ -185,7 +185,7 @@ impl TicketServer {
 
     #[tool(
         name = "delete_ticket",
-        description = "Delete a ticket permanently, removing its folder from disk."
+        description = "Permanently delete the ticket folder from disk, not a reversible cancellation. Requires an explicit workspace root or .ticket store path; omitted, empty, default and .. are rejected; . selects server cwd. Opens/initializes and rescans the addressed store."
     )]
     pub async fn delete_ticket(
         &self,
@@ -196,7 +196,7 @@ impl TicketServer {
 
     #[tool(
         name = "add_edge",
-        description = "Add a directed edge between two tickets (e.g. depends_on, linked)."
+        description = "Add a directed from-to edge between resolvable ticket UUIDs/prefixes. depends_on means the source depends on the target; kind may also be linked or another supported free-form label. Requires an explicit workspace root or .ticket store path; omitted, empty, default and .. are rejected; . selects server cwd. Opens/initializes and rescans the addressed store."
     )]
     pub(super) async fn add_edge(
         &self,
@@ -207,7 +207,7 @@ impl TicketServer {
 
     #[tool(
         name = "remove_edge",
-        description = "Remove a directed edge between two tickets."
+        description = "Remove an edge of kind: from is a UUID or 8+ hex prefix; to is a UUID or prefix matched among the source's edges. Ambiguous/missing edges fail; a full missing-source UUID may still identify dangling edges. Requires an explicit workspace root or .ticket store path; omitted, empty, default and .. are rejected; . selects server cwd. Opens/initializes and rescans the addressed store."
     )]
     pub(super) async fn remove_edge(
         &self,
@@ -218,7 +218,7 @@ impl TicketServer {
 
     #[tool(
         name = "prune_dangling_edges",
-        description = "Remove or report dangling edges (missing targets) for one source ticket or globally."
+        description = "Remove/report only edges whose target is missing. Provide root or all=true. Default kind depends_on; strategy unlink mutates (default), reconcile_only reports. Returns candidate_count/removed_count/reason. Requires an explicit workspace root or .ticket store path; omitted, empty, default and .. are rejected; . selects server cwd. Opens/initializes and rescans the addressed store."
     )]
     pub(super) async fn prune_dangling_edges(
         &self,
@@ -229,7 +229,7 @@ impl TicketServer {
 
     #[tool(
         name = "move_preflight",
-        description = "Run move planning / dry-run for a cross-workspace ticket move and return structured blockers, reference visibility, and touched paths."
+        description = "Preflight a ticket move to explicit to_workspace_root without moving entities. Inspect plan support/blockers; preflight does not authorize apply. Requires an explicit workspace root or .ticket store path; omitted, empty, default and .. are rejected; . selects server cwd. Opens/initializes and rescans the addressed store."
     )]
     pub async fn move_preflight(
         &self,
@@ -240,7 +240,7 @@ impl TicketServer {
 
     #[tool(
         name = "move_apply",
-        description = "Execute a supported cross-workspace ticket move using the shared journaled storage primitive."
+        description = "Re-plan then move a ticket between stores; a blocked plan fails. Retain returned outcome journal identity for recovery, rather than blindly replaying apply. Requires an explicit workspace root or .ticket store path; omitted, empty, default and .. are rejected; . selects server cwd. Opens/initializes and rescans the addressed store."
     )]
     pub async fn move_apply(
         &self,
@@ -251,7 +251,7 @@ impl TicketServer {
 
     #[tool(
         name = "move_resume",
-        description = "Resume an interrupted move from a move journal UUID."
+        description = "Resume an interrupted move using id as the move journal UUID from move_apply, not a ticket UUID. Requires an explicit workspace root or .ticket store path; omitted, empty, default and .. are rejected; . selects server cwd. Opens/initializes and rescans the addressed store."
     )]
     pub async fn move_resume(
         &self,
@@ -262,7 +262,7 @@ impl TicketServer {
 
     #[tool(
         name = "move_rollback",
-        description = "Roll back a move from a move journal UUID."
+        description = "Roll back a move using id as the move journal UUID from move_apply, not a ticket UUID. Requires an explicit workspace root or .ticket store path; omitted, empty, default and .. are rejected; . selects server cwd. Opens/initializes and rescans the addressed store."
     )]
     pub async fn move_rollback(
         &self,
@@ -284,7 +284,7 @@ impl TicketServer {
 
     #[tool(
         name = "board_show",
-        description = "Read the current draftboard snapshot. Completed history is excluded. When agent_id is supplied, performs a follow-up heartbeat for the caller's active entries and returns the refreshed entry alongside the snapshot."
+        description = "Read the current draftboard snapshot. Completed history is excluded. When agent_id is supplied, performs a follow-up heartbeat for the caller's active entries and returns the refreshed entry alongside the snapshot. Requires an explicit workspace root or .ticket store path; omitted, empty, default and .. are rejected; . selects server cwd. Opens/initializes and rescans the addressed store."
     )]
     pub async fn board_show(
         &self,
@@ -295,7 +295,7 @@ impl TicketServer {
 
     #[tool(
         name = "board_history",
-        description = "Read recently completed board history separately from the live draftboard. Uses the configured completed_audit_window_secs as the default history window."
+        description = "Read recently completed board history separately from the live draftboard. Uses the configured completed_audit_window_secs as the default history window. Requires an explicit workspace root or .ticket store path; omitted, empty, default and .. are rejected; . selects server cwd. Opens/initializes and rescans the addressed store."
     )]
     pub async fn board_history(
         &self,
@@ -306,7 +306,7 @@ impl TicketServer {
 
     #[tool(
         name = "board_worktrees",
-        description = "List active worktrees and their sessions, agents, and tickets."
+        description = "List active worktrees and their sessions, agents, and tickets. Requires an explicit workspace root or .ticket store path; omitted, empty, default and .. are rejected; . selects server cwd. Opens/initializes and rescans the addressed store."
     )]
     pub async fn board_worktrees(
         &self,
@@ -317,7 +317,7 @@ impl TicketServer {
 
     #[tool(
         name = "board_check_in",
-        description = "Register an agent as actively working on a ticket. Returns the new board entry. Fails with WIP limit or file conflict errors."
+        description = "Claim WIP/file ownership for ticket_id and agent_id. ttl_secs defaults 3600; files are claimed paths; intent defaults empty. Optional session/worktree/branch values are provenance. WIP/file conflicts fail. Requires an explicit workspace root or .ticket store path; omitted, empty, default and .. are rejected; . selects server cwd. Opens/initializes and rescans the addressed store."
     )]
     pub async fn board_check_in(
         &self,
@@ -328,7 +328,7 @@ impl TicketServer {
 
     #[tool(
         name = "board_check_out",
-        description = "Remove an agent from the draftboard for the given ticket. If agent_id is omitted, the first active entry for the ticket is used."
+        description = "Check out WIP and release its lease. Omitted agent_id selects the first active entry for the ticket; reason records the handoff. Requires an explicit workspace root or .ticket store path; omitted, empty, default and .. are rejected; . selects server cwd. Opens/initializes and rescans the addressed store."
     )]
     pub async fn board_check_out(
         &self,
@@ -339,7 +339,7 @@ impl TicketServer {
 
     #[tool(
         name = "board_release_lease",
-        description = "Release a ticket lease using owner/stale semantics: the requester may always release its own lease, any requester may release stale leases, and live leases held by others return a lease-conflict error."
+        description = "Release a ticket lease using owner/stale semantics: the requester may always release its own lease, any requester may release stale leases, and live leases held by others return a lease-conflict error. Requires an explicit workspace root or .ticket store path; omitted, empty, default and .. are rejected; . selects server cwd. Opens/initializes and rescans the addressed store."
     )]
     pub async fn board_release_lease(
         &self,
@@ -350,7 +350,7 @@ impl TicketServer {
 
     #[tool(
         name = "board_heartbeat",
-        description = "Refresh the TTL for a board entry to prevent it from going stale. Returns the updated entry with a refreshed last_heartbeat timestamp."
+        description = "Refresh a board entry's heartbeat; entry_id must be the full board-entry UUID, not a ticket ID or prefix. Requires an explicit workspace root or .ticket store path; omitted, empty, default and .. are rejected; . selects server cwd. Opens/initializes and rescans the addressed store."
     )]
     pub async fn board_heartbeat(
         &self,
@@ -361,7 +361,7 @@ impl TicketServer {
 
     #[tool(
         name = "board_configure",
-        description = "Read or update the board configuration. Omit all optional fields to read the current config. Provide any field to patch and persist the updated config."
+        description = "Read board configuration when all options are omitted; supplied max_wip/stale_after_secs/completed_audit_window_secs patch and persist configuration. Requires an explicit workspace root or .ticket store path; omitted, empty, default and .. are rejected; . selects server cwd. Opens/initializes and rescans the addressed store."
     )]
     pub async fn board_configure(
         &self,
@@ -372,7 +372,7 @@ impl TicketServer {
 
     #[tool(
         name = "board_clean_preview",
-        description = "Preview which board entries would be pruned by a clean operation. Returns a list of candidates and a confirmation token to pass to board_clean_apply."
+        description = "Preview board cleanup; include_stale defaults false. Returns a confirmation token for board_clean_apply; does not apply cleanup. Requires an explicit workspace root or .ticket store path; omitted, empty, default and .. are rejected; . selects server cwd. Opens/initializes and rescans the addressed store."
     )]
     pub async fn board_clean_preview(
         &self,
@@ -383,7 +383,7 @@ impl TicketServer {
 
     #[tool(
         name = "board_clean_apply",
-        description = "Execute a board cleanup using the token obtained from board_clean_preview. Rejects the token if the board has changed materially since the preview."
+        description = "Apply the cleanup identified by a board_clean_preview token. include_stale defaults false; reuse the reviewed preview options, not a guessed token. Requires an explicit workspace root or .ticket store path; omitted, empty, default and .. are rejected; . selects server cwd. Opens/initializes and rescans the addressed store."
     )]
     pub async fn board_clean_apply(
         &self,
@@ -394,7 +394,7 @@ impl TicketServer {
 
     #[tool(
         name = "board_update_files",
-        description = "Add or remove files from an active board entry's owned_files. Conflict detection runs on newly added files."
+        description = "Add/remove claimed paths on the active agent_id/ticket_id board entry; additions are conflict-checked. Requires an explicit workspace root or .ticket store path; omitted, empty, default and .. are rejected; . selects server cwd. Opens/initializes and rescans the addressed store."
     )]
     pub async fn board_update_files(
         &self,
@@ -405,7 +405,7 @@ impl TicketServer {
 
     #[tool(
         name = "board_rename_file",
-        description = "Atomically rename a file in an active board entry's owned_files: releases the old path and claims the new path in one audited operation."
+        description = "Replace old_path with new_path in the active agent_id/ticket_id ownership entry. Requires an explicit workspace root or .ticket store path; omitted, empty, default and .. are rejected; . selects server cwd. Opens/initializes and rescans the addressed store."
     )]
     pub async fn board_rename_file(
         &self,
@@ -424,7 +424,7 @@ impl TicketServer {
 
     #[tool(
         name = "list_parts",
-        description = "List a ticket's content parts (id, kind, frozen, created_at, supersedes, and optionally content), including any orphaned part files reported separately."
+        description = "List ticket content parts and orphan files; with_content defaults false. id is the ticket UUID/prefix. Requires an explicit workspace root or .ticket store path; omitted, empty, default and .. are rejected; . selects server cwd. Opens/initializes and rescans the addressed store."
     )]
     pub async fn list_parts(
         &self,
@@ -435,7 +435,7 @@ impl TicketServer {
 
     #[tool(
         name = "get_part",
-        description = "Get a single ticket content part by its opaque part id."
+        description = "Read a ticket part; id is ticket UUID/prefix, part_id is a full opaque part UUID. Requires an explicit workspace root or .ticket store path; omitted, empty, default and .. are rejected; . selects server cwd. Opens/initializes and rescans the addressed store."
     )]
     pub async fn get_part(
         &self,
@@ -446,7 +446,7 @@ impl TicketServer {
 
     #[tool(
         name = "write_part",
-        description = "Write a ticket content part: updates an existing part via part_id, or creates a new part of the given kind. Rejected with the full frozen-part error if the addressed part is frozen by plan freezing."
+        description = "Write ticket part content, rejecting frozen parts. Omit part_id to create with generated identity; updating uses the full part UUID and ignores kind. author records provenance. Requires an explicit workspace root or .ticket store path; omitted, empty, default and .. are rejected; . selects server cwd. Opens/initializes and rescans the addressed store."
     )]
     pub async fn write_part(
         &self,
@@ -457,7 +457,7 @@ impl TicketServer {
 
     #[tool(
         name = "write_amendment",
-        description = "Write an 'amendment' part that supersedes another (typically frozen) part, recording a correction without unfreezing the original."
+        description = "Write an amendment superseding a full part UUID; omit part_id for a generated amendment identity. author records provenance; this does not unfreeze the original. Requires an explicit workspace root or .ticket store path; omitted, empty, default and .. are rejected; . selects server cwd. Opens/initializes and rescans the addressed store."
     )]
     pub async fn write_amendment(
         &self,
@@ -468,7 +468,7 @@ impl TicketServer {
 
     #[tool(
         name = "undo_part",
-        description = "Restore a part to the content it held immediately before its most recent write. Rejected if the part is currently frozen."
+        description = "Restore the previous content of a full part_id UUID on the addressed ticket. Frozen parts cannot be undone; author is provenance. Requires an explicit workspace root or .ticket store path; omitted, empty, default and .. are rejected; . selects server cwd. Opens/initializes and rescans the addressed store."
     )]
     pub async fn undo_part(
         &self,

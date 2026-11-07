@@ -3,6 +3,7 @@ use super::*;
 
 #[derive(Debug, Deserialize, JsonSchema)]
 pub struct MovePreflightInput {
+    /// Explicit workspace root or .ticket store path required; omitted/empty/default/.. rejected; . means server cwd.
     pub workspace: String,
     pub id: String,
     pub to_workspace_root: String,
@@ -10,6 +11,7 @@ pub struct MovePreflightInput {
 
 #[derive(Debug, Deserialize, JsonSchema)]
 pub struct MoveApplyInput {
+    /// Explicit workspace root or .ticket store path required; omitted/empty/default/.. rejected; . means server cwd.
     pub workspace: String,
     pub id: String,
     pub to_workspace_root: String,
@@ -17,12 +19,14 @@ pub struct MoveApplyInput {
 
 #[derive(Debug, Deserialize, JsonSchema)]
 pub struct MoveJournalInput {
+    /// Explicit workspace root or .ticket store path required; omitted/empty/default/.. rejected; . means server cwd.
     pub workspace: String,
     pub id: String,
 }
 
 #[derive(Debug, Deserialize, JsonSchema)]
 pub struct ListPartsInput {
+    /// Explicit workspace root or .ticket store path required; omitted/empty/default/.. rejected; . means server cwd.
     pub workspace: String,
     pub id: String,
     #[serde(default)]
@@ -31,6 +35,7 @@ pub struct ListPartsInput {
 
 #[derive(Debug, Deserialize, JsonSchema)]
 pub struct GetPartInput {
+    /// Explicit workspace root or .ticket store path required; omitted/empty/default/.. rejected; . means server cwd.
     pub workspace: String,
     pub id: String,
     pub part_id: String,
@@ -38,6 +43,7 @@ pub struct GetPartInput {
 
 #[derive(Debug, Deserialize, JsonSchema)]
 pub struct WritePartInput {
+    /// Explicit workspace root or .ticket store path required; omitted/empty/default/.. rejected; . means server cwd.
     pub workspace: String,
     pub id: String,
     /// Opaque part id (UUID) to update. Omit to create a new part.
@@ -54,6 +60,7 @@ pub struct WritePartInput {
 
 #[derive(Debug, Deserialize, JsonSchema)]
 pub struct WriteAmendmentInput {
+    /// Explicit workspace root or .ticket store path required; omitted/empty/default/.. rejected; . means server cwd.
     pub workspace: String,
     pub id: String,
     /// Opaque part id (UUID) of the part this amendment corrects.
@@ -68,6 +75,7 @@ pub struct WriteAmendmentInput {
 
 #[derive(Debug, Deserialize, JsonSchema)]
 pub struct UndoPartInput {
+    /// Explicit workspace root or .ticket store path required; omitted/empty/default/.. rejected; . means server cwd.
     pub workspace: String,
     pub id: String,
     pub part_id: String,

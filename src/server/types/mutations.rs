@@ -20,19 +20,25 @@ pub enum WorkflowName {
 
 #[derive(Debug, Deserialize, JsonSchema)]
 pub(super) struct UpdateTicketInputWire {
+    /// Explicit workspace root or .ticket store path required; omitted/empty/default/.. rejected; . means server cwd.
     pub workspace: String,
+    /// Stored ticket UUID or unambiguous prefix.
     pub id: String,
     #[serde(default)]
     pub transition_states: Vec<String>,
     #[serde(default)]
     pub to_state: Option<String>,
     #[serde(default)]
+    /// key=value string patches; these override field_map entries with the same key.
     pub fields: Option<Vec<String>>,
     #[serde(default)]
+    /// Structured JSON field patches; fields string patches win on collisions.
     pub field_map: Option<BTreeMap<String, Value>>,
     #[serde(default)]
+    /// Undo cannot be combined with transition_states, to_state, fields or field_map.
     pub undo: bool,
     #[serde(default)]
+    /// Content update requires an explicit description_mode; omitted means no content change.
     pub description: Option<String>,
     /// How to apply `description`: `"replace"` (overwrites) or `"append"`
     /// (preserves existing content, concatenating onto it). Required
@@ -52,6 +58,7 @@ pub(super) struct UpdateTicketInputWire {
 #[derive(Debug, Deserialize)]
 #[serde(try_from = "UpdateTicketInputWire")]
 pub struct UpdateTicketInput {
+    /// Explicit workspace root or .ticket store path required; omitted/empty/default/.. rejected; . means server cwd.
     pub workspace: String,
     pub id: String,
     pub transition_states: Vec<String>,
@@ -116,6 +123,7 @@ impl JsonSchema for UpdateTicketInput {
 
 #[derive(Debug, Deserialize, JsonSchema)]
 pub struct CloseTicketInput {
+    /// Explicit workspace root or .ticket store path required; omitted/empty/default/.. rejected; . means server cwd.
     pub workspace: String,
     pub id: String,
     #[serde(default = "default_close_state")]
@@ -130,6 +138,7 @@ pub(super) fn default_close_state() -> String {
 
 #[derive(Debug, Deserialize, JsonSchema)]
 pub struct CancelTicketInput {
+    /// Explicit workspace root or .ticket store path required; omitted/empty/default/.. rejected; . means server cwd.
     pub workspace: String,
     pub id: String,
     #[serde(default)]
@@ -138,6 +147,7 @@ pub struct CancelTicketInput {
 
 #[derive(Debug, Deserialize, JsonSchema)]
 pub struct CreateTicketInput {
+    /// Explicit workspace root or .ticket store path required; omitted/empty/default/.. rejected; . means server cwd.
     pub workspace: String,
     #[serde(rename = "type")]
     pub type_id: String,
@@ -153,12 +163,14 @@ pub struct CreateTicketInput {
 
 #[derive(Debug, Deserialize, JsonSchema)]
 pub struct DeleteTicketInput {
+    /// Explicit workspace root or .ticket store path required; omitted/empty/default/.. rejected; . means server cwd.
     pub workspace: String,
     pub id: String,
 }
 
 #[derive(Debug, Deserialize, JsonSchema)]
 pub struct AddEdgeInput {
+    /// Explicit workspace root or .ticket store path required; omitted/empty/default/.. rejected; . means server cwd.
     pub workspace: String,
     pub from: String,
     pub to: String,
@@ -167,6 +179,7 @@ pub struct AddEdgeInput {
 
 #[derive(Debug, Deserialize, JsonSchema)]
 pub struct RemoveEdgeInput {
+    /// Explicit workspace root or .ticket store path required; omitted/empty/default/.. rejected; . means server cwd.
     pub workspace: String,
     pub from: String,
     pub to: String,
@@ -203,6 +216,7 @@ pub(super) fn default_dangling_strategy() -> DanglingStrategy {
 
 #[derive(Debug, Deserialize, JsonSchema)]
 pub struct PruneDanglingEdgesInput {
+    /// Explicit workspace root or .ticket store path required; omitted/empty/default/.. rejected; . means server cwd.
     pub workspace: String,
     #[serde(default)]
     pub root: Option<String>,

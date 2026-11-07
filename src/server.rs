@@ -17,6 +17,10 @@ use uuid::Uuid;
 
 use ticket_api::storage::store::TicketStore;
 
+#[cfg(test)]
+#[path = "server/contract_tests.rs"]
+mod contract_tests;
+
 #[path = "server/board.rs"]
 mod board;
 #[path = "server/graph.rs"]

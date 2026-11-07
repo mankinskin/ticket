@@ -38,6 +38,7 @@ pub struct NodeItem {
 
 #[derive(Serialize)]
 pub struct SubgraphResponse {
+    /// Explicit workspace root or .ticket store path required; omitted/empty/default/.. rejected; . means server cwd.
     pub workspace: String,
     pub nodes: Vec<NodeItem>,
     pub edges: Vec<EdgeItem>,
@@ -54,6 +55,7 @@ pub struct SubgraphStats {
 
 #[derive(Debug, Deserialize, JsonSchema)]
 pub struct ListTicketsInput {
+    /// Workspace selector: empty/default uses the server store; otherwise workspace root or .ticket store path.
     pub workspace: String,
     #[serde(default)]
     pub state: Option<String>,
@@ -96,6 +98,7 @@ where
 
 #[derive(Debug, Deserialize, JsonSchema)]
 pub struct ListEdgesInput {
+    /// Workspace selector: empty/default uses the server store; otherwise workspace root or .ticket store path.
     pub workspace: String,
     #[serde(default)]
     pub kind: Option<String>,
@@ -103,6 +106,7 @@ pub struct ListEdgesInput {
 
 #[derive(Debug, Deserialize, JsonSchema)]
 pub struct SubgraphInput {
+    /// Explicit workspace root or .ticket store path required; omitted/empty/default/.. rejected; . means server cwd.
     pub workspace: String,
     pub root: String,
     #[serde(default)]
@@ -119,6 +123,7 @@ pub struct SubgraphInput {
 
 #[derive(Debug, Deserialize, JsonSchema)]
 pub struct TopgraphInput {
+    /// Explicit workspace root or .ticket store path required; omitted/empty/default/.. rejected; . means server cwd.
     pub workspace: String,
     pub root: String,
     #[serde(default)]
@@ -135,6 +140,7 @@ pub struct TopgraphInput {
 
 #[derive(Debug, Deserialize, JsonSchema)]
 pub struct HealthCheckInput {
+    /// Explicit workspace root or .ticket store path required; omitted/empty/default/.. rejected; . means server cwd.
     pub workspace: String,
     #[serde(default)]
     pub root: Option<String>,
