@@ -3,6 +3,14 @@ tickets.db
 tickets.db-shm
 tickets.db-wal
 search_index/
+.*.lock
+*.flock
+.*-lock
+*.tmp
+.*.tmp-*
+.tmp-*
+move-locks/
+scan_fingerprints.json
 
 # Stable advisory lock files are retained to keep a consistent lock inode.
 .ticket-lock

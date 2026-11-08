@@ -191,7 +191,17 @@ impl TicketStore {
             elapsed_ms(resolve_started),
         );
         let ensure_started = Instant::now();
-        ensure_sqlite_index_root(&index_root, "tickets.db", &["search_index/"])?;
+        ensure_sqlite_index_root(
+            &index_root,
+            "tickets.db",
+            &[
+                "search_index/",
+                ".ticket-generation",
+                ".ticket-transaction.json",
+                ".ticket-txn-*.stage",
+                ".ticket-txn-*.backup",
+            ],
+        )?;
         report.phase_timings_ms.insert(
             "ensure_index_root_ms".to_string(),
             elapsed_ms(ensure_started),

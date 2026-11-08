@@ -22,6 +22,66 @@ pub(super) fn open_creates_gitignore_for_local_ticket_artifacts() {
     assert!(gitignore.contains("tickets.db-shm"));
     assert!(gitignore.contains("tickets.db-wal"));
     assert!(gitignore.contains("search_index/"));
+    for entry in [
+        "*.lock",
+        ".*-lock",
+        ".ticket-generation",
+        ".ticket-transaction.json",
+        ".ticket-txn-*.stage",
+        ".ticket-txn-*.backup",
+    ] {
+        assert!(
+            gitignore.lines().any(|line| line == entry),
+            "missing {entry}"
+        );
+    }
+}
+
+#[test]
+pub(super) fn ticket_gitignore_hides_control_files_without_hiding_ticket_content() {
+    let dir = tempdir().unwrap();
+    let output = std::process::Command::new("git")
+        .arg("init")
+        .arg(dir.path())
+        .output()
+        .unwrap();
+    assert!(output.status.success());
+    let store = TicketStore::init(dir.path()).unwrap();
+    let ignore_path = store.index_root.join(".gitignore");
+    fs::write(&ignore_path, "# custom\ncustom-output/").unwrap();
+    let reopened = TicketStore::init(dir.path()).unwrap();
+    let first = fs::read_to_string(&ignore_path).unwrap();
+    assert!(first.starts_with("# custom\ncustom-output/"));
+    let _again = TicketStore::init(dir.path()).unwrap();
+    assert_eq!(fs::read_to_string(&ignore_path).unwrap(), first);
+
+    for (path, ignored) in [
+        ("tickets/id/.ticket-lock", true),
+        ("tickets/id/.ticket-generation", true),
+        ("tickets/id/.ticket-transaction.json", true),
+        ("tickets/id/.ticket-txn-123-0.backup", true),
+        ("tickets/id/parts/.ticket-txn-123-1.stage", true),
+        ("tickets/id/.ticket-transaction-123.tmp", true),
+        ("tickets/id/ticket.toml", false),
+        ("tickets/id/description.md", false),
+        ("tickets/id/history.ndjson", false),
+        ("tickets/id/parts/requirements.md", false),
+        ("tickets/id/assets/example.txt", false),
+        ("move-journals/id.json", false),
+    ] {
+        let output = std::process::Command::new("git")
+            .args(["check-ignore", "-q", "--no-index"])
+            .arg(reopened.index_root.join(path))
+            .current_dir(dir.path())
+            .output()
+            .unwrap();
+        assert_eq!(
+            output.status.code(),
+            Some(if ignored { 0 } else { 1 }),
+            "unexpected ignore policy for {path}: {}",
+            String::from_utf8_lossy(&output.stderr)
+        );
+    }
 }
 
 #[test]

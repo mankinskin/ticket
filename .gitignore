@@ -18,3 +18,15 @@ search_index/
 
 .ticket-lock
 .ticket-generation
+.ticket-transaction.json
+.ticket-txn-*.stage
+.ticket-txn-*.backup
+
+# Transient store controls; keep Cargo.lock and durable ticket records trackable.
+.*.lock
+*.flock
+.*-lock
+*.tmp
+.*.tmp-*
+.tmp-*
+move-locks/

@@ -10,6 +10,15 @@ Track implementation work as tickets with typed states, dependency edges, and ac
 
 ## Usage
 
+Ticket initialization maintains a store-local `.gitignore` for SQLite/search
+indexes, hidden advisory locks and temporary write files. It also excludes the
+`.ticket-generation` and `.ticket-transaction.json` control files and
+`.ticket-txn-*.stage` / `.ticket-txn-*.backup` transaction staging artifacts at
+any depth. Existing custom rules are preserved; missing defaults are appended
+on initialization. Ticket manifests, parts, history, attachments and durable
+move journals remain trackable. Ignoring a file never removes it from disk or
+from Git's existing tracked files.
+
 Build the desired transport from the `workflow-tools` workspace root:
 
 ```bash
