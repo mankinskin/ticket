@@ -8,16 +8,16 @@ description: "Use in ticket workflow operations that apply across sessions: orie
 
 Tickets own How: bounded implementation steps and executable acceptance;
 Specs own What, Missions own Why and the route. Link the authoritative
-[source-to-outcome and single-sitting scope contract](../../../../.agents/instructions/workflow/roadmap-authoring.instructions.md#source-to-outcome-fidelity)
+[source-to-outcome and single-sitting scope contract](https://github.com/mankinskin/workflow-tools/blob/main/.agents/instructions/workflow/roadmap-authoring.instructions.md#source-to-outcome-fidelity)
 instead of copying intent, context or Spec bodies into Ticket parts.
 A design-first Ticket does not narrow a behavior request to documentation.
 An explicitly requested document/design-only outcome remains valid with
 deterministic document/schema/link/example checks.
 Use declared pre/postconditions, automated DoD and regression guards and
-[native evidence admission](../../../../.agents/instructions/workflow/roadmap-execution.instructions.md#native-evidence-and-failure-boundary)
+[native evidence admission](https://github.com/mankinskin/workflow-tools/blob/main/.agents/instructions/workflow/roadmap-execution.instructions.md#native-evidence-and-failure-boundary)
 before lifecycle progress; Ticket completion alone is not provider evidence.
 Handover exact artifacts and producer/consumer identities under the
-[provider contract](../../../../mission/docs/provider-evidence.md).
+[provider contract](https://github.com/mankinskin/workflow-tools/blob/main/mission/docs/provider-evidence.md).
 
 These operations apply during **every session**, not only when working on
 ticket-system code. Session-wide principles (create tickets before code, keep
